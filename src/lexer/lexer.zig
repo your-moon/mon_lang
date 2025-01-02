@@ -1,9 +1,10 @@
 const std = @import("std");
 
 const Token = enum {
+    Import,
     Let,
-    Meow,
     Variable,
+    String,
     Fn,
 };
 

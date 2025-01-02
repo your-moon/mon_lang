@@ -23,6 +23,9 @@ Should i use compiler backend for compability of any type of cpu or specific arc
 #### References
 
 Book -- Writing a C Compiler: Build a Real Programming Language from Scratch Paperback - by Nora Sandler (Author)
+
 Book -- Compilers: Principles, Techniques, and Tools
+
 Book -- Crafting Interpreters: Nystrom, Robert
+
 Book -- Writing A Compiler In Go: Thorsten Ball

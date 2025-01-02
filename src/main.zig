@@ -1,8 +1,10 @@
 const std = @import("std");
 const parser = @import("parser/parser.zig");
 const lexer = @import("lexer/lexer.zig");
+const token = @import("token.zig");
 
 pub fn main() !void {
-    _ = try parser.parse("hello this is source");
-    _ = try lexer.lex("hi");
+    const source = "hello this is source";
+    const lexedTokens = try lexer.lex(source);
+    _ = try parser.parse(lexedTokens);
 }

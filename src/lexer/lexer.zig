@@ -2,6 +2,9 @@ const std = @import("std");
 
 const Token = enum {
     Let,
+    Meow,
+    Variable,
+    Fn,
 };
 
 pub fn lex(expr: []const u8) !Token {

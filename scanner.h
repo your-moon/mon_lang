@@ -1,5 +1,6 @@
 typedef enum {
-    T_IDENT, T_CONST, T_INT, T_VOID, T_RETURN, T_LET, T_IF, T_EOF,T_NUMBER
+    T_IDENT, T_CONST, T_INT, T_VOID, T_RETURN, T_LET, T_IF, T_EOF,T_NUMBER,
+    T_PLUS, T_MINUS, T_DIV, T_MUL, T_ERR
 } TokenType;
 
 typedef struct {
@@ -13,7 +14,6 @@ typedef struct
 {
     const char *start;
     const char *current;
-    ;
     int line;
 } Scanner;
 

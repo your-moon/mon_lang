@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include "scanner.h"
 
-
 Scanner scanner;
 
 void initScanner(const char *source)
@@ -20,7 +19,8 @@ void initScanner(const char *source)
     scanner.line = 1;
 }
 
-static Token fromEnum(TokenType type) {
+static Token fromEnum(TokenType type)
+{
     Token token;
     token.type = type;
     token.line = scanner.line;
@@ -29,49 +29,81 @@ static Token fromEnum(TokenType type) {
     return token;
 }
 
-
-static bool isWhitespace(char c) {
-    return c == ' ';
-}
-
-
-static char peek() {
+static char peek()
+{
     return *scanner.current;
 }
 
 // Дараагийн утга ийг шилжүүлж өмнөх утгийг авна.
-static char next() {
+static char next()
+{
     scanner.current++;
     return scanner.current[-1];
 }
 
-static void trimWhitespace() {
+static void skipWhitespace()
+{
+    char c = peek();
+    if (c == ' ')
+    {
+        next();
+    }
+}
+
+static void trimWhitespace()
+{
     next();
 }
 
-static bool isAtEnd() {
-  return *scanner.current == '\0';
+static bool isAtEnd()
+{
+    return *scanner.current == '\0';
 }
 
-static bool isDigit(char c) {
+static bool isDigit(char c)
+{
     return c >= '0' && c <= '9';
 }
-//algorithm
-//  123123
-//  ^     ^ -> whitespace occurs that means halt and gen token
-//  T_NUMBER
-Token buildNumber() {
-    while (isDigit(peek())) next();
+// algorithm
+//   123123
+//   ^     ^ -> whitespace occurs that means halt and gen token
+//   T_NUMBER
+Token buildNumber()
+{
+    while (isDigit(peek()))
+        next();
     return fromEnum(T_NUMBER);
 }
 
-Token scanToken() {
-    while(true) {
-        if (isAtEnd()) return fromEnum(T_EOF);
-        if (isWhitespace(peek())) trimWhitespace();
+// check current char and find longest matching token
+Token scanToken()
+{
+    skipWhitespace();
+    scanner.start = scanner.current;
 
-        //TODO: find the longest matching token
-        // for now at least find digits and operators
-        while (isDigit(peek())) return buildNumber();
+    if (isAtEnd())
+        return fromEnum(T_EOF);
+
+    char c = next();
+    printf("CURRENT CHAR %c\n", c);
+
+
+    // TODO: find the longest matching token
+    //  for now at least find digits and operators
+    while (isDigit(c))
+        return buildNumber();
+
+    switch (c)
+    {
+    case '+':
+        return fromEnum(T_PLUS);
+    case '-':
+        return fromEnum(T_MINUS);
+    case '*':
+        return fromEnum(T_MUL);
+    case '/':
+        return fromEnum(T_DIV);
     }
+
+    return fromEnum(T_ERR);
 }

@@ -3,14 +3,19 @@
 int main(void)
 {
 
-    char source[10] = "123 456\0";
+    char source[25] = "1+1 1233 3444-43\0";
     initScanner(source);
-    //lex something that means source to token list
+    // lex something that means source to token list
 
-    Token token = scanToken();
-    printf("THIS IS TOKEN %d\n", token.type);
-
-    Token stoken = scanToken();
-    printf("THIS IS 2TOKEN %d\n", stoken.type);
+    for (;;)
+    {
+        Token token = scanToken();
+        printf("THIS IS TOKEN %d\n", token.type);
+        printf("THIS IS Length %d\n\n", token.length);
+        if (token.type == T_EOF)
+        {
+            return -1;
+        }
+    }
     return 0;
 }

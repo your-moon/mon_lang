@@ -57,12 +57,9 @@ static bool isDigit(char c) {
     return c >= '0' && c <= '9';
 }
 //algorithm
-//bunch of literals
-//we go through scan
-//  abc defg
-//  ^ ^ ^  ^
-// skip whitespace
-
+//  123123
+//  ^     ^ -> whitespace occurs that means halt and gen token
+//  T_NUMBER
 Token buildNumber() {
     while (isDigit(peek())) next();
     return fromEnum(T_NUMBER);

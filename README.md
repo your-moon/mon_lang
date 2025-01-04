@@ -13,12 +13,21 @@
 #### Workflow & Requirements
 
 Do i have to write lexer by myself?
+Yes. Because that makes me understand the part of compiler
 
-- [ ] Hand Parser Or Generator. Choose?
+- [x] Hand Parser Or Generator. Choose?
+      Hand
 
 Do i really need low level language?
+Some memory level control
 
 Should i use compiler backend for compability of any type of cpu or specific arch?
+Maybe
+
+#### Formal grammar
+
+expression = primary;
+primary = NUMBER | STRING | IDENT | "(" expression ")";
 
 #### References
 

@@ -12,9 +12,13 @@ int main(void)
         Token token = scanToken();
         printf("THIS IS TOKEN %d\n", token.type);
         printf("THIS IS Length %d\n\n", token.length);
-        if (token.type == T_EOF)
+        if (token.type == T_ERR)
         {
             return -1;
+        }
+        if (token.type == T_EOF)
+        {
+            return 0;
         }
     }
     return 0;

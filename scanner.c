@@ -86,7 +86,7 @@ static bool isAlpha(wchar_t c)
     }
 
     if (c == L'ё' || c == L'ү' || c == L'е')
-        return true
+        return true;
 
     return false;
 }

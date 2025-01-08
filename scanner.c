@@ -39,7 +39,6 @@ static wchar_t nextTimes(int time)
     return scanner.current[-1];
 }
 
-// Дараагийн утга ийг шилжүүлж өмнөх утгийг авна.
 static wchar_t next()
 {
     scanner.current++;
@@ -72,7 +71,6 @@ static bool isDigit(wchar_t c)
 
 bool checkKeyword(int length, const wchar_t *rest, TokenType tokenType)
 {
-    // printf("current-start: %ld start + length %d", scanner.current - scanner.start, start+length);
     if (memcmp(scanner.start, rest, length) == 0)
     {
         return true;
@@ -87,16 +85,14 @@ static bool isAlpha(wchar_t c)
         return true;
     }
 
+    if (c == L'ё' || c == L'ү' || c == L'е')
+        return true
+
     return false;
 }
 
 Token scanKeyword()
 {
-    if (checkKeyword(3, L"let", T_LET))
-    {
-        nextTimes(2);
-        return fromEnum(T_LET);
-    }
     if (checkKeyword(4, L"зарл", T_LET))
     {
         nextTimes(3);
@@ -171,7 +167,6 @@ Token scanToken()
     {
         const wchar_t *word = scanner.start;
         wprintf(L"%ls\n", word);
-        // return scanKeyword();
         return scanIdent();
     }
 

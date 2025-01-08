@@ -40,6 +40,8 @@ Maybe
 expression = primary;
 primary = NUMBER | STRING | IDENT | "(" expression ")";
 
+- newline -> \r, \n, \r\n
+
 - а -> 0x0430
 - б -> 0x0431
 - в -> 0x0432

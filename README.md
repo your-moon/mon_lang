@@ -35,6 +35,8 @@ Some memory level control
 Should i use compiler backend for compability of any type of cpu or specific arch?
 Maybe
 
+Cyrillic to en ?
+
 #### Formal grammar
 
 expression = primary;

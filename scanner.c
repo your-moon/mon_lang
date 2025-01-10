@@ -148,10 +148,19 @@ Token buildNumber()
     return fromEnum(T_NUMBER);
 }
 
+static void advanceLine() {
+    wchar_t c = peek();
+    if (c == '\r' || c == '\n')
+    {
+        scanner.line++;
+    }
+}
+
 
 // check current wchar_t and find longest matching token
 Token scanToken()
 {
+    advanceLine();
     skipWhitespace();
     scanner.start = scanner.current;
 

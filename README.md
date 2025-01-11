@@ -39,11 +39,36 @@ Cyrillic to en ?
 
 #### Formal grammar
 
-expression = primary;
-primary = NUMBER | STRING | IDENT | "(" expression ")";
+```sh
+
+<program> ::= <statements>
+
+<func-declaration> ::= "фн" identifier "(" [ <func-params> ] ")" [ "->" type ] "{" <statements> "}"
+<struct-definition> ::= "бүтэц" identifier "{" <struct-fields> "}"
+<struct-fields> ::= <field> | <field> <struct-fields>
+<field> ::= identifier type
+
+<statements> ::= statement | statement <statements>
+<statement> ::= variable-declaration | function-call | if-statement | "буц" expression
+<variable-declaration> ::= "зарл" identifier [ ":" type ] [ "=" expression ]
+<function-call> ::= identifier "(" [ expression { "," expression } ] ")"
+
+if-statement ::= "хэрв" <expression> "{" <statements> "}" [ "үгүй" "{" <statements> "}" ]*
+
+<expression> ::= <literal> | <identifier> | <binary-expr>
+
+<binary-expr> ::= <expression> <binary-op> <expression>
+<binary-op> ::= "+" | "-" | "*" | "/" | "==" | "!=" | ">" | "<" | ">=" | "<="
+<literal> ::= <number> | <string> | <boolean>
+<number> ::= [0-9]+
+<string> ::= '"' .\* '"'
+<boolean> ::= "true" | "false"
+<identifier> ::= [а-яА-Я\_][0-9]\*
+```
 
 - newline -> \r, \n, \r\n
 
+```sh
 - а -> 0x0430 -> a
 - б -> 0x0431 -> b
 - в -> 0x0432 -> v
@@ -80,6 +105,7 @@ primary = NUMBER | STRING | IDENT | "(" expression ")";
 - ё -> 0x0451 -> yo
 - ү -> 0x04af -> w
 - ө -> 0x04e9 -> q
+```
 
 #### References
 

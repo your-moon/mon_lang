@@ -80,8 +80,8 @@ bool checkKeyword(int length, const wchar_t *rest, TokenType tokenType)
 
 static bool isAlpha(wchar_t c)
 {
-    if (c >= L'а' && c <= L'я'
-      || c >= L'А' && c <= L'Я') {
+    if (c >= L'а' && c <= L'я' || c >= L'А' && c <= L'Я')
+    {
         return true;
     }
 
@@ -125,7 +125,8 @@ Token scanIdent()
 {
     Token token = scanKeyword();
 
-    if (token.type != T_ERR) {
+    if (token.type != T_ERR)
+    {
         return token;
     }
 
@@ -148,14 +149,14 @@ Token buildNumber()
     return fromEnum(T_NUMBER);
 }
 
-static void advanceLine() {
+static void advanceLine()
+{
     wchar_t c = peek();
     if (c == '\r' || c == '\n')
     {
         scanner.line++;
     }
 }
-
 
 // check current wchar_t and find longest matching token
 Token scanToken()
@@ -187,13 +188,32 @@ Token scanToken()
     switch (c)
     {
     case '+':
-        return fromEnum(T_PLUS);
     case '-':
-        return fromEnum(T_MINUS);
     case '*':
-        return fromEnum(T_MUL);
     case '/':
-        return fromEnum(T_DIV);
+        return fromEnum(T_BINARY_OP);
+        break;
+    case '=':
+        if (peek() == '=')
+        {
+            next();
+            return fromEnum(T_EQUAL);
+        }
+    case '(':
+        return fromEnum(T_OPEN_PAREN);
+    case ')':
+        return fromEnum(T_CLOSE_PAREN);
+    case '{':
+        return fromEnum(T_OPEN_BRACE);
+    case '}':
+        return fromEnum(T_CLOSE_BRACE);
+    case ';':
+        return fromEnum(T_SEMICOLON);
+    case ',':
+        return fromEnum(T_COMMA);
+    case '>':
+    case '<':
+        return fromEnum(T_BINARY_OP);
     }
 
     return fromEnum(T_ERR);

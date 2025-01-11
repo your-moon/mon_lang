@@ -50,16 +50,19 @@ Cyrillic to en ?
 
 <statements> ::= statement | statement <statements>
 <statement> ::= variable-declaration | function-call | if-statement | "буц" expression
+<import-statement> ::= "оруулах" <string>
 <variable-declaration> ::= "зарл" identifier [ ":" type ] [ "=" expression ]
-<function-call> ::= identifier "(" [ expression { "," expression } ] ")"
-
 if-statement ::= "хэрв" <expression> "{" <statements> "}" [ "үгүй" "{" <statements> "}" ]*
 
 <expression> ::= <literal> | <identifier> | <binary-expr>
+::TODO complete expr
 
-<binary-expr> ::= <expression> <binary-op> <expression>
-<binary-op> ::= "+" | "-" | "*" | "/" | "==" | "!=" | ">" | "<" | ">=" | "<="
-<literal> ::= <number> | <string> | <boolean>
+<unary> ::= <unary-op> <expression>
+<unary-op> ::= "-" | "!"
+<call> ::= <identifier> "(" [ <arguments> ] ")" | "." <identifier>
+<primary> ::= <literal> | <identifier>
+<literal> ::= <number> | <string> | <boolean> | "null" | "(" <expression> ")"
+
 <number> ::= [0-9]+
 <string> ::= '"' .\* '"'
 <boolean> ::= "true" | "false"

@@ -46,6 +46,15 @@ Cyrillic to en ?
 
 program = {statement}
 
+
+return_statement = "буц" expression ";"
+
+variable_declaration = "зарл" identifier ":" type ["=" expression] ";"
+type = int_type | "тэмдэгт" | identifier
+int_type = "этоо" | "этоо8" | "этоо16" | "этоо32" | "этоо64" | "этоо128"
+| "тоо" | "тоо8" | "тоо16" | "тоо32" | "тоо64" | "тоо128"
+
+
 expression = equality
 equality = comparison {("==" | "!=") comparison}
 comparison = term {("<" | "<=" | ">" | ">=") term}
@@ -53,7 +62,7 @@ term = factor {("+" | "-") factor}
 factor = unary {("*" | "/") unary}
 unary = ("-" | "!") unary | primary
 
-primary = digit | string | boolean | identifier | "(" expression ")" ;
+primary = digit | string | boolean | identifier | "(" expression ")" | "хоосон"
 string = '"' {printable} '"' ;
 printable = [0x20-0x7E0x0430-0x044F]
 boolean = "үнэн" | "худал" ;

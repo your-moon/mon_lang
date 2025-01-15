@@ -41,32 +41,26 @@ Cyrillic to en ?
 
 ```sh
 
-<program> ::= <statements>
+# EBNF
 
-<func-declaration> ::= "фн" identifier "(" [ <func-params> ] ")" [ "->" type ] "{" <statements> "}"
-<struct-definition> ::= "бүтэц" identifier "{" <struct-fields> "}"
-<struct-fields> ::= <field> | <field> <struct-fields>
-<field> ::= identifier type
 
-<statements> ::= statement | statement <statements>
-<statement> ::= variable-declaration | function-call | if-statement | "буц" expression
-<import-statement> ::= "оруулах" <string>
-<variable-declaration> ::= "зарл" identifier [ ":" type ] [ "=" expression ]
-if-statement ::= "хэрв" <expression> "{" <statements> "}" [ "үгүй" "{" <statements> "}" ]*
+program = {statement}
 
-<expression> ::= <literal> | <identifier> | <binary-expr>
-::TODO complete expr
+expression = equality
+equality = comparison {("==" | "!=") comparison}
+comparison = term {("<" | "<=" | ">" | ">=") term}
+term = factor {("+" | "-") factor}
+factor = unary {("*" | "/") unary}
+unary = ("-" | "!") unary | primary
 
-<unary> ::= <unary-op> <expression>
-<unary-op> ::= "-" | "!"
-<call> ::= <identifier> "(" [ <arguments> ] ")" | "." <identifier>
-<primary> ::= <literal> | <identifier>
-<literal> ::= <number> | <string> | <boolean> | "null" | "(" <expression> ")"
+primary = digit | string | boolean | identifier | "(" expression ")" ;
+string = '"' {printable} '"' ;
+printable = [0x20-0x7E0x0430-0x044F]
+boolean = "үнэн" | "худал" ;
+identifier = alpha {alpha | digit} ;
+digit = [0-9] ;
+alpha = [а-яА-ЯҮүЁёӨөa-zA-Z] ;
 
-<number> ::= [0-9]+
-<string> ::= '"' .\* '"'
-<boolean> ::= "true" | "false"
-<identifier> ::= [а-яА-Я\_][0-9]\*
 ```
 
 - newline -> \r, \n, \r\n

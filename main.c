@@ -5,7 +5,7 @@ int main(void)
 {
 
     setlocale(LC_ALL, "");
-    wchar_t source[] = L"танигч зарл 1 + 1 123 \n фн оруулах хоосон хэрв\0";
+    wchar_t source[] = L"танигч зарл (1 + 1)*2/3 123 \n фн оруулах хоосон хэрв\0";
     wprintf(L"CURRENT %lc\n", source[0]);
     initScanner(source);
     // lex something that means source to token list

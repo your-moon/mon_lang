@@ -80,6 +80,10 @@ bool checkKeyword(int length, const wchar_t *rest, TokenType tokenType)
 
 static bool isAlpha(wchar_t c)
 {
+    if (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z')
+    {
+        return true;
+    }
     if (c >= L'а' && c <= L'я' || c >= L'А' && c <= L'Я')
     {
         return true;
@@ -93,6 +97,16 @@ static bool isAlpha(wchar_t c)
 
 Token scanKeyword()
 {
+    if (checkKeyword(4, L"үнэн", T_TRUE))
+    {
+        nextTimes(3);
+        return fromEnum(T_TRUE);
+    }
+    if (checkKeyword(5, L"худал", T_FALSE))
+    {
+        nextTimes(4);
+        return fromEnum(T_FALSE);
+    }
     if (checkKeyword(4, L"зарл", T_LET))
     {
         nextTimes(3);
@@ -155,7 +169,27 @@ static void advanceLine()
     if (c == '\r' || c == '\n')
     {
         scanner.line++;
+        next();
     }
+}
+static Token scanString()
+{
+    while (peek() != '"' && !isAtEnd())
+    {
+        if (peek() == '\n')
+        {
+            scanner.line++;
+        }
+        next();
+    }
+
+    if (isAtEnd())
+    {
+        return fromEnum(T_ERR);
+    }
+
+    next();
+    return fromEnum(T_STRING);
 }
 
 // check current wchar_t and find longest matching token
@@ -214,6 +248,8 @@ Token scanToken()
     case '>':
     case '<':
         return fromEnum(T_BINARY_OP);
+    case '"':
+        return scanString();
     }
 
     return fromEnum(T_ERR);

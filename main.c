@@ -21,6 +21,10 @@ int main(void)
         if (token.type == T_EOF)
         {
             return 0;
+            // + 1 < 0 => false, return 2
+            // * 3 < 2 => false, return 4
+            // * 3 < 4 => true, skip
+            // +
         }
     }
     return 0;

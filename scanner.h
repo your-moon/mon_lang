@@ -34,6 +34,7 @@ typedef enum
 
     T_ERR,
     T_EOF,
+    T_SOF,
 } TokenType;
 
 typedef struct
@@ -52,4 +53,5 @@ typedef struct
 } Scanner;
 
 void initScanner(const wchar_t *source);
+static Token fromEnum(TokenType type);
 Token scanToken();

@@ -47,9 +47,9 @@ Cyrillic to en ?
 program = {statement}
 
 
-return_statement = "буц" expression ";"
+return_statement = "буц" expression
 
-variable_declaration = "зарл" identifier ":" type ["=" expression] ";"
+variable_declaration = "зарл" identifier ":" type ["=" expression]
 type = int_type | "тэмдэгт" | identifier
 int_type = "этоо" | "этоо8" | "этоо16" | "этоо32" | "этоо64" | "этоо128"
 | "тоо" | "тоо8" | "тоо16" | "тоо32" | "тоо64" | "тоо128"

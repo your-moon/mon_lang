@@ -1,2 +1,4 @@
 main
 rustv/target
+rustv/out
+rustv/program

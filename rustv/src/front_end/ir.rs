@@ -9,6 +9,21 @@ pub enum IR {
     OP_DIV,
 }
 
+pub struct Chunk {
+    pub ops: Vec<IR>
+}
+
+impl Chunk {
+    pub fn add(&mut self, ir: IR) {
+        self.ops.push(ir)
+    }
+    pub fn new() -> Chunk {
+        Chunk{
+            ops: Vec::new()
+        }
+    }
+}
+
 pub fn simulate(ast: Expr) -> Result<()> {
     match  ast {
         Expr::Number(_) => todo!(),

@@ -1,5 +1,7 @@
 pub mod ast;
 pub mod lexer;
+pub mod compiler;
+pub mod ir;
 use crate::front_end::lexer::Token;
 use lalrpop_util::{lalrpop_mod, ParseError};
 lalrpop_mod!(pub calculator1, "/src/front_end/grammar.rs");

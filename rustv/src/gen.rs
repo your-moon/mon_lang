@@ -2,12 +2,12 @@ use anyhow::Result;
 use std::{fs::File, io::Write};
 
 pub fn gen(out_file: &mut File) -> Result<()> {
-    writeln!(out_file, "section .text")?;
     writeln!(out_file, "global _start")?;
+    writeln!(out_file, "section .text")?;
     writeln!(out_file, "_start:")?;
     writeln!(out_file, "    ; generated code")?;
     writeln!(out_file, "    mov rax, 60")?;
-    writeln!(out_file, "    mov rdi, 0")?;
+    writeln!(out_file, "    mov rdi, 69")?;
     writeln!(out_file, "    syscall")?;
     Ok(())
 }

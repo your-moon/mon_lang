@@ -1,10 +1,4 @@
-#include <wchar.h>
-#include "scanner.h"
-typedef struct
-{
-    const wchar_t *source;
-    Token current;
-} Parser;
+#include "parser.h"
 
 Parser parser;
 
@@ -12,11 +6,10 @@ Parser initParser(const wchar_t *source)
 {
     Parser parser;
     parser.source = source;
-    parser.current = fromEnum(T_SOF);
     return parser;
 }
 
-Token advance()
+Token advanceAndGetPrev()
 {
     Token prev = parser.current;
     parser.current = scanToken();
@@ -66,26 +59,27 @@ ParseRule *getRule(TokenType type)
 
 Token parsePrecedence(Precedence precedence)
 {
-    Token token = advance();
+    Token token = advanceAndGetPrev();
     ParseFn prefixRule = getRule(token.type)->prefix;
     if (prefixRule == NULL)
     {
         return token;
     }
 
-    Token left = prefixRule();
+    // Token left = prefixRule();
+    //
+    // while (getRule(peek().type)->precedence >= precedence)
+    // {
+    //     token = advanceAndGetPrev();
+    //     ParseFn infixRule = getRule(token.type)->infix;
+    //     left = infixRule(left);
+    // }
 
-    while (getRule(peek().type)->precedence >= precedence)
-    {
-        token = advance();
-        ParseFn infixRule = getRule(token.type)->infix;
-        left = infixRule(left);
-    }
-
-    return left;
+    // return left;
 }
 
 Token parseExpression()
 {
+    initScanner(parser.source);
     return parsePrecedence(PREC_ASSIGNMENT);
 }

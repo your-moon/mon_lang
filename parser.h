@@ -9,4 +9,7 @@ typedef struct
 
 
 Parser initParser(const wchar_t *source);
-Token parseExpression();
+Token parse_expression();
+struct ASTnode *parse_exp();
+struct ASTnode *parse_stmt();
+struct ASTnode *parse_decl();

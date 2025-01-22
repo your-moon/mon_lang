@@ -1,4 +1,4 @@
-#define DEBUG_SCANNER 1
+#define DEBUG_SCANNER 0
 #ifdef DEBUG_SCANNER
 #endif
 #include <string.h>
@@ -26,6 +26,14 @@ static Token fromEnum(TokenType type)
     token.line = scanner.line;
     token.start = scanner.start;
     token.length = (scanner.current - scanner.start);
+
+    wchar_t valbuild[token.length];
+
+    for (int i=0; i<token.length; i++) {
+        valbuild[i] = scanner.start[i];
+    }
+
+    token.value = valbuild;
     return token;
 }
 
@@ -97,6 +105,11 @@ static bool isAlpha(wchar_t c)
 
 Token scanKeyword()
 {
+    if (checkKeyword(3, L"буц", T_TRUE))
+    {
+        nextTimes(2);
+        return fromEnum(T_RETURN);
+    }
     if (checkKeyword(4, L"үнэн", T_TRUE))
     {
         nextTimes(3);
@@ -122,10 +135,15 @@ Token scanKeyword()
         nextTimes(6);
         return fromEnum(T_IMPORT);
     }
-    if (checkKeyword(6, L"хоосон", T_VOID))
+    if (checkKeyword(6, L"хоосон", T_VOID_TYPE))
     {
         nextTimes(5);
-        return fromEnum(T_VOID);
+        return fromEnum(T_VOID_TYPE);
+    }
+    if (checkKeyword(3, L"тоо", T_INT_TYPE))
+    {
+        nextTimes(2);
+        return fromEnum(T_INT_TYPE);
     }
     if (checkKeyword(4, L"хэрв", T_IF))
     {
@@ -203,14 +221,14 @@ Token scanToken()
         return fromEnum(T_EOF);
 
     wchar_t c = next();
-    wprintf(L"CURRENT CHAR %lc\n", c);
-    wprintf(L"START FROM %ls\n", scanner.start);
-    wprintf(L"ISALPHA %ld\n", isAlpha(c));
+    // wprintf(L"CURRENT CHAR %lc\n", c);
+    // wprintf(L"START FROM %ls\n", scanner.start);
+    // wprintf(L"ISALPHA %ld\n", isAlpha(c));
 
     while (isAlpha(c))
     {
         const wchar_t *word = scanner.start;
-        wprintf(L"%ls\n", word);
+        wprintf(L"\n%ls\n", word);
         return scanIdent();
     }
 
@@ -222,9 +240,16 @@ Token scanToken()
     switch (c)
     {
     case '+':
-    case '-':
     case '*':
     case '/':
+        return fromEnum(T_BINARY_OP);
+        break;
+    case '-':
+        if (peek() == '>')
+        {
+            next();
+            return fromEnum(T_RIGHTARROW);
+        }
         return fromEnum(T_BINARY_OP);
         break;
     case '=':
@@ -233,6 +258,7 @@ Token scanToken()
             next();
             return fromEnum(T_EQUAL);
         }
+        break;
     case '(':
         return fromEnum(T_OPEN_PAREN);
     case ')':

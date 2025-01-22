@@ -1,22 +1,27 @@
 #include "parser.h"
+#include "defs.h"
 #include <locale.h>
 #include <wchar.h>
+#include "tree.h"
 int main(void)
 {
 
     setlocale(LC_ALL, "");
-    wchar_t source[] = L"танигч зарл (1 + 1)*2/3 123 \n фн оруулах хоосон хэрв\0";
-    wprintf(L"CURRENT %lc\n", source[0]);
+    wchar_t source[] = L"фн майн() -> тоо {буц 122;}\0";
+    // wprintf(L"CURRENT %lc\n", source[0]);
+
+    initScanner(source);
     initParser(source);
-    Token token = parseExpression();
-    wprintf(L"THIS IS TOKEN %d\n", token.type);
-    wprintf(L"THIS IS Length %d\n\n", token.length);
+    struct ASTnode *ast = parse_decl();
+    pretty_print_ast(ast);
+
     // lex something that means source to token list
     // for (;;)
     // {
     //     Token token = scanToken();
-    //     wprintf(L"THIS IS TOKEN %d\n", token.type);
-    //     wprintf(L"THIS IS Length %d\n\n", token.length);
+    //     wprintf(L"\nTHIS IS TOKEN %d\n", token.type);
+    //     wprintf(L"THIS IS Length %d\n", token.length);
+    //     wprintf(L"THIS IS VALUE %ls\n\n", token.value);
     //     if (token.type == T_ERR)
     //     {
     //         return -1;

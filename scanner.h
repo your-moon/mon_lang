@@ -10,8 +10,8 @@ typedef enum
     T_BINARY_OP,
     T_CONST,
 
-    T_INT,
-    T_VOID,
+    T_INT_TYPE,
+    T_VOID_TYPE,
 
     T_RETURN,
     T_LET,
@@ -28,6 +28,7 @@ typedef enum
     T_CLOSE_BRACE,
 
     T_SEMICOLON,
+    T_RIGHTARROW,
 
     T_FN,
     T_STRUCT,
@@ -41,6 +42,7 @@ typedef struct
 {
     TokenType type;
     const wchar_t *start;
+    const wchar_t *value;
     int length;
     int line;
 } Token;

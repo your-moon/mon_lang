@@ -31,7 +31,7 @@ struct ASTnode *mkastunary(int op, struct ASTnode *left, int intvalue) {
 
 void pretty_print_ast(struct ASTnode* node) {
     if (!node) {
-        printf("NULL");
+        wprintf(L"NULL");
         return;
     }
 

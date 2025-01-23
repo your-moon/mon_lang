@@ -7,7 +7,8 @@ int main(void)
 {
 
     setlocale(LC_ALL, "");
-    wchar_t source[] = L"фн майн() -> тоо {буц 122;}\0";
+    wchar_t source[] = L"фн майн() -> тоо {буц 1;}\0";
+    // wchar_t source[] = L"-1";
     // wprintf(L"CURRENT %lc\n", source[0]);
 
     initScanner(source);

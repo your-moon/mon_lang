@@ -41,6 +41,27 @@ Cyrillic to en ?
 
 ```sh
 
+#THIS IS IMPLEMENTED
+# EBNF
+
+program = {statement}
+
+return_statement = "буц" expression
+type = int_type
+int_type = "тоо"
+
+expression = unary
+unary = ("-") primary | primary
+primary = digit
+string = '"' {printable} '"' ;
+identifier = alpha {alpha | digit} ;
+digit = [0-9] ;
+alpha = [а-яА-ЯҮүЁёӨөa-zA-Z] ;
+
+```
+
+```sh
+
 # EBNF
 
 

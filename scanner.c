@@ -30,9 +30,11 @@ static Token fromEnum(TokenType type)
     wchar_t valbuild[token.length];
 
     for (int i=0; i<token.length; i++) {
+        wprintf(L"BUILDING VALUE : THE CHAR IS %lc \n", scanner.start[i]);
         valbuild[i] = scanner.start[i];
     }
 
+    wprintf(L"BUILDED VALUE : %ls \n", valbuild);
     token.value = valbuild;
     return token;
 }
@@ -221,9 +223,9 @@ Token scanToken()
         return fromEnum(T_EOF);
 
     wchar_t c = next();
-    // wprintf(L"CURRENT CHAR %lc\n", c);
-    // wprintf(L"START FROM %ls\n", scanner.start);
-    // wprintf(L"ISALPHA %ld\n", isAlpha(c));
+    wprintf(L"PREV CHAR %lc\n", c);
+    wprintf(L"START FROM %ls\n", scanner.start);
+    wprintf(L"ISALPHA %ld\n", isAlpha(c));
 
     while (isAlpha(c))
     {
@@ -240,9 +242,13 @@ Token scanToken()
     switch (c)
     {
     case '+':
+        return fromEnum(T_PLUS);
+        break;
     case '*':
+        return fromEnum(T_MUL);
+        break;
     case '/':
-        return fromEnum(T_BINARY_OP);
+        return fromEnum(T_DIV);
         break;
     case '-':
         if (peek() == '>')
@@ -250,7 +256,7 @@ Token scanToken()
             next();
             return fromEnum(T_RIGHTARROW);
         }
-        return fromEnum(T_BINARY_OP);
+        return fromEnum(T_MINUS);
         break;
     case '=':
         if (peek() == '=')
@@ -258,24 +264,35 @@ Token scanToken()
             next();
             return fromEnum(T_EQUAL);
         }
+        return fromEnum(T_ASSIGN);
         break;
     case '(':
         return fromEnum(T_OPEN_PAREN);
+        break;
     case ')':
         return fromEnum(T_CLOSE_PAREN);
+        break;
     case '{':
         return fromEnum(T_OPEN_BRACE);
+        break;
     case '}':
         return fromEnum(T_CLOSE_BRACE);
+        break;
     case ';':
         return fromEnum(T_SEMICOLON);
+        break;
     case ',':
         return fromEnum(T_COMMA);
+        break;
     case '>':
+        return fromEnum(T_GREATERTHAN);
+        break;
     case '<':
-        return fromEnum(T_BINARY_OP);
+        return fromEnum(T_LESSTHAN);
+        break;
     case '"':
         return scanString();
+        break;
     }
 
     return fromEnum(T_ERR);

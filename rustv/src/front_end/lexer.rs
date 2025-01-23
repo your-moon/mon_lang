@@ -34,4 +34,6 @@ pub enum Token {
     String(String),
     Identifier(String),
     Number(i32),
+
+    Err(String),
 }

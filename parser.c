@@ -3,6 +3,7 @@
 #include "tree.h"
 #include <assert.h>
 #include <stdlib.h>
+#include <wchar.h>
 
 Parser parser;
 
@@ -53,7 +54,7 @@ typedef struct
 ParseRule rules[] = {
     [T_NUMBER] = {NULL, NULL, PREC_NONE},
     [T_OPEN_PAREN] = {NULL, NULL, PREC_NONE},
-    [T_BINARY_OP] = {NULL, NULL, PREC_TERM},
+    [T_PLUS] = {NULL, NULL, PREC_TERM},
     [T_EOF] = {NULL, NULL, PREC_NONE}};
 
 ParseRule *getRule(TokenType type)
@@ -86,7 +87,12 @@ Token parsePrecedence(Precedence precedence)
 long toInt(const wchar_t *value) {
     wchar_t *endptr;
 
+    // wprintf(L"We have: %ls\n", value);
+    int rc = wcscmp(value, L"1");
+    // assert(rc > 0);
     long num = wcstol(value, &endptr, 10); // Base 10 conversion
+    // wprintf(L"Then: %ld\n", num);
+    // wprintf(L"Then END: %ls\n", endptr);
 
     if (*endptr != L'\0') {
         wprintf(L"Conversion error, non-numeric characters found: %ls\n", endptr);
@@ -163,7 +169,7 @@ struct ASTnode *parse_decl() {
             tree = parse_fn();
             break;
         default:
-            printf("We dont have decl stmt here: the token is %d\n", token.type);
+            wprintf(L"We dont have decl stmt here: the token is %d\n", token.type);
             exit(1);
     };
     return tree;
@@ -187,9 +193,14 @@ struct ASTnode *parse_stmt() {
             n = return_stmt();
             break;
         default:
-            printf("I DONT KNOW THIS STMT the token is %d\n", token.type);
+            wprintf(L"I DONT KNOW THIS STMT the token is %d\n", token.type);
             exit(1);
     };
+    return n;
+}
+
+struct ASTnode *parse_unary() {
+    struct ASTnode *n;
     return n;
 }
 
@@ -199,11 +210,16 @@ struct ASTnode *parse_exp() {
     advance();
     Token token = current();
     switch (token.type) {
+        // case T_MINUS:
+        //     struct ASTnode *right = parse_exp();
+        //     n = mkastunary(A_UNARY, right, 0);
+            // break;
         case T_NUMBER:
+            wprintf(L"DEBUG TOKEN_VALUE %ls end\n", token.value);
             n = mkastleaf((int)toInt(token.value));
             break;
         default:
-            printf("I DONT KNOW THIS EXPR the token is %d\n", token.type);
+            wprintf(L"I DONT KNOW THIS EXPR the token is %d\n", token.type);
             exit(1);
     };
     return n;

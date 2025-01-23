@@ -1,6 +1,6 @@
 pub mod ast;
 pub mod lexer;
-pub mod compiler;
+pub mod scanner;
 pub mod ir;
 use crate::front_end::lexer::Token;
 use lalrpop_util::{lalrpop_mod, ParseError};

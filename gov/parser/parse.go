@@ -1,0 +1,53 @@
+package parser
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/your-moon/mn_compiler_go_version/lexer"
+)
+
+type Parser struct {
+	Source  []int32
+	Current lexer.Token
+	scanner lexer.Scanner
+}
+
+func NewParser(source []int32) Parser {
+	return Parser{
+		Source:  source,
+		scanner: lexer.NewScanner(source),
+	}
+}
+
+func (p *Parser) current() lexer.Token {
+	return p.Current
+}
+
+func (p *Parser) advance() (lexer.Token, error) {
+	prev := p.Current
+	token, err := p.scanner.Scan()
+	if err != nil {
+		return lexer.Token{}, err
+	}
+	p.Current = token
+	return prev, nil
+}
+
+func (p *Parser) ParseExpr() (ASTnode, error) {
+	_, err := p.advance()
+	if err != nil {
+		return ASTnode{}, err
+	}
+
+	switch p.Current.Type {
+	case lexer.NUMBER:
+		as_number, err := strconv.Atoi(p.Current.Value)
+		if err != nil {
+			return ASTnode{}, fmt.Errorf("cant parse the number")
+		}
+		return NewLeafNode(as_number), nil
+	default:
+		return ASTnode{}, fmt.Errorf("not implemented")
+	}
+}

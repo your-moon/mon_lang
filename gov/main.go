@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/your-moon/mn_compiler_go_version/lexer"
+	"github.com/your-moon/mn_compiler_go_version/parser"
 )
 
 func main() {
@@ -20,19 +21,26 @@ func main() {
 		return string(data)
 	}())
 
-	scanner := lexer.NewScanner(runeString)
-	for {
-		token, err := scanner.Scan()
-		if err != nil {
-			fmt.Printf("Scanning error: %v\n", err)
-			break
-		}
-		if token.Type == lexer.EOF {
-			fmt.Println("Reached EOF")
-			break
-		}
-		fmt.Println("TOKEN:", token)
+	parsed := parser.NewParser(runeString)
+	node, err := parsed.ParseExpr()
+	if err != nil {
+		panic(err)
 	}
+	fmt.Println("NODE:", node)
+
+	// scanner := lexer.NewScanner(runeString)
+	// for {
+	// 	token, err := scanner.Scan()
+	// 	if err != nil {
+	// 		fmt.Printf("Scanning error: %v\n", err)
+	// 		break
+	// 	}
+	// 	if token.Type == lexer.EOF {
+	// 		fmt.Println("Reached EOF")
+	// 		break
+	// 	}
+	// 	fmt.Println("TOKEN:", token)
+	// }
 }
 
 type FileCheck struct {

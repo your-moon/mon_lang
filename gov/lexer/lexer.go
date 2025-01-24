@@ -81,6 +81,15 @@ func (s *Scanner) BuildToken(ttype TokenType) Token {
 	return BuildToken(ttype, string(s.Source[s.Start:s.Cursor]))
 }
 
+func (s *Scanner) ToKeyword() (Token, bool) {
+	str := string(s.Source[s.Start:s.Cursor])
+	if str == "буц" {
+		return s.BuildToken(RETURN), true
+	}
+
+	return Token{}, false
+}
+
 func (s *Scanner) BuildNumber() (Token, error) {
 
 	for s.isDigit(s.Peek()) {
@@ -94,6 +103,11 @@ func (s *Scanner) BuildIdent() (Token, error) {
 	for s.isAlpha(s.Peek()) {
 		s.Next()
 	}
+	token, isKeyword := s.ToKeyword()
+	if isKeyword {
+		return token, nil
+	}
+
 	return s.BuildToken(IDENT), nil
 }
 

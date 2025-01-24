@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	filePath := "./examples/binary.mn"
+	filePath := "./examples/keyword.mn"
 	runeString := convertToRuneArray(func() string {
 		data, err := os.ReadFile(filePath)
 		if err != nil {
@@ -22,11 +22,13 @@ func main() {
 	}())
 
 	parsed := parser.NewParser(runeString)
-	node, err := parsed.ParseExpr()
+	node, err := parsed.ParseStmt()
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("NODE:", node)
+	fmt.Println("NODE_LEFT:", node.Left)
+	fmt.Println("NODE_RIGHT:", node.Right)
 
 	// scanner := lexer.NewScanner(runeString)
 	// for {

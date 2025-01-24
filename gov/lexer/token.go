@@ -8,7 +8,8 @@ const (
 	MUL   TokenType = "MUL"
 	DIV   TokenType = "DIV"
 
-	SPACE       TokenType = "SPACE"
+	RETURN TokenType = "RETURN"
+
 	IDENT       TokenType = "IDENT"
 	NUMBER      TokenType = "NUMBER"
 	FN          TokenType = "FN"

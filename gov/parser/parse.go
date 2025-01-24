@@ -34,11 +34,35 @@ func (p *Parser) advance() (lexer.Token, error) {
 	return prev, nil
 }
 
+func (p *Parser) ParseReturn() (ASTnode, error) {
+	right, err := p.ParseExpr()
+	if err != nil {
+		return ASTnode{}, err
+	}
+
+	return NewUnaryNode(ASTreturn, &right, 0), nil
+
+}
+func (p *Parser) ParseStmt() (ASTnode, error) {
+	_, err := p.advance()
+	if err != nil {
+		return ASTnode{}, err
+	}
+
+	switch p.Current.Type {
+	case lexer.RETURN:
+		return p.ParseReturn()
+	default:
+		return ASTnode{}, fmt.Errorf("not implemented stmt")
+	}
+}
+
 func (p *Parser) ParseExpr() (ASTnode, error) {
 	_, err := p.advance()
 	if err != nil {
 		return ASTnode{}, err
 	}
+	fmt.Println("current:", p.Current)
 
 	switch p.Current.Type {
 	case lexer.NUMBER:
@@ -48,6 +72,6 @@ func (p *Parser) ParseExpr() (ASTnode, error) {
 		}
 		return NewLeafNode(as_number), nil
 	default:
-		return ASTnode{}, fmt.Errorf("not implemented")
+		return ASTnode{}, fmt.Errorf("not implemented expr")
 	}
 }

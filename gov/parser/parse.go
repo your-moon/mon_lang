@@ -27,6 +27,7 @@ func (p *Parser) current() lexer.Token {
 func (p *Parser) advance() (lexer.Token, error) {
 	prev := p.Current
 	token, err := p.scanner.Scan()
+	fmt.Println("ADVANCING TOKEN:", token.Type)
 	if err != nil {
 		return lexer.Token{}, err
 	}
@@ -34,44 +35,45 @@ func (p *Parser) advance() (lexer.Token, error) {
 	return prev, nil
 }
 
-func (p *Parser) ParseReturn() (ASTnode, error) {
-	right, err := p.ParseExpr()
-	if err != nil {
-		return ASTnode{}, err
-	}
-
-	return NewUnaryNode(ASTreturn, &right, 0), nil
-
-}
-func (p *Parser) ParseStmt() (ASTnode, error) {
-	_, err := p.advance()
-	if err != nil {
-		return ASTnode{}, err
-	}
+func (p *Parser) ParseStmt() ASTStmt {
+	p.advance()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	switch p.Current.Type {
 	case lexer.RETURN:
 		return p.ParseReturn()
 	default:
-		return ASTnode{}, fmt.Errorf("not implemented stmt")
+		return nil
 	}
 }
 
-func (p *Parser) ParseExpr() (ASTnode, error) {
-	_, err := p.advance()
-	if err != nil {
-		return ASTnode{}, err
+func (p *Parser) ParseReturn() *ASTReturnStmt {
+	ast := &ASTReturnStmt{
+		Token: p.Current,
 	}
-	fmt.Println("current:", p.Current)
 
+	value := p.ParseExpr()
+
+	ast.ReturnValue = value
+
+	return ast
+}
+
+func (p *Parser) ParseExpr() ASTExpression {
+	p.advance()
 	switch p.Current.Type {
 	case lexer.NUMBER:
-		as_number, err := strconv.Atoi(*p.Current.Value)
-		if err != nil {
-			return ASTnode{}, fmt.Errorf("cant parse the number")
-		}
-		return NewLeafNode(as_number), nil
+		return p.ParseIntLit()
 	default:
-		return ASTnode{}, fmt.Errorf("not implemented expr")
+		return nil
+		// return ASTNode{}, fmt.Errorf("not implemented expr")
 	}
+}
+
+func (p *Parser) ParseIntLit() ASTExpression {
+	intVal, _ := strconv.ParseInt(*p.Current.Value, 0, 64)
+	ast := &ASTIntLitExpression{Token: p.Current, Value: intVal}
+	return ast
 }

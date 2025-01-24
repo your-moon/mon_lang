@@ -22,13 +22,8 @@ func main() {
 	}())
 
 	parsed := parser.NewParser(runeString)
-	node, err := parsed.ParseStmt()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("NODE:", node)
-	fmt.Println("NODE_LEFT:", node.Left)
-	fmt.Println("NODE_RIGHT:", node.Right)
+	node := parsed.ParseStmt()
+	fmt.Println("NODE:", node.PrintAST())
 
 	// scanner := lexer.NewScanner(runeString)
 	// for {

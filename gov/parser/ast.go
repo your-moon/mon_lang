@@ -1,38 +1,90 @@
 package parser
 
-type ASTtype string
+import (
+	"bytes"
 
-const (
-	ASTleaf  ASTtype = "ASTleaf"
-	ASTunary ASTtype = "ASTunary"
+	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
 
-type ASToptype string
-
-const (
-	ASTreturn ASToptype = "ASTreturn"
-)
-
-type ASTnode struct {
-	Type     ASTtype
-	Left     *ASTnode
-	Right    *ASTnode
-	Op       ASToptype
-	IntValue int
+type ASTNode interface {
+	TokenLiteral() string
+	PrintAST() string
 }
 
-func NewUnaryNode(op ASToptype, left *ASTnode, intval int) ASTnode {
-	return ASTnode{
-		Type:     ASTunary,
-		Left:     left,
-		Op:       op,
-		IntValue: intval,
-	}
+type ASTExpression interface {
+	ASTNode
+	expressionNode()
 }
 
-func NewLeafNode(value int) ASTnode {
-	return ASTnode{
-		Type:     ASTleaf,
-		IntValue: value,
+type ASTStmt interface {
+	ASTNode
+	statementNode()
+}
+
+type ASTPrefixExpression struct {
+	Token lexer.Token
+	Right ASTExpression
+	Op    string
+}
+
+func (a *ASTPrefixExpression) expressionNode()      {}
+func (a *ASTPrefixExpression) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTPrefixExpression) PrintAST() string     { return "" }
+
+type ASTInfixExpression struct {
+	Token lexer.Token
+	Left  ASTExpression
+	Right ASTExpression
+	Op    string
+}
+
+func (a *ASTInfixExpression) expressionNode()      {}
+func (a *ASTInfixExpression) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTInfixExpression) PrintAST() string     { return "" }
+
+type ASTIntLitExpression struct {
+	Token lexer.Token
+	Value int64
+}
+
+func (a *ASTIntLitExpression) expressionNode()      {}
+func (a *ASTIntLitExpression) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTIntLitExpression) PrintAST() string     { return *a.Token.Value }
+
+type ASTStringExpression struct {
+	Token lexer.Token
+	Value string
+}
+
+func (a *ASTStringExpression) expressionNode()      {}
+func (a *ASTStringExpression) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTStringExpression) PrintAST() string     { return *a.Token.Value }
+
+type ASTExpressionStmt struct {
+	Token      lexer.Token
+	Expression ASTExpression
+}
+
+func (a *ASTExpressionStmt) statementNode()       {}
+func (a *ASTExpressionStmt) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTExpressionStmt) PrintAST() string     { return "" }
+
+type ASTReturnStmt struct {
+	Token       lexer.Token
+	ReturnValue ASTExpression
+}
+
+func (a *ASTReturnStmt) statementNode()       {}
+func (a *ASTReturnStmt) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTReturnStmt) PrintAST() string {
+	var out bytes.Buffer
+
+	out.WriteString(a.TokenLiteral() + " ")
+
+	if a.ReturnValue != nil {
+		out.WriteString(a.ReturnValue.PrintAST())
 	}
+
+	// out.WriteString(token.Semicolon)
+	return out.String()
 }

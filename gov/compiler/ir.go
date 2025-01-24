@@ -1,4 +1,4 @@
-package parser
+package compiler
 
 type IRType string
 

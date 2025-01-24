@@ -1,32 +1,44 @@
 package compiler
 
-import "github.com/your-moon/mn_compiler_go_version/parser"
+import (
+	"fmt"
+
+	"github.com/your-moon/mn_compiler_go_version/gen"
+	"github.com/your-moon/mn_compiler_go_version/parser"
+)
 
 type Compiler struct {
-	Ast parser.ASTNode
+	Irs []gen.IR
 }
 
-func NewCompiler(ast parser.ASTNode) Compiler {
-	return Compiler{
-		Ast: ast,
+func NewCompiler() Compiler {
+	return Compiler{}
+}
+
+func (c *Compiler) Compile(node parser.ASTNode) error {
+	switch ast := node.(type) {
+	case *parser.ASTReturnStmt:
+		err := c.Compile(ast.ReturnValue)
+		if err != nil {
+			return err
+		}
+		c.Emit(&gen.IRReturn{})
+	case *parser.ASTIntLitExpression:
+		fmt.Println("INTLIT")
+		c.Emit(&gen.IRPush{
+			Value: ast.Value,
+		})
+	default:
+		return nil
+		// return fmt.Errorf("unreachable")
 	}
-}
 
-// func (c *Compiler) Compile() {
-// 	switch c.Ast.GenType {
-// 	case parser.ASTprogram:
-// 		c.CompileReturn()
-// 	}
-// }
-
-func (c *Compiler) CompileStmt() {
-	switch c.Ast.Op {
-	case parser.ASTreturn:
-		c.CompileReturn()
-	}
-}
-func (c *Compiler) CompileReturn() {
+	return nil
 }
 
 func (c *Compiler) CompileExpr() {
+}
+
+func (c *Compiler) Emit(op gen.IR) {
+	c.Irs = append(c.Irs, op)
 }

@@ -3,9 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"unicode/utf8"
 
+	"github.com/your-moon/mn_compiler_go_version/compiler"
+	"github.com/your-moon/mn_compiler_go_version/gen"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 	"github.com/your-moon/mn_compiler_go_version/parser"
 )
@@ -25,19 +29,58 @@ func main() {
 	node := parsed.ParseStmt()
 	fmt.Println("NODE:", node.PrintAST())
 
-	// scanner := lexer.NewScanner(runeString)
-	// for {
-	// 	token, err := scanner.Scan()
-	// 	if err != nil {
-	// 		fmt.Printf("Scanning error: %v\n", err)
-	// 		break
-	// 	}
-	// 	if token.Type == lexer.EOF {
-	// 		fmt.Println("Reached EOF")
-	// 		break
-	// 	}
-	// 	fmt.Println("TOKEN:", token)
-	// }
+	fmt.Println("---- COMPILING ----:")
+	compilerx := compiler.NewCompiler()
+	err := compilerx.Compile(node)
+	if err != nil {
+		panic(err)
+	}
+
+	outfile := "out.asm"
+	openFile, err := os.OpenFile(outfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		panic(err)
+	}
+	target := gen.X86
+	emitter := gen.NewEmitter(openFile, compilerx.Irs, target)
+	emitter.Emit()
+
+	openFile.Close()
+
+	if target == gen.QBE {
+		cmd := exec.Command("qbe", "-t", "arm64_apple", "-o", "out.s", "out.asm")
+		if err := cmd.Run(); err != nil {
+			fmt.Println("Error: ", err)
+		}
+		cmd = exec.Command("as", "-o", "out.o", "out.s")
+		if err := cmd.Run(); err != nil {
+			fmt.Println("Error: ", err)
+		}
+
+		xcrunCmd := exec.Command("xcrun", "--show-sdk-path")
+		syslibrootPath, err := xcrunCmd.Output()
+		if err != nil {
+			fmt.Println("Error getting syslibroot path:", err)
+			os.Exit(1)
+		}
+		syslibroot := strings.TrimSpace(string(syslibrootPath))
+
+		// Prepare the `ld` command
+		cmd = exec.Command("ld", "-o", "out", "out.o", "-syslibroot", syslibroot, "-lSystem")
+
+		cmd = exec.Command("./out")
+
+		// Set the output to stdout/stderr
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		// Run the command
+		if err := cmd.Run(); err != nil {
+			fmt.Println("Error executing ld command:", err)
+			os.Exit(1)
+		}
+	}
+
 }
 
 type FileCheck struct {

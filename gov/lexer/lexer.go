@@ -1,54 +1,47 @@
 package lexer
 
 import (
-	"errors"
 	"fmt"
 )
 
-const (
-	IDENT int = iota
-	FN
-	OPEN_PAREN
-	CLOSE_PAREN
-	RIGHT_ARROW
-	OPEN_BRACE
-	CLOSE_BRACE
-	PRINT
-)
-
-type Token struct {
-	Type  int
-	Value string
-}
-
 type Scanner struct {
-	Source  []int32
+	Source []int32
+
+	// asdf
+	//^
+	Cursor uint
+
+	// asdf
+	// ^
+	Start uint
+
+	// asdf
+	//    ^
 	Current int32
-	Cursor  uint
-	Line    uint
+
+	Line   uint
+	Column uint
 }
 
 func NewScanner(source []int32) Scanner {
 	return Scanner{
-		Line:   0,
-		Cursor: 0,
-		Source: source,
+		Line:    1,
+		Cursor:  0,
+		Start:   0,
+		Current: source[0],
+		Source:  source,
 	}
 }
 
-func (s *Scanner) Next() int32 {
-	if s.Cursor >= uint(len(s.Source)) {
-		panic(
-			fmt.Sprintf(
-				"there is no char on source cursor: %d source len: %d",
-				s.Cursor,
-				len(s.Source),
-			),
-		)
+func (s *Scanner) IsWhiteSpace() bool {
+	if s.Peek() == 32 {
+		return true
 	}
-	c := s.Source[s.Cursor]
-	s.Cursor++
-	return c
+	return false
+}
+
+func (s *Scanner) isDigit(c int32) bool {
+	return c >= '0' && c <= '9'
 }
 
 func (s *Scanner) isAlpha(c int32) bool {
@@ -71,35 +64,110 @@ func (s *Scanner) isAlpha(c int32) bool {
 
 	return false
 }
-func (s *Scanner) current() int32 {
+func (s *Scanner) Next() int32 {
+	prev := s.Source[s.Cursor]
+	if s.Cursor < uint(len(s.Source)) {
+		s.Current = s.Source[s.Cursor+1]
+		s.Cursor++
+		s.Column++
+	}
+	return prev
+}
+func (s *Scanner) Peek() int32 {
 	return s.Current
 }
 
-func (s *Scanner) buildIdent() (Token, error) {
-	for s.isAlpha(s.current()) {
-		s.Next()
-	}
-
-	return Token{
-		Type:  IDENT,
-		Value: "",
-	}, nil
+func (s *Scanner) BuildToken(ttype TokenType) Token {
+	return BuildToken(ttype, string(s.Source[s.Start:s.Cursor]))
 }
 
+func (s *Scanner) BuildNumber() (Token, error) {
+
+	for s.isDigit(s.Peek()) {
+		s.Next()
+
+	}
+
+	return s.BuildToken(NUMBER), nil
+}
+func (s *Scanner) BuildIdent() (Token, error) {
+	for s.isAlpha(s.Peek()) {
+		s.Next()
+	}
+	return s.BuildToken(IDENT), nil
+}
+
+func (s *Scanner) isAtEnd() bool {
+	if s.Current == 0 {
+		return true
+	}
+	return false
+}
+
+func (s *Scanner) IsLine() bool {
+	if s.Peek() == 10 {
+		return true
+	}
+	return false
+}
+
+// RUNEARR: [1092 1085 32 32 32 1092 1085 10]
+// LEN: 8
+// THAT:  1092
+// THAT:  1085
+// THAT:  32
+// THAT:  32
+// THAT:  32
+// THAT:  1092
+// THAT:  1085
+// THAT:  10
+
+func (s *Scanner) Skip() {
+	for s.IsLine() {
+		s.Next()
+		s.Line++
+		s.Column = 0
+	}
+
+	for s.IsWhiteSpace() {
+		s.Next()
+	}
+}
 func (s *Scanner) Scan() (Token, error) {
+	s.Skip() //skip whitespace and incr line
+	if s.isAtEnd() {
+		return s.BuildToken(EOF), nil
+	}
+
+	s.Start = s.Cursor
 	c := s.Next()
 
-	if s.isAlpha(c) {
-		fmt.Printf("%c :IS ALPHA\n", c)
-		return s.buildIdent()
+	for s.isAlpha(c) {
+		return s.BuildIdent()
+	}
+	for s.isDigit(c) {
+		return s.BuildNumber()
 	}
 
 	switch c {
+	case '+':
+		return s.BuildToken(PLUS), nil
+	case '-':
+		return s.BuildToken(MINUS), nil
+	case '*':
+		return s.BuildToken(MUL), nil
+	case '/':
+		return s.BuildToken(DIV), nil
 	case '(':
-		fmt.Println("OPEN_PAREN")
+		return s.BuildToken(OPEN_PAREN), nil
 	case ')':
-		fmt.Println("CLOSE_PAREN")
+		return s.BuildToken(CLOSE_PAREN), nil
 	}
 
-	return Token{}, errors.New("not implemented")
+	return Token{}, fmt.Errorf(
+		"not implemented: got [%c] and line [%d] where [%d]",
+		c,
+		s.Line,
+		s.Column,
+	)
 }

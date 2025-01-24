@@ -55,8 +55,8 @@ typedef struct
 {
     TokenType type;
     const wchar_t *start;
-    const wchar_t *value;
     int length;
+    const wchar_t *value;
     int line;
 } Token;
 
@@ -70,3 +70,5 @@ typedef struct
 void initScanner(const wchar_t *source);
 static Token fromEnum(TokenType type);
 Token scanToken();
+const char* tokenTypeToString(TokenType type);
+void printToken(Token token);

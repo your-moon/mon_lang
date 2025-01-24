@@ -1,3 +1,8 @@
+use anyhow::Ok;
+use anyhow::Result;
+
+use super::lexer::Token;
+
 #[derive(Debug)]
 pub struct Scanner {
     source: Vec<char>,
@@ -9,7 +14,7 @@ pub struct Scanner {
 
 impl Scanner {
     pub fn new(source: String) -> Scanner {
-        return Scanner{
+        Scanner{
             token_type: 0,
             line: 0,
             cursor: 0,
@@ -19,28 +24,24 @@ impl Scanner {
     }
 
     fn next(&mut self) -> char {
-        let c = self.source.get(self.cursor as usize).unwrap();
+        let c = self.source.get(self.cursor).unwrap();
         self.cursor += 1;
-        return c.to_owned();
+        let var_name = c.to_owned();
+        var_name
     }
 
     fn is_alpha(&mut self, c: char) -> bool {
-        match c {
-            'a'..='z' | 'A'..='Z' => true,
-            'а'..='я' | 'А'..='Я' => true,
-            _ => false,
-        }
+        matches!(c, 'a'..='z' | 'A'..='Z' | 'а'..='я' | 'А'..='Я')
     }
 
-    pub fn scan(&mut self) -> Result<(), String> {
+    pub fn scan(&mut self) -> Result<Token> {
         self.start = self.cursor;
         let c = self.next();
-        if self.is_alpha(c) {
-            println!("alpha {:?}", c);
-        } else {
-            println!("check {:?}", c);
+        match c {
+            c if self.is_alpha(c) => Result::Ok(Token::Identifier(c.to_string())),
+            '(' => Ok(Token::LParen),
+            ')' => Ok(Token::RParen),
+            _ => unimplemented!()
         }
-
-        return Err("unimplemented".to_string());
     }
 }

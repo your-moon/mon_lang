@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <wchar.h>
 #define DEBUG_SCANNER 0
 #ifdef DEBUG_SCANNER
 #endif
@@ -26,16 +28,35 @@ static Token fromEnum(TokenType type)
     token.line = scanner.line;
     token.start = scanner.start;
     token.length = (scanner.current - scanner.start);
+    token.value = NULL;  // Default to NULL
 
-    wchar_t valbuild[token.length];
-
-    for (int i=0; i<token.length; i++) {
-        wprintf(L"BUILDING VALUE : THE CHAR IS %lc \n", scanner.start[i]);
-        valbuild[i] = scanner.start[i];
+    if (type == T_IDENT) {
+        wchar_t *substr;
+        substr = (wchar_t*)malloc(token.length);
+        wcpncpy(substr, token.start, token.length);
+        // wmemcpy(token.value, )
+        token.value = substr;
     }
 
-    wprintf(L"BUILDED VALUE : %ls \n", valbuild);
-    token.value = valbuild;
+
+
+    // if (type == T_IDENT) {
+    //     token.value = (wchar_t*)malloc(token.length + 1);  // Allocate memory for the string
+    //     if (token.value) {
+    //         wmemcpy(token.value, scanner.start, token.length);  // Copy the string
+    //         token.value[token.length] = '\0';  // Null-terminate
+    //     }
+    // }
+
+    // wchar_t valbuild[token.length];
+    //
+    // for (int i=0; i<token.length; i++) {
+    //     wprintf(L"BUILDING VALUE : THE CHAR IS %lc \n", scanner.start[i]);
+    //     valbuild[i] = scanner.start[i];
+    // }
+    //
+    // wprintf(L"BUILDED VALUE : %ls \n", valbuild);
+    // token.value = valbuild;
     return token;
 }
 
@@ -296,4 +317,49 @@ Token scanToken()
     }
 
     return fromEnum(T_ERR);
+}
+
+void printToken(Token token) {
+    wprintf(L"Token: %s, Value: %ls Line: %d\n", tokenTypeToString(token.type), token.value,  token.line);
+}
+
+const char* tokenTypeToString(TokenType type) {
+    switch (type) {
+        case T_IDENT: return "T_IDENT";
+        case T_TRUE: return "T_TRUE";
+        case T_FALSE: return "T_FALSE";
+        case T_STRING: return "T_STRING";
+        case T_NUMBER: return "T_NUMBER";
+        case T_PLUS: return "T_PLUS";
+        case T_MINUS: return "T_MINUS";
+        case T_MUL: return "T_MUL";
+        case T_DIV: return "T_DIV";
+        case T_GREATERTHAN: return "T_GREATERTHAN";
+        case T_GREATERTHANEQUAL: return "T_GREATERTHANEQUAL";
+        case T_LESSTHAN: return "T_LESSTHAN";
+        case T_LESSTHANEQUAL: return "T_LESSTHANEQUAL";
+        case T_CONST: return "T_CONST";
+        case T_INT_TYPE: return "T_INT_TYPE";
+        case T_VOID_TYPE: return "T_VOID_TYPE";
+        case T_RETURN: return "T_RETURN";
+        case T_LET: return "T_LET";
+        case T_IMPORT: return "T_IMPORT";
+        case T_IF: return "T_IF";
+        case T_ELSE: return "T_ELSE";
+        case T_EQUAL: return "T_EQUAL";
+        case T_ASSIGN: return "T_ASSIGN";
+        case T_COMMA: return "T_COMMA";
+        case T_OPEN_PAREN: return "T_OPEN_PAREN";
+        case T_CLOSE_PAREN: return "T_CLOSE_PAREN";
+        case T_OPEN_BRACE: return "T_OPEN_BRACE";
+        case T_CLOSE_BRACE: return "T_CLOSE_BRACE";
+        case T_SEMICOLON: return "T_SEMICOLON";
+        case T_RIGHTARROW: return "T_RIGHTARROW";
+        case T_FN: return "T_FN";
+        case T_STRUCT: return "T_STRUCT";
+        case T_ERR: return "T_ERR";
+        case T_EOF: return "T_EOF";
+        case T_SOF: return "T_SOF";
+        default: return "UNKNOWN_TOKEN";
+    }
 }

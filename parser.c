@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <wchar.h>
+#include <locale.h>
 
 Parser parser;
 
@@ -158,6 +159,7 @@ struct ASTnode *parse_fn() {
 
 
 struct ASTnode *parse_decl() {
+
     struct ASTnode *tree;
 
     advance();

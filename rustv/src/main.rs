@@ -27,7 +27,7 @@ fn exec() -> anyhow::Result<()> {
     let mut scanner_ = scanner::Scanner::new(contents.clone());
     for _n in 1..(contents.to_string().len() as i32) {
         let token = scanner_.scan();
-        // println!("{:?}", token);
+        println!("{:?}", token);
     }
 
     let _output = Command::new("nasm").arg("-felf64").arg(OUT_FILE_URL).output()?;

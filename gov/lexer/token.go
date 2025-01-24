@@ -24,10 +24,10 @@ const (
 
 type Token struct {
 	Type  TokenType
-	Value string
+	Value *string
 }
 
-func BuildToken(ttype TokenType, value string) Token {
+func BuildToken(ttype TokenType, value *string) Token {
 	return Token{
 		Type: ttype,
 		// Value: string(s.Source[s.Start:s.Cursor]),

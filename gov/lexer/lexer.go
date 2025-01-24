@@ -78,7 +78,11 @@ func (s *Scanner) Peek() int32 {
 }
 
 func (s *Scanner) BuildToken(ttype TokenType) Token {
-	return BuildToken(ttype, string(s.Source[s.Start:s.Cursor]))
+	if ttype == IDENT || ttype == NUMBER {
+		str := string(s.Source[s.Start:s.Cursor])
+		return BuildToken(ttype, &str)
+	}
+	return BuildToken(ttype, nil)
 }
 
 func (s *Scanner) ToKeyword() (Token, bool) {

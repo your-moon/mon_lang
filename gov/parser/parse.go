@@ -66,7 +66,7 @@ func (p *Parser) ParseExpr() (ASTnode, error) {
 
 	switch p.Current.Type {
 	case lexer.NUMBER:
-		as_number, err := strconv.Atoi(p.Current.Value)
+		as_number, err := strconv.Atoi(*p.Current.Value)
 		if err != nil {
 			return ASTnode{}, fmt.Errorf("cant parse the number")
 		}

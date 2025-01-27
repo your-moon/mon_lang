@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"unicode/utf8"
 
 	"github.com/your-moon/mn_compiler_go_version/compiler"
@@ -41,14 +40,15 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	target := gen.X86
+	target := gen.QBE
 	emitter := gen.NewEmitter(openFile, compilerx.Irs, target)
 	emitter.Emit()
 
 	openFile.Close()
 
 	if target == gen.QBE {
-		cmd := exec.Command("qbe", "-t", "arm64_apple", "-o", "out.s", "out.asm")
+		// cmd := exec.Command("qbe", "-t", "arm64_apple", "-o", "out.s", "out.asm")
+		cmd := exec.Command("qbe", "-o", "out.s", "out.asm")
 		if err := cmd.Run(); err != nil {
 			fmt.Println("Error: ", err)
 		}
@@ -57,18 +57,18 @@ func main() {
 			fmt.Println("Error: ", err)
 		}
 
-		xcrunCmd := exec.Command("xcrun", "--show-sdk-path")
-		syslibrootPath, err := xcrunCmd.Output()
-		if err != nil {
-			fmt.Println("Error getting syslibroot path:", err)
-			os.Exit(1)
-		}
-		syslibroot := strings.TrimSpace(string(syslibrootPath))
+		// xcrunCmd := exec.Command("xcrun", "--show-sdk-path")
+		// syslibrootPath, err := xcrunCmd.Output()
+		// if err != nil {
+		// 	fmt.Println("Error getting syslibroot path:", err)
+		// 	os.Exit(1)
+		// }
+		// syslibroot := strings.TrimSpace(string(syslibrootPath))
 
 		// Prepare the `ld` command
-		cmd = exec.Command("ld", "-o", "out", "out.o", "-syslibroot", syslibroot, "-lSystem")
+		// cmd = exec.Command("ld", "-o", "out", "out.o", "-syslibroot", syslibroot, "-lSystem")
 
-		cmd = exec.Command("./out")
+		// cmd = exec.Command("./out")
 
 		// Set the output to stdout/stderr
 		cmd.Stdout = os.Stdout

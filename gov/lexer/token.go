@@ -9,6 +9,7 @@ const (
 	DIV   TokenType = "DIV"
 
 	RETURN TokenType = "RETURN"
+	PRINT  TokenType = "PRINT"
 
 	IDENT       TokenType = "IDENT"
 	NUMBER      TokenType = "NUMBER"
@@ -18,7 +19,6 @@ const (
 	RIGHT_ARROW TokenType = "RIGHT_ARROW"
 	OPEN_BRACE  TokenType = "OPEN_BRACE"
 	CLOSE_BRACE TokenType = "CLOSE_BRACE"
-	PRINT       TokenType = "PRINT"
 	EOF         TokenType = "EOF"
 )
 

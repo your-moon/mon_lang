@@ -90,12 +90,14 @@ func (s *Scanner) ToKeyword() (Token, bool) {
 	if str == "буц" {
 		return s.BuildToken(RETURN), true
 	}
+	if str == "хэвлэх" {
+		return s.BuildToken(PRINT), true
+	}
 
 	return Token{}, false
 }
 
 func (s *Scanner) BuildNumber() (Token, error) {
-
 	for s.isDigit(s.Peek()) {
 		s.Next()
 

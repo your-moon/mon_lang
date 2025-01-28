@@ -36,7 +36,6 @@ func (c *Compiler) Compile(node parser.ASTNode) error {
 		c.Emit(&gen.IRPrint{})
 	default:
 		return nil
-		// return fmt.Errorf("unreachable")
 	}
 
 	return nil

@@ -18,7 +18,7 @@ func NewX86Emitter(file *os.File, Irs []IR) Emitter {
 }
 
 func (x X86_64Emitter) Emit() {
-	x.Starter()
+	x.starter()
 	for _, ir := range x.Irs {
 		switch irtype := ir.(type) {
 		case *IRPush:
@@ -37,10 +37,10 @@ func (x X86_64Emitter) Emit() {
 			x.WriteFile.WriteString("    \n")
 		}
 	}
-	x.Ending()
+	x.ending()
 }
 
-func (x X86_64Emitter) Starter() {
+func (x X86_64Emitter) starter() {
 	x.WriteFile.WriteString("    .globl _main\n")
 	x.WriteFile.WriteString("_main:\n")
 	//prologue
@@ -52,7 +52,7 @@ func (x X86_64Emitter) Starter() {
 	x.WriteFile.WriteString("\n")
 }
 
-func (x X86_64Emitter) Ending() {
+func (x X86_64Emitter) ending() {
 	//epilogue
 	x.WriteFile.WriteString("    # epilogue start\n")
 	x.WriteFile.WriteString("    movq %rbp, %rsp\n")

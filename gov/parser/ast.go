@@ -88,3 +88,23 @@ func (a *ASTReturnStmt) PrintAST() string {
 	// out.WriteString(token.Semicolon)
 	return out.String()
 }
+
+type ASTPrintStmt struct {
+	Token lexer.Token
+	Value ASTExpression
+}
+
+func (a *ASTPrintStmt) statementNode()       {}
+func (a *ASTPrintStmt) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTPrintStmt) PrintAST() string {
+	var out bytes.Buffer
+
+	out.WriteString(a.TokenLiteral() + " ")
+
+	if a.Value != nil {
+		out.WriteString(a.Value.PrintAST())
+	}
+
+	// out.WriteString(token.Semicolon)
+	return out.String()
+}

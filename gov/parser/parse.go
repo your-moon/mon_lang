@@ -44,9 +44,23 @@ func (p *Parser) ParseStmt() ASTStmt {
 	switch p.Current.Type {
 	case lexer.RETURN:
 		return p.ParseReturn()
+	case lexer.PRINT:
+		return p.ParsePrint()
 	default:
 		return nil
 	}
+}
+
+func (p *Parser) ParsePrint() *ASTPrintStmt {
+	ast := &ASTPrintStmt{
+		Token: p.Current,
+	}
+
+	value := p.ParseExpr()
+
+	ast.Value = value
+
+	return ast
 }
 
 func (p *Parser) ParseReturn() *ASTReturnStmt {

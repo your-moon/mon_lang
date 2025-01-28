@@ -90,6 +90,7 @@ func (s *Scanner) ToKeyword() (Token, bool) {
 	if str == "буц" {
 		return s.BuildToken(RETURN), true
 	}
+
 	if str == "хэвлэх" {
 		return s.BuildToken(PRINT), true
 	}

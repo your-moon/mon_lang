@@ -8,6 +8,10 @@ type IR interface {
 	Ir() string
 }
 
+type IRPrint struct{}
+
+func (i *IRPrint) Ir() string { return fmt.Sprint("OP_PRINT") }
+
 type IRReturn struct{}
 
 func (i *IRReturn) Ir() string { return fmt.Sprint("OP_RETURN") }

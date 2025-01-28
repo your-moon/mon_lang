@@ -37,9 +37,6 @@ func (p *Parser) advance() (lexer.Token, error) {
 
 func (p *Parser) ParseStmt() ASTStmt {
 	p.advance()
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	switch p.Current.Type {
 	case lexer.RETURN:

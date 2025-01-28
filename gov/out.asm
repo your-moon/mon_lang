@@ -9,9 +9,9 @@ _main:
     # push instruction
     movl $2, -4(%rbp)
     push %rax
-    # return instruction
-    pop %rax
-    ret
+    # print instruction 
+    # not implemented 
+    
     # epilogue start
     movq %rbp, %rsp
     popq %rbp

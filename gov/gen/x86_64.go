@@ -1,0 +1,62 @@
+package gen
+
+import (
+	"fmt"
+	"os"
+)
+
+type X86_64Emitter struct {
+	WriteFile *os.File
+	Irs       []IR
+}
+
+func NewX86Emitter(file *os.File, Irs []IR) Emitter {
+	return X86_64Emitter{
+		WriteFile: file,
+		Irs:       Irs,
+	}
+}
+
+func (x X86_64Emitter) Emit() {
+	x.Starter()
+	for _, ir := range x.Irs {
+		switch irtype := ir.(type) {
+		case *IRPush:
+			x.WriteFile.WriteString("    # push instruction\n")
+			x.WriteFile.WriteString("    movl $2, -4(%rbp)\n")
+			x.WriteFile.WriteString("    push %rax\n")
+			fmt.Println(irtype.Ir())
+		case *IRReturn:
+			x.WriteFile.WriteString("    # return instruction\n")
+			x.WriteFile.WriteString("    pop %rax\n")
+			x.WriteFile.WriteString("    ret\n")
+			fmt.Println(irtype.Ir())
+		case *IRPrint:
+			x.WriteFile.WriteString("    # print instruction \n")
+			x.WriteFile.WriteString("    # not implemented \n")
+			x.WriteFile.WriteString("    \n")
+		}
+	}
+	x.Ending()
+}
+
+func (x X86_64Emitter) Starter() {
+	x.WriteFile.WriteString("    .globl _main\n")
+	x.WriteFile.WriteString("_main:\n")
+	//prologue
+	x.WriteFile.WriteString("    # prologue start\n")
+	x.WriteFile.WriteString("    pushq %rbp\n")
+	x.WriteFile.WriteString("    movq %rsp, %rbp\n")
+	x.WriteFile.WriteString("    subq $8, %rsp\n")
+	x.WriteFile.WriteString("    # prologue end\n")
+	x.WriteFile.WriteString("\n")
+}
+
+func (x X86_64Emitter) Ending() {
+	//epilogue
+	x.WriteFile.WriteString("    # epilogue start\n")
+	x.WriteFile.WriteString("    movq %rbp, %rsp\n")
+	x.WriteFile.WriteString("    popq %rbp\n")
+	x.WriteFile.WriteString("    ret\n")
+	x.WriteFile.WriteString("    # epilogue end\n")
+}

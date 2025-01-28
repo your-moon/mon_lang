@@ -24,10 +24,16 @@ func (c *Compiler) Compile(node parser.ASTNode) error {
 		}
 		c.Emit(&gen.IRReturn{})
 	case *parser.ASTIntLitExpression:
-		fmt.Println("INTLIT")
 		c.Emit(&gen.IRPush{
 			Value: ast.Value,
 		})
+	case *parser.ASTPrintStmt:
+		err := c.Compile(ast.Value)
+		if err != nil {
+			return err
+		}
+		fmt.Println("PRINT")
+		c.Emit(&gen.IRPrint{})
 	default:
 		return nil
 		// return fmt.Errorf("unreachable")

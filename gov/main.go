@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"unicode/utf8"
 
@@ -14,7 +13,7 @@ import (
 )
 
 func main() {
-	filePath := "./examples/keyword.mn"
+	filePath := "./examples/print.mn"
 	runeString := convertToRuneArray(func() string {
 		data, err := os.ReadFile(filePath)
 		if err != nil {
@@ -40,46 +39,46 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	target := gen.QBE
-	emitter := gen.NewEmitter(openFile, compilerx.Irs, target)
+	// target := gen.QBE
+	emitter := gen.NewX86Emitter(openFile, compilerx.Irs)
 	emitter.Emit()
 
 	openFile.Close()
 
-	if target == gen.QBE {
-		// cmd := exec.Command("qbe", "-t", "arm64_apple", "-o", "out.s", "out.asm")
-		cmd := exec.Command("qbe", "-o", "out.s", "out.asm")
-		if err := cmd.Run(); err != nil {
-			fmt.Println("Error: ", err)
-		}
-		cmd = exec.Command("as", "-o", "out.o", "out.s")
-		if err := cmd.Run(); err != nil {
-			fmt.Println("Error: ", err)
-		}
-
-		// xcrunCmd := exec.Command("xcrun", "--show-sdk-path")
-		// syslibrootPath, err := xcrunCmd.Output()
-		// if err != nil {
-		// 	fmt.Println("Error getting syslibroot path:", err)
-		// 	os.Exit(1)
-		// }
-		// syslibroot := strings.TrimSpace(string(syslibrootPath))
-
-		// Prepare the `ld` command
-		// cmd = exec.Command("ld", "-o", "out", "out.o", "-syslibroot", syslibroot, "-lSystem")
-
-		// cmd = exec.Command("./out")
-
-		// Set the output to stdout/stderr
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		// Run the command
-		if err := cmd.Run(); err != nil {
-			fmt.Println("Error executing ld command:", err)
-			os.Exit(1)
-		}
-	}
+	// if target == gen.QBE {
+	// 	// cmd := exec.Command("qbe", "-t", "arm64_apple", "-o", "out.s", "out.asm")
+	// 	cmd := exec.Command("qbe", "-o", "out.s", "out.asm")
+	// 	if err := cmd.Run(); err != nil {
+	// 		fmt.Println("Error: ", err)
+	// 	}
+	// 	cmd = exec.Command("as", "-o", "out.o", "out.s")
+	// 	if err := cmd.Run(); err != nil {
+	// 		fmt.Println("Error: ", err)
+	// 	}
+	//
+	// 	// xcrunCmd := exec.Command("xcrun", "--show-sdk-path")
+	// 	// syslibrootPath, err := xcrunCmd.Output()
+	// 	// if err != nil {
+	// 	// 	fmt.Println("Error getting syslibroot path:", err)
+	// 	// 	os.Exit(1)
+	// 	// }
+	// 	// syslibroot := strings.TrimSpace(string(syslibrootPath))
+	//
+	// 	// Prepare the `ld` command
+	// 	// cmd = exec.Command("ld", "-o", "out", "out.o", "-syslibroot", syslibroot, "-lSystem")
+	//
+	// 	// cmd = exec.Command("./out")
+	//
+	// 	// Set the output to stdout/stderr
+	// 	cmd.Stdout = os.Stdout
+	// 	cmd.Stderr = os.Stderr
+	//
+	// 	// Run the command
+	// 	if err := cmd.Run(); err != nil {
+	// 		fmt.Println("Error executing ld command:", err)
+	// 		os.Exit(1)
+	// 	}
+	// }
 
 }
 

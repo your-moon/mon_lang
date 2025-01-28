@@ -24,7 +24,7 @@ func (x X86_64Emitter) Emit() {
 		case *IRPush:
 			x.WriteFile.WriteString("    # push instruction\n")
 			x.WriteFile.WriteString("    movl $2, -4(%rbp)\n")
-			x.WriteFile.WriteString("    push %rax\n")
+			x.WriteFile.WriteString("    pushq -4(%rbp)\n")
 			fmt.Println(irtype.Ir())
 		case *IRReturn:
 			x.WriteFile.WriteString("    # return instruction\n")
@@ -34,10 +34,24 @@ func (x X86_64Emitter) Emit() {
 		case *IRPrint:
 			x.WriteFile.WriteString("    # print instruction \n")
 			x.WriteFile.WriteString("    # not implemented \n")
+			x.WriteFile.WriteString("    movq $1, %rax \n")
+			x.WriteFile.WriteString("    movq $1, %rdi \n")
+			x.WriteFile.WriteString("    leaq message(%rip), %rsi \n")
+			x.WriteFile.WriteString("    movq $1, %rdx\n") // calculate then length
 			x.WriteFile.WriteString("    \n")
 		}
 	}
+	x.exit()
 	x.ending()
+}
+
+func (x X86_64Emitter) exit() {
+	//exit
+	x.WriteFile.WriteString("    # exit\n")
+	x.WriteFile.WriteString("    movq $60, %rax # 60 is exit code \n")
+	x.WriteFile.WriteString("    movq $0, %rdi # exit value \n")
+	x.WriteFile.WriteString("    syscall\n")
+	x.WriteFile.WriteString("\n")
 }
 
 func (x X86_64Emitter) starter() {

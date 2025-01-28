@@ -1,3 +1,9 @@
+.section .data
+message:
+    .asciz "Hello, world!\n"
+
+
+.section .text
     .globl _main
 _main:
     # prologue start
@@ -8,10 +14,20 @@ _main:
 
     # push instruction
     movl $2, -4(%rbp)
-    push %rax
-    # print instruction 
-    # not implemented 
-    
+    pushq -4(%rbp)
+    # print instruction
+    # not implemented
+    movq $1, %rax
+    movq $1, %rdi
+    leaq message(%rip), %rsi
+    movq $14, %rdx
+    syscall
+
+    # exit
+    movq $60, %rax # 60 is exit code
+    movq $0, %rdi # exit value
+    syscall
+
     # epilogue start
     movq %rbp, %rsp
     popq %rbp

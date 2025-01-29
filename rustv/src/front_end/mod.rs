@@ -1,14 +1,13 @@
 pub mod ast;
 pub mod lexer;
-pub mod scanner;
 pub mod ir;
 use crate::front_end::lexer::Token;
 use lalrpop_util::{lalrpop_mod, ParseError};
 lalrpop_mod!(pub calculator1, "/src/front_end/grammar.rs");
 
-pub fn print_parse() {
+pub fn print_parse(source: String) {
     let parsed = calculator1::ExprParser::new()
-        .parse("22 + 44 * 66")
+        .parse(&source)
         .unwrap();
     println!("{:?}", parsed);
 }

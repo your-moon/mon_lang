@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	filePath := "./examples/print.mn"
+	filePath := "./examples/alpha.mn"
 	runeString := convertToRuneArray(func() string {
 		data, err := os.ReadFile(filePath)
 		if err != nil {
@@ -22,6 +22,7 @@ func main() {
 		}
 		return string(data)
 	}())
+	fmt.Println(runeString)
 
 	parsed := parser.NewParser(runeString)
 	node := parsed.ParseStmt()

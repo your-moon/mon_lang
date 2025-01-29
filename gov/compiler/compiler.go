@@ -1,8 +1,6 @@
 package compiler
 
 import (
-	"fmt"
-
 	"github.com/your-moon/mn_compiler_go_version/gen"
 	"github.com/your-moon/mn_compiler_go_version/parser"
 )
@@ -17,6 +15,13 @@ func NewCompiler() Compiler {
 
 func (c *Compiler) Compile(node parser.ASTNode) error {
 	switch ast := node.(type) {
+	case *parser.ASTProgram:
+		for _, s := range ast.Statements {
+			err := c.Compile(s)
+			if err != nil {
+				return err
+			}
+		}
 	case *parser.ASTReturnStmt:
 		err := c.Compile(ast.ReturnValue)
 		if err != nil {
@@ -32,7 +37,6 @@ func (c *Compiler) Compile(node parser.ASTNode) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println("PRINT")
 		c.Emit(&gen.IRPrint{})
 	default:
 		return nil

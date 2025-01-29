@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	filePath := "./examples/alpha.mn"
+	filePath := "./examples/print.mn"
 	runeString := convertToRuneArray(func() string {
 		data, err := os.ReadFile(filePath)
 		if err != nil {
@@ -22,10 +22,10 @@ func main() {
 		}
 		return string(data)
 	}())
-	fmt.Println(runeString)
+	// fmt.Println(runeString)
 
 	parsed := parser.NewParser(runeString)
-	node := parsed.ParseStmt()
+	node := parsed.ParseProgram()
 	fmt.Println("NODE:", node.PrintAST())
 
 	fmt.Println("---- COMPILING ----:")
@@ -41,7 +41,7 @@ func main() {
 		panic(err)
 	}
 	// target := gen.QBE
-	emitter := gen.NewX86Emitter(openFile, compilerx.Irs)
+	emitter := gen.NewQBEEmitter(openFile, compilerx.Irs)
 	emitter.Emit()
 
 	openFile.Close()

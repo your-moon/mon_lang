@@ -35,8 +35,22 @@ func (p *Parser) advance() (lexer.Token, error) {
 	return prev, nil
 }
 
-func (p *Parser) ParseStmt() ASTStmt {
+func (p *Parser) ParseProgram() *ASTProgram {
 	p.advance()
+	program := &ASTProgram{}
+	program.Statements = []ASTStmt{}
+
+	for p.Current.Type != lexer.EOF {
+		stmt := p.ParseStmt()
+		if stmt != nil {
+			program.Statements = append(program.Statements, stmt)
+		}
+		p.advance()
+	}
+
+	return program
+}
+func (p *Parser) ParseStmt() ASTStmt {
 
 	switch p.Current.Type {
 	case lexer.RETURN:

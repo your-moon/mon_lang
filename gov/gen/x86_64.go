@@ -33,7 +33,6 @@ func (x X86_64Emitter) Emit() {
 			fmt.Println(irtype.Ir())
 		case *IRPrint:
 			x.WriteFile.WriteString("    # print instruction \n")
-			x.WriteFile.WriteString("    # not implemented \n")
 			x.WriteFile.WriteString("    movq $1, %rax \n")
 			x.WriteFile.WriteString("    movq $1, %rdi \n")
 			x.WriteFile.WriteString("    leaq message(%rip), %rsi \n")

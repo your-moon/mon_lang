@@ -7,23 +7,9 @@ _main:
     # prologue end
 
     # push instruction
-    movl $2, -4(%rbp)
+    movq $247, -4(%rbp)
     pushq -4(%rbp)
-    # print instruction 
-    movq $1, %rax 
-    movq $1, %rdi 
-    leaq message(%rip), %rsi 
-    movq $1, %rdx
-    
-    # push instruction
-    movl $2, -4(%rbp)
-    pushq -4(%rbp)
-    # print instruction 
-    movq $1, %rax 
-    movq $1, %rdi 
-    leaq message(%rip), %rsi 
-    movq $1, %rdx
-    
+    # return instruction ; not implemented
     # exit
     movq $60, %rax # 60 is exit code 
     movq $0, %rdi # exit value 

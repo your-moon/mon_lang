@@ -23,20 +23,14 @@ func (x X86_64Emitter) Emit() {
 		switch irtype := ir.(type) {
 		case *IRPush:
 			x.WriteFile.WriteString("    # push instruction\n")
-			x.WriteFile.WriteString("    movl $2, -4(%rbp)\n")
-			x.WriteFile.WriteString("    pushl -4(%rbp)\n")
+			x.WriteFile.WriteString(fmt.Sprintf("    movq $%d, -4(%%rbp)\n", irtype.Value))
+			x.WriteFile.WriteString("    pushq -4(%rbp)\n")
 			fmt.Println(irtype.Ir())
 		case *IRReturn:
-			x.WriteFile.WriteString("    # return instruction\n")
-			x.WriteFile.WriteString("    pop %rax\n")
-			x.WriteFile.WriteString("    ret\n")
+			x.WriteFile.WriteString("    # return instruction ; not implemented\n")
 			fmt.Println(irtype.Ir())
 		case *IRPrint:
-			x.WriteFile.WriteString("    # print instruction \n")
-			x.WriteFile.WriteString("    movq $1, %rax \n")
-			x.WriteFile.WriteString("    movq $1, %rdi \n")
-			x.WriteFile.WriteString("    leaq message(%rip), %rsi \n")
-			x.WriteFile.WriteString("    movq $1, %rdx\n") // calculate then length
+			x.WriteFile.WriteString("    # print instruction ; not implemented \n")
 			x.WriteFile.WriteString("    \n")
 		}
 	}

@@ -1,3 +1,7 @@
+#### Architecture
+
+Lexer -> Parser -> Compiler -> Gen -> Link
+
 #### References
 
 - https://github.com/kitasuke/monkey-go

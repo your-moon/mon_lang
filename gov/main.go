@@ -41,7 +41,7 @@ func main() {
 		panic(err)
 	}
 	// target := gen.QBE
-	emitter := gen.NewQBEEmitter(openFile, compilerx.Irs)
+	emitter := gen.NewX86Emitter(openFile, compilerx.Irs)
 	emitter.Emit()
 
 	openFile.Close()
@@ -56,7 +56,6 @@ func main() {
 	// 	if err := cmd.Run(); err != nil {
 	// 		fmt.Println("Error: ", err)
 	// 	}
-	//
 	// 	// xcrunCmd := exec.Command("xcrun", "--show-sdk-path")
 	// 	// syslibrootPath, err := xcrunCmd.Output()
 	// 	// if err != nil {

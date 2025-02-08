@@ -1,7 +1,6 @@
 #include "parser.h"
 #include "defs.h"
 #include <stdint.h>
-#include <wchar.h>
 #include "tree.h"
 #include "decoder.h"
 

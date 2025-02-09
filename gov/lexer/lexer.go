@@ -87,11 +87,11 @@ func (s *Scanner) BuildToken(ttype TokenType) Token {
 
 func (s *Scanner) ToKeyword() (Token, bool) {
 	str := string(s.Source[s.Start:s.Cursor])
-	if str == "буц" {
+	if str == string(KeywordReturn) {
 		return s.BuildToken(RETURN), true
 	}
 
-	if str == "хэвлэх" {
+	if str == string(KeywordPrint) {
 		return s.BuildToken(PRINT), true
 	}
 

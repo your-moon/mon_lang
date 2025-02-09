@@ -29,8 +29,7 @@ type Token struct {
 
 func BuildToken(ttype TokenType, value *string) Token {
 	return Token{
-		Type: ttype,
-		// Value: string(s.Source[s.Start:s.Cursor]),
+		Type:  ttype,
 		Value: value,
 	}
 }

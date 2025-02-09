@@ -22,15 +22,15 @@ func (x X86_64Emitter) Emit() {
 	for _, ir := range x.Irs {
 		switch irtype := ir.(type) {
 		case *IRPush:
-			x.WriteFile.WriteString("    # push instruction\n")
-			x.WriteFile.WriteString(fmt.Sprintf("    movq $%d, -4(%%rbp)\n", irtype.Value))
-			x.WriteFile.WriteString("    pushq -4(%rbp)\n")
+			x.WriteFile.WriteString("    ; push instruction\n")
+			x.WriteFile.WriteString(fmt.Sprintf("    mov rbp, %d\n", irtype.Value))
+			x.WriteFile.WriteString("    push rbp\n")
 			fmt.Println(irtype.Ir())
 		case *IRReturn:
-			x.WriteFile.WriteString("    # return instruction ; not implemented\n")
+			x.WriteFile.WriteString("    ; return instruction ; not implemented\n")
 			fmt.Println(irtype.Ir())
 		case *IRPrint:
-			x.WriteFile.WriteString("    # print instruction ; not implemented \n")
+			x.WriteFile.WriteString("    ; print instruction ; not implemented \n")
 			x.WriteFile.WriteString("    \n")
 		}
 	}
@@ -40,30 +40,31 @@ func (x X86_64Emitter) Emit() {
 
 func (x X86_64Emitter) exit() {
 	//exit
-	x.WriteFile.WriteString("    # exit\n")
-	x.WriteFile.WriteString("    movq $60, %rax # 60 is exit code \n")
-	x.WriteFile.WriteString("    movq $0, %rdi # exit value \n")
+	x.WriteFile.WriteString("    ; exit\n")
+	x.WriteFile.WriteString("    mov rax, 60 ; 60 is exit code \n")
+	x.WriteFile.WriteString("    mov rdi, 0 ; exit value \n")
 	x.WriteFile.WriteString("    syscall\n")
 	x.WriteFile.WriteString("\n")
 }
 
 func (x X86_64Emitter) starter() {
-	x.WriteFile.WriteString("    .globl _main\n")
-	x.WriteFile.WriteString("_main:\n")
+	x.WriteFile.WriteString("    section .text\n")
+	x.WriteFile.WriteString("    global _start\n")
+	x.WriteFile.WriteString("_start:\n")
 	//prologue
-	x.WriteFile.WriteString("    # prologue start\n")
-	x.WriteFile.WriteString("    pushq %rbp\n")
-	x.WriteFile.WriteString("    movq %rsp, %rbp\n")
-	x.WriteFile.WriteString("    subq $8, %rsp\n")
-	x.WriteFile.WriteString("    # prologue end\n")
-	x.WriteFile.WriteString("\n")
+	// x.WriteFile.WriteString("    ; prologue start\n")
+	// x.WriteFile.WriteString("    pushq %rbp\n")
+	// x.WriteFile.WriteString("    movq %rsp, %rbp\n")
+	// x.WriteFile.WriteString("    subq $8, %rsp\n")
+	// x.WriteFile.WriteString("    ; prologue end\n")
+	// x.WriteFile.WriteString("\n")
 }
 
 func (x X86_64Emitter) ending() {
 	//epilogue
-	x.WriteFile.WriteString("    # epilogue start\n")
-	x.WriteFile.WriteString("    movq %rbp, %rsp\n")
-	x.WriteFile.WriteString("    popq %rbp\n")
-	x.WriteFile.WriteString("    ret\n")
-	x.WriteFile.WriteString("    # epilogue end\n")
+	// x.WriteFile.WriteString("    ; epilogue start\n")
+	// x.WriteFile.WriteString("    movq %rbp, %rsp\n")
+	// x.WriteFile.WriteString("    popq %rbp\n")
+	// x.WriteFile.WriteString("    ret\n")
+	// x.WriteFile.WriteString("    ; epilogue end\n")
 }

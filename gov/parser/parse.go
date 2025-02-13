@@ -58,8 +58,19 @@ func (p *Parser) ParseStmt() ASTStmt {
 	case lexer.PRINT:
 		return p.ParsePrint()
 	default:
-		return nil
+		return p.ParseExpressionStmt()
 	}
+}
+
+func (p *Parser) ParseExpressionStmt() *ASTExpressionStmt {
+	ast := &ASTExpressionStmt{
+		Token: p.Current,
+	}
+
+	ast.Expression = p.ParseExpr()
+	fmt.Println(ast.PrintAST())
+
+	return ast
 }
 
 func (p *Parser) ParsePrint() *ASTPrintStmt {
@@ -89,12 +100,28 @@ func (p *Parser) ParseReturn() *ASTReturnStmt {
 func (p *Parser) ParseExpr() ASTExpression {
 	p.advance()
 	switch p.Current.Type {
+	case lexer.PLUS:
+		return p.ParseInFixExpr(lexer.PLUS)
 	case lexer.NUMBER:
 		return p.ParseIntLit()
 	default:
 		return nil
-		// return ASTNode{}, fmt.Errorf("not implemented expr")
 	}
+}
+
+func (p *Parser) ParseInFixExpr(op lexer.TokenType) *ASTInfixExpression {
+	fmt.Println("Infix parsing", op)
+	ast := &ASTInfixExpression{
+		Token: p.Current,
+		Op:    string(op),
+	}
+
+	left := p.ParseExpr()
+	right := p.ParseExpr()
+	ast.Left = left
+	ast.Right = right
+
+	return ast
 }
 
 func (p *Parser) ParseIntLit() ASTExpression {

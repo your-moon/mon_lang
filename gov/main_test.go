@@ -9,6 +9,6 @@ import (
 func TestLex(t *testing.T) {
 	checks := canLex()
 	for _, check := range checks {
-		assert.Equal(t, true, check.Status)
+		assert.Equal(t, true, check.Status, check)
 	}
 }

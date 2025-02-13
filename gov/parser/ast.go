@@ -61,7 +61,24 @@ type ASTInfixExpression struct {
 
 func (a *ASTInfixExpression) expressionNode()      {}
 func (a *ASTInfixExpression) TokenLiteral() string { return string(a.Token.Type) }
-func (a *ASTInfixExpression) PrintAST() string     { return "" }
+func (a *ASTInfixExpression) PrintAST() string {
+
+	var out bytes.Buffer
+
+	out.WriteString(a.TokenLiteral() + " ")
+
+	if a.Left != nil {
+
+		out.WriteString("LEFT:")
+		out.WriteString(a.Left.PrintAST())
+	}
+	if a.Right != nil {
+		out.WriteString("RIGHT:")
+		out.WriteString(a.Right.PrintAST())
+	}
+
+	return out.String()
+}
 
 type ASTIntLitExpression struct {
 	Token lexer.Token
@@ -88,7 +105,19 @@ type ASTExpressionStmt struct {
 
 func (a *ASTExpressionStmt) statementNode()       {}
 func (a *ASTExpressionStmt) TokenLiteral() string { return string(a.Token.Type) }
-func (a *ASTExpressionStmt) PrintAST() string     { return "" }
+func (a *ASTExpressionStmt) PrintAST() string {
+
+	var out bytes.Buffer
+
+	out.WriteString(a.TokenLiteral() + " ")
+
+	if a.Expression != nil {
+		out.WriteString(a.Expression.PrintAST())
+	}
+
+	// out.WriteString(token.Semicolon)
+	return out.String()
+}
 
 type ASTReturnStmt struct {
 	Token       lexer.Token

@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	filePath := "./examples/print.mn"
+	filePath := "./test/ch1/tabs.mn"
 	runeString := convertToRuneArray(func() string {
 		data, err := os.ReadFile(filePath)
 		if err != nil {
@@ -22,7 +22,7 @@ func main() {
 		}
 		return string(data)
 	}())
-	// fmt.Println(runeString)
+	fmt.Println(runeString)
 
 	parsed := parser.NewParser(runeString)
 	node := parsed.ParseProgram()
@@ -85,6 +85,7 @@ func main() {
 type FileCheck struct {
 	File   string
 	Status bool
+	Error  error
 }
 
 func processFile(filePath string) FileCheck {
@@ -105,6 +106,7 @@ func processFile(filePath string) FileCheck {
 			return FileCheck{
 				File:   filePath,
 				Status: false,
+				Error:  err,
 			}
 		}
 		if token.Type == lexer.EOF {
@@ -128,7 +130,8 @@ func convertToRuneArray(dataString string) []int32 {
 }
 
 func canLex() []FileCheck {
-	files, err := os.ReadDir("./examples")
+	dir := "./test/ch1/"
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		fmt.Printf("Error reading directory: %v\n", err)
 		return nil
@@ -140,7 +143,7 @@ func canLex() []FileCheck {
 			continue
 		}
 
-		filePath := filepath.Join("./examples", file.Name())
+		filePath := filepath.Join(dir, file.Name())
 		fileChecks = append(fileChecks, processFile(filePath))
 	}
 

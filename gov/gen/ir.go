@@ -21,3 +21,10 @@ type IRPush struct {
 }
 
 func (i *IRPush) Ir() string { return fmt.Sprint("OP_PUSH ", i.Value) }
+
+type IRBinary struct {
+	Value  int64
+	Binary int64
+}
+
+func (i *IRBinary) Ir() string { return fmt.Sprint("OP_BIN ", i.Value) }

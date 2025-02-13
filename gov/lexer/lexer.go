@@ -40,6 +40,13 @@ func (s *Scanner) IsWhiteSpace() bool {
 	return false
 }
 
+func (s *Scanner) IsTab() bool {
+	if s.Peek() == 9 {
+		return true
+	}
+	return false
+}
+
 func (s *Scanner) isDigit(c int32) bool {
 	return c >= '0' && c <= '9'
 }
@@ -93,6 +100,13 @@ func (s *Scanner) ToKeyword() (Token, bool) {
 
 	if str == string(KeywordPrint) {
 		return s.BuildToken(PRINT), true
+	}
+
+	if str == "тоо" {
+		return s.BuildToken(INT_TYPE), true
+	}
+	if str == "хоосон" {
+		return s.BuildToken(VOID), true
 	}
 
 	return Token{}, false
@@ -153,6 +167,9 @@ func (s *Scanner) Skip() {
 	for s.IsWhiteSpace() {
 		s.Next()
 	}
+	for s.IsTab() {
+		s.Next()
+	}
 }
 func (s *Scanner) Scan() (Token, error) {
 	s.Skip() //skip whitespace and incr line
@@ -183,6 +200,12 @@ func (s *Scanner) Scan() (Token, error) {
 		return s.BuildToken(OPEN_PAREN), nil
 	case ')':
 		return s.BuildToken(CLOSE_PAREN), nil
+	case '{':
+		return s.BuildToken(OPEN_BRACE), nil
+	case '}':
+		return s.BuildToken(CLOSE_BRACE), nil
+	case ';':
+		return s.BuildToken(SEMICOLON), nil
 	}
 
 	return Token{}, fmt.Errorf(

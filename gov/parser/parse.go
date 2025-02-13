@@ -52,6 +52,10 @@ func (p *Parser) expect(expected lexer.TokenType) bool {
 	return false
 }
 
+func (p *Parser) currIs(expected lexer.TokenType) bool {
+	return p.Current.Type == expected
+}
+
 func (p *Parser) peekError(t lexer.TokenType) {
 	msg := fmt.Sprintf("expected next token to be %s, got %s instead", t, p.PeekToken.Type)
 	p.errors = append(p.errors, msg)
@@ -116,7 +120,7 @@ func (p *Parser) ParsePrint() *ASTPrintStmt {
 
 func (p *Parser) ParseFN() *ASTFNStmt {
 	p.NextToken()
-	fnName := p.current()
+	fnName := p.Current
 	fmt.Println("FNNAME", fnName)
 	ast := &ASTFNStmt{
 		Token: fnName,
@@ -128,6 +132,35 @@ func (p *Parser) ParseFN() *ASTFNStmt {
 	if !p.expect(lexer.CLOSE_PAREN) {
 		return nil
 	}
+	if !p.expect(lexer.RIGHT_ARROW) {
+		return nil
+	}
+	if !p.expect(lexer.INT_TYPE) {
+		return nil
+	}
+	if !p.expect(lexer.OPEN_BRACE) {
+		return nil
+	}
+
+	ast.Block = p.ParseBlockStmt()
+
+	return ast
+}
+
+func (p *Parser) ParseBlockStmt() *ASTBlockStmt {
+	ast := &ASTBlockStmt{
+		Token:      p.Current,
+		Statements: []ASTStmt{},
+	}
+	p.NextToken()
+
+	for !p.currIs(lexer.CLOSE_BRACE) && !p.currIs(lexer.EOF) {
+		stmt := p.ParseStmt()
+		if stmt != nil {
+			ast.Statements = append(ast.Statements, stmt)
+		}
+		p.NextToken()
+	}
 
 	return ast
 }
@@ -137,21 +170,26 @@ func (p *Parser) ParseReturn() *ASTReturnStmt {
 		Token: p.Current,
 	}
 
+	p.NextToken()
 	value := p.ParseExpr()
 
 	ast.ReturnValue = value
+
+	if !p.expect(lexer.SEMICOLON) {
+		return nil
+	}
 
 	return ast
 }
 
 func (p *Parser) ParseExpr() ASTExpression {
-	// p.advance()
 	switch p.Current.Type {
 	case lexer.PLUS:
 		return p.ParseInFixExpr(lexer.PLUS)
 	case lexer.NUMBER:
 		return p.ParseIntLit()
 	default:
+		panic(fmt.Sprintf("dont know this expr %s", p.Current.Type))
 		return nil
 	}
 }

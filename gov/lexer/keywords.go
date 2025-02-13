@@ -6,6 +6,6 @@ const (
 	KeywordPrint  Keyword = "хэвлэ"
 	KeywordReturn Keyword = "буц"
 	KeywordFn     Keyword = "фн"
-	KeywordInt    Keyword = "тоo"
+	KeywordInt    Keyword = "тоо"
 	KeywordVoid   Keyword = "хоосон"
 )

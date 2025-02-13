@@ -34,7 +34,8 @@ func (a *ASTProgram) PrintAST() string {
 	var out bytes.Buffer
 
 	for _, s := range a.Statements {
-		out.WriteString(s.PrintAST())
+		out.WriteString("---STMT:")
+		out.WriteString(s.PrintAST() + "\n")
 	}
 
 	return out.String()

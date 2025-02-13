@@ -25,6 +25,7 @@ func main() {
 		}
 		return string(data)
 	}())
+
 	if base.Debug {
 		for _, item := range runeString {
 			fmt.Printf("val: %s, code: %d\n", string(item), item)

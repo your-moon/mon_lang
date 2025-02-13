@@ -47,17 +47,17 @@ func (a *ASTInfixExpression) PrintAST() string {
 
 	var out bytes.Buffer
 
-	out.WriteString(a.TokenLiteral() + " ")
+	// out.WriteString( " ")
 
-	if a.Left != nil {
-
-		out.WriteString("LEFT:")
-		out.WriteString(a.Left.PrintAST())
-	}
-	if a.Right != nil {
-		out.WriteString("RIGHT:")
-		out.WriteString(a.Right.PrintAST())
-	}
+	// if a.Left != nil {
+	//
+	// 	out.WriteString("LEFT:")
+	// 	out.WriteString(a.Left.PrintAST())
+	// }
+	// if a.Right != nil {
+	// 	out.WriteString("RIGHT:")
+	// 	out.WriteString(a.Right.PrintAST())
+	// }
 
 	return out.String()
 }

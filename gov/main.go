@@ -37,8 +37,10 @@ func main() {
 		panic(err)
 	}
 	if base.Debug {
-
 		fmt.Println("NODE:", node.PrintAST())
+	}
+	if len(parsed.Errors()) > 0 {
+		panic(parsed.Errors()[0])
 	}
 
 	fmt.Println("---- COMPILING ----:")

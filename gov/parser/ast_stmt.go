@@ -95,7 +95,6 @@ func (a *ASTPrintStmt) PrintAST() string {
 		out.WriteString(a.Value.PrintAST())
 	}
 
-	// out.WriteString(token.Semicolon)
 	return out.String()
 }
 

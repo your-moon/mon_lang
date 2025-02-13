@@ -29,7 +29,7 @@ func (c *Compiler) Compile(node parser.ASTNode) error {
 		}
 		c.Emit(&gen.IRReturn{})
 	case *parser.ASTIntLitExpression:
-		c.Emit(&gen.IRPush{
+		c.Emit(&gen.IRIntConst{
 			Value: ast.Value,
 		})
 	case *parser.ASTPrintStmt:

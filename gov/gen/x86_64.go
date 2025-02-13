@@ -21,7 +21,7 @@ func (x X86_64Emitter) Emit() {
 	x.starter()
 	for _, ir := range x.Irs {
 		switch irtype := ir.(type) {
-		case *IRPush:
+		case *IRIntConst:
 			x.WriteFile.WriteString("    ; push instruction\n")
 			x.WriteFile.WriteString(fmt.Sprintf("    mov rbp, %d\n", irtype.Value))
 			x.WriteFile.WriteString("    push rbp\n")

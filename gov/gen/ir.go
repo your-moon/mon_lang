@@ -16,11 +16,11 @@ type IRReturn struct{}
 
 func (i *IRReturn) Ir() string { return fmt.Sprint("OP_RETURN") }
 
-type IRPush struct {
+type IRIntConst struct {
 	Value int64
 }
 
-func (i *IRPush) Ir() string { return fmt.Sprint("OP_PUSH ", i.Value) }
+func (i *IRIntConst) Ir() string { return fmt.Sprint("OP_PUSH ", i.Value) }
 
 type IRBinary struct {
 	Value  int64

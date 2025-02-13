@@ -1,12 +1,15 @@
-    section .text
-    global _start
-_start:
-    ; push instruction
-    mov rbp, 2
-    push rbp
-    ; return instruction ; not implemented
-    ; exit
-    mov rax, 60 ; 60 is exit code 
-    mov rdi, 0 ; exit value 
-    syscall
+    .globl _main
+_main:
+    # prologue start
+    pushq %rbp
+    movq %rsp, %rbp
+    subq $8, %rsp
+    # prologue end
 
+    # push instruction
+    movl $3, -4(%rbp)
+    # return instruction # not implemented
+    movl $33, %eax
+    movq %rbp, %rsp
+    popq %rbp
+    ret

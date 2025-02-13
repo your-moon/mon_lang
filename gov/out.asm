@@ -9,7 +9,7 @@ _main:
     # push instruction
     movl $3, -4(%rbp)
     # return instruction # not implemented
-    movl $33, %eax
     movq %rbp, %rsp
     popq %rbp
     ret
+

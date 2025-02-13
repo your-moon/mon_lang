@@ -32,7 +32,7 @@ func (a *ASTExpressionStmt) PrintAST() string {
 type ASTFNStmt struct {
 	Token      lexer.Token
 	ReturnType lexer.TokenType
-	Block      ASTStmt
+	Block      *ASTBlockStmt
 }
 
 func (a *ASTFNStmt) statementNode() {}

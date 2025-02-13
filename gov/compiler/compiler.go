@@ -1,6 +1,8 @@
 package compiler
 
 import (
+	"fmt"
+
 	"github.com/your-moon/mn_compiler_go_version/gen"
 	"github.com/your-moon/mn_compiler_go_version/parser"
 )
@@ -22,6 +24,20 @@ func (c *Compiler) Compile(node parser.ASTNode) error {
 				return err
 			}
 		}
+
+	case *parser.ASTBlockStmt:
+		for _, s := range ast.Statements {
+			err := c.Compile(s)
+			if err != nil {
+				return err
+			}
+		}
+	case *parser.ASTFNStmt:
+		err := c.Compile(ast.Block)
+		if err != nil {
+			return err
+		}
+		c.Emit(&gen.IRFn{})
 	case *parser.ASTReturnStmt:
 		err := c.Compile(ast.ReturnValue)
 		if err != nil {
@@ -39,7 +55,7 @@ func (c *Compiler) Compile(node parser.ASTNode) error {
 		}
 		c.Emit(&gen.IRPrint{})
 	default:
-		return nil
+		return fmt.Errorf("COMPILE ERROR: unknown ast %s", ast.PrintAST())
 	}
 
 	return nil

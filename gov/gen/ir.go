@@ -16,6 +16,10 @@ type IRReturn struct{}
 
 func (i *IRReturn) Ir() string { return fmt.Sprint("OP_RETURN") }
 
+type IRFn struct{}
+
+func (i *IRFn) Ir() string { return fmt.Sprint("OP_FN") }
+
 type IRIntConst struct {
 	Value int64
 }

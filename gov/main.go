@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
+	"github.com/your-moon/mn_compiler_go_version/base"
 	"github.com/your-moon/mn_compiler_go_version/compiler"
 	"github.com/your-moon/mn_compiler_go_version/gen"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
@@ -13,7 +14,9 @@ import (
 )
 
 func main() {
-	filePath := "./test/ch1/tabs.mn"
+	base.Debug = true
+
+	filePath := "./test/ch1/return.mn"
 	runeString := convertToRuneArray(func() string {
 		data, err := os.ReadFile(filePath)
 		if err != nil {
@@ -22,15 +25,25 @@ func main() {
 		}
 		return string(data)
 	}())
-	// fmt.Println(runeString)
+	if base.Debug {
+		for _, item := range runeString {
+			fmt.Printf("val: %s, code: %d\n", string(item), item)
+		}
+	}
 
 	parsed := parser.NewParser(runeString)
-	node := parsed.ParseProgram()
-	fmt.Println("NODE:", node.PrintAST())
+	node, err := parsed.ParseProgram()
+	if err != nil {
+		panic(err)
+	}
+	if base.Debug {
+
+		fmt.Println("NODE:", node.PrintAST())
+	}
 
 	fmt.Println("---- COMPILING ----:")
 	compilerx := compiler.NewCompiler()
-	err := compilerx.Compile(node)
+	err = compilerx.Compile(node)
 	if err != nil {
 		panic(err)
 	}

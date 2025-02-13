@@ -94,6 +94,10 @@ func (s *Scanner) BuildToken(ttype TokenType) Token {
 
 func (s *Scanner) ToKeyword() (Token, bool) {
 	str := string(s.Source[s.Start:s.Cursor])
+
+	if str == string(KeywordFn) {
+		return s.BuildToken(FN), true
+	}
 	if str == string(KeywordInt) {
 		return s.BuildToken(INT_TYPE), true
 	}
@@ -191,6 +195,7 @@ func (s *Scanner) Scan() (Token, error) {
 		return s.BuildToken(PLUS), nil
 	case '-':
 		if s.Peek() == '>' {
+			s.Next()
 			return s.BuildToken(RIGHT_ARROW), nil
 		}
 		return s.BuildToken(MINUS), nil

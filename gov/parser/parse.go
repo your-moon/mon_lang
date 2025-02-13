@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/your-moon/mn_compiler_go_version/base"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
 
@@ -27,7 +28,9 @@ func (p *Parser) current() lexer.Token {
 func (p *Parser) advance() (lexer.Token, error) {
 	prev := p.Current
 	token, err := p.scanner.Scan()
-	fmt.Println("ADVANCING TOKEN:", token.Type)
+	if base.Debug {
+		fmt.Println("ADVANCING TOKEN:", token.Type)
+	}
 	if err != nil {
 		return lexer.Token{}, err
 	}
@@ -35,8 +38,11 @@ func (p *Parser) advance() (lexer.Token, error) {
 	return prev, nil
 }
 
-func (p *Parser) ParseProgram() *ASTProgram {
-	p.advance()
+func (p *Parser) ParseProgram() (*ASTProgram, error) {
+	_, err := p.advance()
+	if err != nil {
+		return nil, err
+	}
 	program := &ASTProgram{}
 	program.Statements = []ASTStmt{}
 
@@ -45,10 +51,13 @@ func (p *Parser) ParseProgram() *ASTProgram {
 		if stmt != nil {
 			program.Statements = append(program.Statements, stmt)
 		}
-		p.advance()
+		_, err := p.advance()
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return program
+	return program, nil
 }
 func (p *Parser) ParseStmt() ASTStmt {
 
@@ -68,7 +77,9 @@ func (p *Parser) ParseExpressionStmt() *ASTExpressionStmt {
 	}
 
 	ast.Expression = p.ParseExpr()
-	fmt.Println(ast.PrintAST())
+	if base.Debug {
+		fmt.Println(ast.PrintAST())
+	}
 
 	return ast
 }

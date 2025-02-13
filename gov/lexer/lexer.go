@@ -94,19 +94,18 @@ func (s *Scanner) BuildToken(ttype TokenType) Token {
 
 func (s *Scanner) ToKeyword() (Token, bool) {
 	str := string(s.Source[s.Start:s.Cursor])
+	if str == string(KeywordInt) {
+		return s.BuildToken(INT_TYPE), true
+	}
+	if str == string(KeywordVoid) {
+		return s.BuildToken(VOID), true
+	}
 	if str == string(KeywordReturn) {
 		return s.BuildToken(RETURN), true
 	}
 
 	if str == string(KeywordPrint) {
 		return s.BuildToken(PRINT), true
-	}
-
-	if str == "тоо" {
-		return s.BuildToken(INT_TYPE), true
-	}
-	if str == "хоосон" {
-		return s.BuildToken(VOID), true
 	}
 
 	return Token{}, false
@@ -191,6 +190,9 @@ func (s *Scanner) Scan() (Token, error) {
 	case '+':
 		return s.BuildToken(PLUS), nil
 	case '-':
+		if s.Peek() == '>' {
+			return s.BuildToken(RIGHT_ARROW), nil
+		}
 		return s.BuildToken(MINUS), nil
 	case '*':
 		return s.BuildToken(MUL), nil

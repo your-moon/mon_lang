@@ -22,7 +22,7 @@ func main() {
 		}
 		return string(data)
 	}())
-	fmt.Println(runeString)
+	// fmt.Println(runeString)
 
 	parsed := parser.NewParser(runeString)
 	node := parsed.ParseProgram()

@@ -213,6 +213,8 @@ func (s *Scanner) Scan() (Token, error) {
 		return s.BuildToken(CLOSE_BRACE), nil
 	case ';':
 		return s.BuildToken(SEMICOLON), nil
+	case '~':
+		return s.BuildToken(TILDE), nil
 	}
 
 	return Token{}, fmt.Errorf(

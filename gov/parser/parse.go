@@ -188,6 +188,8 @@ func (p *Parser) ParseExpr() ASTExpression {
 		return p.ParseIntLit()
 	case lexer.MINUS:
 		return p.ParseUnary(lexer.MINUS)
+	case lexer.TILDE:
+		return p.ParseUnary(lexer.TILDE)
 	case lexer.OPEN_PAREN:
 		return p.ParseGrouping()
 	default:

@@ -25,8 +25,8 @@ func (x X86_64Emitter) Emit() {
 		switch irtype := ir.(type) {
 		case *IRFn:
 			x.WriteFile.WriteString("    # fn stmt construct\n")
-			x.WriteFile.WriteString(fmt.Sprintf("    .globl %s\n", utfconvert.UtfConvert(irtype.Name)))
-			x.WriteFile.WriteString(fmt.Sprintf("%s:\n", utfconvert.UtfConvert(irtype.Name)))
+			x.WriteFile.WriteString(fmt.Sprintf("    .globl _%s\n", utfconvert.UtfConvert(irtype.Name)))
+			x.WriteFile.WriteString(fmt.Sprintf("_%s:\n", utfconvert.UtfConvert(irtype.Name)))
 			x.WriteFile.WriteString("    pushq %rbp\n")
 			x.WriteFile.WriteString("    movq %rsp, %rbp\n")
 			fmt.Println(irtype.Ir())

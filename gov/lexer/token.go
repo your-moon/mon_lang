@@ -20,6 +20,7 @@ const (
 	OPEN_BRACE  TokenType = "OPEN_BRACE"
 	CLOSE_BRACE TokenType = "CLOSE_BRACE"
 	SEMICOLON   TokenType = "SEMICOLON"
+	TILDE       TokenType = "TILDE"
 	EOF         TokenType = "EOF"
 
 	INT_TYPE TokenType = "INT_TYPE"

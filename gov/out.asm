@@ -1,8 +1,11 @@
     # fn stmt construct
-    .globl mahin
-mahin:
+    .globl _mahin
+_mahin:
     pushq %rbp
     movq %rsp, %rbp
+    # push instruction
+    movl $3, -4(%rbp)
+    pushq rbp
     # return instruction
     movq %rbp, %rsp
     popq %rbp

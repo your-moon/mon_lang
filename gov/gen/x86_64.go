@@ -28,7 +28,7 @@ func (x X86_64Emitter) Emit() {
 			x.WriteFile.WriteString(fmt.Sprintf("    .globl %s\n", utfconvert.UtfConvert(irtype.Name)))
 			x.WriteFile.WriteString(fmt.Sprintf("%s:\n", utfconvert.UtfConvert(irtype.Name)))
 			x.WriteFile.WriteString("    pushq %rbp\n")
-			x.WriteFile.WriteString("    movl %rsb, %rbp\n")
+			x.WriteFile.WriteString("    movq %rsp, %rbp\n")
 			fmt.Println(irtype.Ir())
 
 		case *IRIntConst:

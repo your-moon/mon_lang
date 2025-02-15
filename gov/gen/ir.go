@@ -70,11 +70,11 @@ func (i *IRUnary) Ir(depth int) string {
 	out.WriteString(fmt.Sprintf("%sIR_UNARY %s[\n", indent(depth), i.Op))
 
 	if i.Src != nil {
-		out.WriteString(i.Src.Ir(depth+1) + "\n")
+		out.WriteString("SRC: " + i.Src.Ir(depth+1) + "\n")
 	}
 
 	if i.Dst != nil {
-		out.WriteString(i.Dst.Ir(depth+1) + "\n")
+		out.WriteString("DST: " + i.Dst.Ir(depth+1) + "\n")
 	}
 
 	out.WriteString(fmt.Sprintf("%s]", indent(depth)))
@@ -105,11 +105,22 @@ func (i *IRReturn) Ir(depth int) string {
 }
 
 type IRMov struct {
-	Value int64
+	Src IR
+	Dst IR
 }
 
 func (i *IRMov) Ir(depth int) string {
-	return fmt.Sprintf("%sOP_PUSH %d", indent(depth), i.Value)
+	var out bytes.Buffer
+
+	out.WriteString(fmt.Sprintf("%sIR_MOV [\n", indent(depth)))
+
+	if i.Src != nil {
+		out.WriteString(i.Src.Ir(depth+1) + "\n")
+	}
+	if i.Dst != nil {
+		out.WriteString(i.Dst.Ir(depth+1) + "\n")
+	}
+	return out.String()
 }
 
 type IRBinary struct {

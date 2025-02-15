@@ -2,11 +2,13 @@ package parser
 
 import (
 	"bytes"
+	"fmt"
+	"strings"
 )
 
 type ASTNode interface {
 	TokenLiteral() string
-	PrintAST() string
+	PrintAST(depth int) string
 }
 
 type ASTExpression interface {
@@ -30,13 +32,17 @@ func (a *ASTProgram) TokenLiteral() string {
 		return ""
 	}
 }
-func (a *ASTProgram) PrintAST() string {
+
+func (a *ASTProgram) PrintAST(depth int) string {
 	var out bytes.Buffer
 
 	for _, s := range a.Statements {
-		out.WriteString("---STMT:")
-		out.WriteString(s.PrintAST() + "\n")
+		out.WriteString(s.PrintAST(depth) + "\n")
 	}
 
 	return out.String()
+}
+
+func indent(depth int) string {
+	return fmt.Sprintf("%s", strings.Repeat("  ", depth))
 }

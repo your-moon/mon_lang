@@ -14,7 +14,9 @@ type ASTIntLitExpression struct {
 
 func (a *ASTIntLitExpression) expressionNode()      {}
 func (a *ASTIntLitExpression) TokenLiteral() string { return string(a.Token.Type) }
-func (a *ASTIntLitExpression) PrintAST() string     { return *a.Token.Value }
+func (a *ASTIntLitExpression) PrintAST(depth int) string {
+	return indent(depth) + *a.Token.Value
+}
 
 type ASTStringExpression struct {
 	Token lexer.Token
@@ -23,7 +25,9 @@ type ASTStringExpression struct {
 
 func (a *ASTStringExpression) expressionNode()      {}
 func (a *ASTStringExpression) TokenLiteral() string { return string(a.Token.Type) }
-func (a *ASTStringExpression) PrintAST() string     { return *a.Token.Value }
+func (a *ASTStringExpression) PrintAST(depth int) string {
+	return indent(depth) + *a.Token.Value
+}
 
 type ASTPrefixExpression struct {
 	Token lexer.Token
@@ -33,26 +37,36 @@ type ASTPrefixExpression struct {
 
 func (a *ASTPrefixExpression) expressionNode()      {}
 func (a *ASTPrefixExpression) TokenLiteral() string { return string(a.Token.Type) }
-func (a *ASTPrefixExpression) PrintAST() string     { return "" }
+func (a *ASTPrefixExpression) PrintAST(depth int) string {
+	var out bytes.Buffer
+
+	out.WriteString(fmt.Sprintf("%sPREFIX %s[\n", indent(depth), a.Op))
+
+	if a.Right != nil {
+		out.WriteString(a.Right.PrintAST(depth+1) + "\n")
+	}
+
+	out.WriteString(indent(depth) + "]")
+	return out.String()
+}
 
 type ASTUnary struct {
-	Right ASTExpression
+	Inner ASTExpression
 	Op    lexer.TokenType
 }
 
 func (a *ASTUnary) expressionNode()      {}
 func (a *ASTUnary) TokenLiteral() string { return string(a.Op) }
-func (a *ASTUnary) PrintAST() string {
+func (a *ASTUnary) PrintAST(depth int) string {
 	var out bytes.Buffer
 
-	out.WriteString(fmt.Sprintf("UNARY %s[", a.Op))
-	// out.WriteString(a.TokenLiteral() + " ")
+	out.WriteString(fmt.Sprintf("%sUNARY %s[\n", indent(depth), a.Op))
 
-	if a.Right != nil {
-		out.WriteString(a.Right.PrintAST())
+	if a.Inner != nil {
+		out.WriteString(a.Inner.PrintAST(depth+1) + "\n")
 	}
 
-	out.WriteString("]")
+	out.WriteString(indent(depth) + "]")
 	return out.String()
 }
 
@@ -65,8 +79,19 @@ type ASTInfixExpression struct {
 
 func (a *ASTInfixExpression) expressionNode()      {}
 func (a *ASTInfixExpression) TokenLiteral() string { return string(a.Token.Type) }
-func (a *ASTInfixExpression) PrintAST() string {
-
+func (a *ASTInfixExpression) PrintAST(depth int) string {
 	var out bytes.Buffer
+
+	out.WriteString(fmt.Sprintf("%sINFIX %s[\n", indent(depth), a.Op))
+
+	if a.Left != nil {
+		out.WriteString(a.Left.PrintAST(depth+1) + "\n")
+	}
+
+	if a.Right != nil {
+		out.WriteString(a.Right.PrintAST(depth+1) + "\n")
+	}
+
+	out.WriteString(indent(depth) + "]")
 	return out.String()
 }

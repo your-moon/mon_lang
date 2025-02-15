@@ -23,7 +23,7 @@ func (x QBEEmitter) Emit() {
 	x.starter()
 	for _, ir := range x.Irs {
 		switch irtype := ir.(type) {
-		case *IRIntConst:
+		case *IRMov:
 			x.WriteFile.WriteString("    # push instruction \n")
 			x.WriteFile.WriteString("    # not implemented \n")
 			x.WriteFile.WriteString(fmt.Sprintf("  %%tmp.%d =w add %d, 0", x.LocalCount, irtype.Value))

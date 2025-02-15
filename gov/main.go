@@ -38,7 +38,7 @@ func main() {
 		panic(err)
 	}
 	if base.Debug {
-		fmt.Println("NODE:", node.PrintAST())
+		fmt.Println("NODE:", node.PrintAST(0))
 	}
 	if len(parsed.Errors()) > 0 {
 		panic(parsed.Errors()[0])
@@ -46,9 +46,11 @@ func main() {
 
 	fmt.Println("---- COMPILING ----:")
 	compilerx := compiler.NewCompiler()
-	err = compilerx.Compile(node)
-	if err != nil {
-		panic(err)
+	compilerx.Compile(node)
+
+	fmt.Println("---- IR LIST ----:")
+	for _, ir := range compilerx.Irs {
+		fmt.Println(ir.Ir(0))
 	}
 
 	outfile := "out.asm"

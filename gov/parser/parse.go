@@ -100,7 +100,7 @@ func (p *Parser) ParseExpressionStmt() *ASTExpressionStmt {
 
 	ast.Expression = p.ParseExpr()
 	if base.Debug {
-		fmt.Println(ast.PrintAST())
+		fmt.Println(ast.PrintAST(0))
 	}
 
 	return ast
@@ -142,28 +142,44 @@ func (p *Parser) ParseFN() *ASTFNStmt {
 		return nil
 	}
 
-	ast.Block = p.ParseBlockStmt()
+	ast.Stmts = p.ParseBlockStmt()
 
 	return ast
 }
 
-func (p *Parser) ParseBlockStmt() *ASTBlockStmt {
-	ast := &ASTBlockStmt{
-		Token:      p.Current,
-		Statements: []ASTStmt{},
-	}
+func (p *Parser) ParseBlockStmt() []ASTStmt {
+	var stmtarr []ASTStmt
+
 	p.NextToken()
 
 	for !p.currIs(lexer.CLOSE_BRACE) && !p.currIs(lexer.EOF) {
 		stmt := p.ParseStmt()
 		if stmt != nil {
-			ast.Statements = append(ast.Statements, stmt)
+			stmtarr = append(stmtarr, stmt)
 		}
 		p.NextToken()
 	}
 
-	return ast
+	return stmtarr
 }
+
+// func (p *Parser) ParseBlockStmt() *ASTBlockStmt {
+// 	ast := &ASTBlockStmt{
+// 		Token:      p.Current,
+// 		Statements: []ASTStmt{},
+// 	}
+// 	p.NextToken()
+//
+// 	for !p.currIs(lexer.CLOSE_BRACE) && !p.currIs(lexer.EOF) {
+// 		stmt := p.ParseStmt()
+// 		if stmt != nil {
+// 			ast.Statements = append(ast.Statements, stmt)
+// 		}
+// 		p.NextToken()
+// 	}
+//
+// 	return ast
+// }
 
 func (p *Parser) ParseReturn() *ASTReturnStmt {
 	ast := &ASTReturnStmt{
@@ -205,7 +221,7 @@ func (p *Parser) ParseUnary(op lexer.TokenType) *ASTUnary {
 	p.NextToken()
 	right := p.ParseExpr()
 
-	ast.Right = right
+	ast.Inner = right
 
 	return ast
 }

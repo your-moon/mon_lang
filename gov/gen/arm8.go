@@ -7,19 +7,19 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/utfconvert"
 )
 
-type X86_64Emitter struct {
+type Arm8Emitter struct {
 	WriteFile *os.File
 	Irs       []IR
 }
 
-func NewX86Emitter(file *os.File, Irs []IR) Emitter {
-	return X86_64Emitter{
+func NewArm8Emitter(file *os.File, Irs []IR) Emitter {
+	return Arm8Emitter{
 		WriteFile: file,
 		Irs:       Irs,
 	}
 }
 
-func (x X86_64Emitter) Emit() {
+func (x Arm8Emitter) Emit() {
 	// x.starter()
 	for _, ir := range x.Irs {
 		switch irtype := ir.(type) {
@@ -29,19 +29,16 @@ func (x X86_64Emitter) Emit() {
 			x.WriteFile.WriteString(fmt.Sprintf("_%s:\n", utfconvert.UtfConvert(irtype.Name)))
 			x.WriteFile.WriteString("    pushq %rbp\n")
 			x.WriteFile.WriteString("    movq %rsp, %rbp\n")
-			// fmt.Println(irtype.Ir())
 
 		case *IRMov:
 			x.WriteFile.WriteString("    # push instruction\n")
 			x.WriteFile.WriteString(fmt.Sprintf("    movl $%d, -4(%%rbp)\n", irtype.Value))
 			x.WriteFile.WriteString("    pushq rbp\n")
-			// fmt.Println(irtype.Ir())
 		case *IRReturn:
 			x.WriteFile.WriteString("    # return instruction\n")
 			x.WriteFile.WriteString("    movq %rbp, %rsp\n")
 			x.WriteFile.WriteString("    popq %rbp\n")
 			x.WriteFile.WriteString("    ret\n")
-			// fmt.Println(irtype.Ir())
 		case *IRPrint:
 			x.WriteFile.WriteString("    # print instruction # not implemented \n")
 			x.WriteFile.WriteString("    \n")
@@ -51,7 +48,7 @@ func (x X86_64Emitter) Emit() {
 	// x.ending()
 }
 
-func (x X86_64Emitter) exit() {
+func (x Arm8Emitter) exit() {
 	//exit
 	x.WriteFile.WriteString("    movq %rbp, %rsp\n")
 	x.WriteFile.WriteString("    popq %rbp\n")
@@ -59,7 +56,7 @@ func (x X86_64Emitter) exit() {
 	x.WriteFile.WriteString("\n")
 }
 
-func (x X86_64Emitter) starter() {
+func (x Arm8Emitter) starter() {
 	x.WriteFile.WriteString("    .globl _main\n")
 	x.WriteFile.WriteString("_main:\n")
 	//prologue
@@ -71,7 +68,7 @@ func (x X86_64Emitter) starter() {
 	x.WriteFile.WriteString("\n")
 }
 
-func (x X86_64Emitter) ending() {
+func (x Arm8Emitter) ending() {
 	//epilogue
 	x.WriteFile.WriteString("    # epilogue start\n")
 	x.WriteFile.WriteString("    movq %rbp, %rsp\n")

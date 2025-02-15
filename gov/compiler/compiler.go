@@ -33,11 +33,13 @@ func (c *Compiler) Compile(node parser.ASTNode) error {
 			}
 		}
 	case *parser.ASTFNStmt:
+		c.Emit(&gen.IRFn{
+			Name: *ast.Token.Value,
+		})
 		err := c.Compile(ast.Block)
 		if err != nil {
 			return err
 		}
-		c.Emit(&gen.IRFn{})
 	case *parser.ASTReturnStmt:
 		err := c.Compile(ast.ReturnValue)
 		if err != nil {

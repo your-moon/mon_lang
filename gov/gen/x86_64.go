@@ -18,9 +18,16 @@ func NewX86Emitter(file *os.File, Irs []IR) Emitter {
 }
 
 func (x X86_64Emitter) Emit() {
-	x.starter()
+	// x.starter()
 	for _, ir := range x.Irs {
 		switch irtype := ir.(type) {
+		case *IRFn:
+			x.WriteFile.WriteString("    # fn stmt construct\n")
+			x.WriteFile.WriteString(fmt.Sprintf("    .globl %s\n", irtype.Name))
+			x.WriteFile.WriteString(fmt.Sprintf("%s:\n", irtype.Name))
+			// x.WriteFile.WriteString("    pushq rbp\n")
+			fmt.Println(irtype.Ir())
+
 		case *IRIntConst:
 			x.WriteFile.WriteString("    # push instruction\n")
 			x.WriteFile.WriteString(fmt.Sprintf("    movl $%d, -4(%%rbp)\n", irtype.Value))
@@ -34,7 +41,7 @@ func (x X86_64Emitter) Emit() {
 			x.WriteFile.WriteString("    \n")
 		}
 	}
-	x.exit()
+	// x.exit()
 	// x.ending()
 }
 

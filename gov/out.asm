@@ -1,12 +1,17 @@
     # fn stmt construct
-    .globl _main
-    .globl _guravyintooavziya
-_main:
+    .globl main
+    .globl guravyintooavziya
+main:
     # push instruction
     movl $3, -4(%rbp)
+    pushq rbp
+
+
+    ret
     # return instruction # not implemented
     # fn stmt construct
-_guravyintooavziya:
+guravyintooavziya:
     # push instruction
     movl $3, -4(%rbp)
+    pushq rbp
     # return instruction # not implemented

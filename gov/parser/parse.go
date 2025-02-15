@@ -186,10 +186,32 @@ func (p *Parser) ParseExpr() ASTExpression {
 	switch p.Current.Type {
 	case lexer.NUMBER:
 		return p.ParseIntLit()
+	case lexer.MINUS:
+		return p.ParseUnary(lexer.MINUS)
+	case lexer.OPEN_PAREN:
+		return p.ParseGrouping()
 	default:
 		panic(fmt.Sprintf("dont know this expr %s", p.Current.Type))
-		return nil
 	}
+}
+
+func (p *Parser) ParseUnary(op lexer.TokenType) *ASTUnary {
+	ast := &ASTUnary{
+		Op: op,
+	}
+
+	p.NextToken()
+	right := p.ParseExpr()
+
+	ast.Right = right
+
+	return ast
+}
+func (p *Parser) ParseGrouping() ASTExpression {
+	p.NextToken()
+	inner := p.ParseExpr()
+	p.expect(lexer.CLOSE_PAREN)
+	return inner
 }
 
 func (p *Parser) ParseInFixExpr(op lexer.TokenType) *ASTInfixExpression {

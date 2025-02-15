@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
@@ -34,6 +35,27 @@ func (a *ASTPrefixExpression) expressionNode()      {}
 func (a *ASTPrefixExpression) TokenLiteral() string { return string(a.Token.Type) }
 func (a *ASTPrefixExpression) PrintAST() string     { return "" }
 
+type ASTUnary struct {
+	Right ASTExpression
+	Op    lexer.TokenType
+}
+
+func (a *ASTUnary) expressionNode()      {}
+func (a *ASTUnary) TokenLiteral() string { return string(a.Op) }
+func (a *ASTUnary) PrintAST() string {
+	var out bytes.Buffer
+
+	out.WriteString(fmt.Sprintf("UNARY %s[", a.Op))
+	// out.WriteString(a.TokenLiteral() + " ")
+
+	if a.Right != nil {
+		out.WriteString(a.Right.PrintAST())
+	}
+
+	out.WriteString("]")
+	return out.String()
+}
+
 type ASTInfixExpression struct {
 	Token lexer.Token
 	Left  ASTExpression
@@ -46,18 +68,5 @@ func (a *ASTInfixExpression) TokenLiteral() string { return string(a.Token.Type)
 func (a *ASTInfixExpression) PrintAST() string {
 
 	var out bytes.Buffer
-
-	// out.WriteString( " ")
-
-	// if a.Left != nil {
-	//
-	// 	out.WriteString("LEFT:")
-	// 	out.WriteString(a.Left.PrintAST())
-	// }
-	// if a.Right != nil {
-	// 	out.WriteString("RIGHT:")
-	// 	out.WriteString(a.Right.PrintAST())
-	// }
-
 	return out.String()
 }

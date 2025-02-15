@@ -3,6 +3,8 @@ package gen
 import (
 	"fmt"
 	"os"
+
+	"github.com/your-moon/mn_compiler_go_version/utfconvert"
 )
 
 type X86_64Emitter struct {
@@ -22,9 +24,12 @@ func (x X86_64Emitter) Emit() {
 	for _, ir := range x.Irs {
 		switch irtype := ir.(type) {
 		case *IRFn:
+			if irtype.Name == "майн" {
+				irtype.Name = "маин"
+			}
 			x.WriteFile.WriteString("    # fn stmt construct\n")
-			x.WriteFile.WriteString(fmt.Sprintf("    .globl %s\n", irtype.Name))
-			x.WriteFile.WriteString(fmt.Sprintf("%s:\n", irtype.Name))
+			x.WriteFile.WriteString(fmt.Sprintf("    .globl %s\n", utfconvert.UtfConvert(irtype.Name)))
+			x.WriteFile.WriteString(fmt.Sprintf("%s:\n", utfconvert.UtfConvert(irtype.Name)))
 			// x.WriteFile.WriteString("    pushq rbp\n")
 			fmt.Println(irtype.Ir())
 

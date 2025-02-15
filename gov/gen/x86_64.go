@@ -24,13 +24,11 @@ func (x X86_64Emitter) Emit() {
 	for _, ir := range x.Irs {
 		switch irtype := ir.(type) {
 		case *IRFn:
-			// if irtype.Name == "майн" {
-			// 	irtype.Name = "маин"
-			// }
 			x.WriteFile.WriteString("    # fn stmt construct\n")
 			x.WriteFile.WriteString(fmt.Sprintf("    .globl %s\n", utfconvert.UtfConvert(irtype.Name)))
 			x.WriteFile.WriteString(fmt.Sprintf("%s:\n", utfconvert.UtfConvert(irtype.Name)))
-			// x.WriteFile.WriteString("    pushq rbp\n")
+			x.WriteFile.WriteString("    pushq %rbp\n")
+			x.WriteFile.WriteString("    movl %rsb, %rbp\n")
 			fmt.Println(irtype.Ir())
 
 		case *IRIntConst:
@@ -39,7 +37,10 @@ func (x X86_64Emitter) Emit() {
 			x.WriteFile.WriteString("    pushq rbp\n")
 			fmt.Println(irtype.Ir())
 		case *IRReturn:
-			x.WriteFile.WriteString("    # return instruction # not implemented\n")
+			x.WriteFile.WriteString("    # return instruction\n")
+			x.WriteFile.WriteString("    movq %rbp, %rsp\n")
+			x.WriteFile.WriteString("    popq %rbp\n")
+			x.WriteFile.WriteString("    ret\n")
 			fmt.Println(irtype.Ir())
 		case *IRPrint:
 			x.WriteFile.WriteString("    # print instruction # not implemented \n")

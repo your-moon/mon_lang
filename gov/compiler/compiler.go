@@ -17,6 +17,8 @@ func NewCompiler() Compiler {
 
 func (c *Compiler) Compile(node parser.ASTNode) error {
 	switch ast := node.(type) {
+	case *parser.ASTUnary:
+		break
 	case *parser.ASTProgram:
 		for _, s := range ast.Statements {
 			err := c.Compile(s)

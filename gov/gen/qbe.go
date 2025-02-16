@@ -26,7 +26,7 @@ func (x QBEEmitter) Emit() {
 		case *IRMov:
 			x.WriteFile.WriteString("    # push instruction \n")
 			x.WriteFile.WriteString("    # not implemented \n")
-			x.WriteFile.WriteString(fmt.Sprintf("  %%tmp.%d =w add %d, 0", x.LocalCount, irtype.Value))
+			x.WriteFile.WriteString(fmt.Sprintf("  %%tmp.%d =w add %d, 0", x.LocalCount, irtype.Dst))
 			x.WriteFile.WriteString("    \n")
 			// fmt.Println(irtype.Ir())
 			x.LocalCount += 1

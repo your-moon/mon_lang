@@ -26,23 +26,48 @@ func ConvertToUnOp(tok lexer.TokenType) IrUnOp {
 	panic("can't covert to unop: UNKNOWN TOKEN")
 }
 
-type IRType string
+type IRValue interface {
+	String() string
+}
+
+type IRConstant struct {
+	Value int64
+}
+
+func (i *IRConstant) String() string {
+	return fmt.Sprintf("%d", i.Value)
+}
+
+func (i *IRConstant) Ir(depth int) string {
+	return fmt.Sprintf("%s %d", indent(depth), i.Value)
+}
+
+type IRIdent struct {
+	Name string
+}
+
+func (i *IRIdent) String() string {
+	return i.Name
+}
+func (i *IRIdent) Ir(depth int) string {
+	return fmt.Sprintf("%s %s", indent(depth), i.Name)
+}
 
 type IR interface {
 	Ir(depth int) string
 }
 
 type IRVar struct {
-	Value string
+	Value IRValue
 }
 
 func (i *IRVar) Ir(depth int) string {
-	return fmt.Sprintf("%sIR_VAR", indent(depth))
+	return fmt.Sprintf("%sIR_VAR %s", indent(depth), i.Value.String())
 }
 
 type IRFn struct {
-	Name  string
-	Stmts []IR
+	Name         string
+	Instructions []IR
 }
 
 func (i *IRFn) Ir(depth int) string {
@@ -50,7 +75,7 @@ func (i *IRFn) Ir(depth int) string {
 
 	out.WriteString(fmt.Sprintf("%sIR_FN %s[\n", indent(depth), i.Name))
 
-	for _, stmt := range i.Stmts {
+	for _, stmt := range i.Instructions {
 		out.WriteString(stmt.Ir(depth+1) + "\n")
 	}
 
@@ -67,17 +92,10 @@ type IRUnary struct {
 func (i *IRUnary) Ir(depth int) string {
 	var out bytes.Buffer
 
-	out.WriteString(fmt.Sprintf("%sIR_UNARY %s[\n", indent(depth), i.Op))
+	out.WriteString(
+		fmt.Sprintf("%s %s %s %s \n", indent(depth), i.Op, i.Dst.Ir(depth), i.Src.Ir(depth)),
+	)
 
-	if i.Src != nil {
-		out.WriteString("SRC: " + i.Src.Ir(depth+1) + "\n")
-	}
-
-	if i.Dst != nil {
-		out.WriteString("DST: " + i.Dst.Ir(depth+1) + "\n")
-	}
-
-	out.WriteString(fmt.Sprintf("%s]", indent(depth)))
 	return out.String()
 }
 

@@ -29,13 +29,12 @@ func (x X86_64Emitter) Emit() {
 			x.WriteFile.WriteString(fmt.Sprintf("_%s:\n", utfconvert.UtfConvert(irtype.Name)))
 			x.WriteFile.WriteString("    pushq %rbp\n")
 			x.WriteFile.WriteString("    movq %rsp, %rbp\n")
-			// fmt.Println(irtype.Ir())
 
-		case *IRMov:
-			x.WriteFile.WriteString("    # push instruction\n")
-			x.WriteFile.WriteString(fmt.Sprintf("    movl $%d, -4(%%rbp)\n", irtype.Value))
-			x.WriteFile.WriteString("    pushq rbp\n")
-			// fmt.Println(irtype.Ir())
+		// case *IRMov:
+		// 	x.WriteFile.WriteString("    # push instruction\n")
+		// 	x.WriteFile.WriteString(fmt.Sprintf("    movl $%d, -4(%%rbp)\n", irtype.Value))
+		// 	x.WriteFile.WriteString("    pushq rbp\n")
+		// fmt.Println(irtype.Ir())
 		case *IRReturn:
 			x.WriteFile.WriteString("    # return instruction\n")
 			x.WriteFile.WriteString("    movq %rbp, %rsp\n")

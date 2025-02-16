@@ -19,7 +19,10 @@ func NewCompiler() Compiler {
 }
 
 func (c *Compiler) makeTemp() string {
-	return "tmp.0"
+	temp := fmt.Sprintf("tmp.%d", c.TempCount)
+	c.TempCount += 1
+	return temp
+
 }
 
 func (c *Compiler) Compile(node parser.ASTNode) gen.IR {
@@ -27,17 +30,18 @@ func (c *Compiler) Compile(node parser.ASTNode) gen.IR {
 	case *parser.ASTUnary:
 		src := c.Compile(ast.Inner)
 		dst_name := c.makeTemp()
-		dst := &gen.IRVar{Value: dst_name}
+		dst := &gen.IRIdent{Name: dst_name}
 		op := gen.ConvertToUnOp(ast.Op)
 		ir := &gen.IRUnary{
 			Op:  op,
 			Src: src,
 			Dst: dst,
 		}
+		c.Emit(ir)
 		return ir
 
 	case *parser.ASTIntLitExpression:
-		ir := &gen.IRMov{
+		ir := &gen.IRConstant{
 			Value: ast.Value,
 		}
 		return ir
@@ -52,21 +56,19 @@ func (c *Compiler) Compile(node parser.ASTNode) gen.IR {
 			Name: *ast.Token.Value,
 		}
 		for _, s := range ast.Stmts {
-			instruction := c.Compile(s)
-			ir.Stmts = append(ir.Stmts, instruction)
+			c.Compile(s)
+			// ir.Instructions = append(ir.Instructions, instruction)
 		}
-
-		c.Emit(ir)
 		return ir
 	case *parser.ASTReturnStmt:
 		ir := &gen.IRReturn{}
 		inner := c.Compile(ast.ReturnValue)
 		ir.Inner = inner
+		// c.Emit(ir)
 		return ir
 	// case *parser.ASTBlockStmt:
 	// 	for _, s := range ast.Statements {
 	// 		instruction := c.Compile(s)
-	// 		c.Emit(instruction)
 	// 	}
 	// 	return nil
 	default:

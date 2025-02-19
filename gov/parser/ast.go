@@ -22,23 +22,24 @@ type ASTStmt interface {
 }
 
 type ASTProgram struct {
-	Statements []ASTStmt
+	FnDef ASTFNStmt
 }
 
 func (a *ASTProgram) TokenLiteral() string {
-	if len(a.Statements) > 0 {
-		return a.Statements[0].TokenLiteral()
-	} else {
-		return ""
-	}
+	// if len(a.Statements) > 0 {
+	// 	return a.Statements[0].TokenLiteral()
+	// } else {
+	// 	return ""
+	// }
+	return a.FnDef.TokenLiteral()
 }
 
 func (a *ASTProgram) PrintAST(depth int) string {
 	var out bytes.Buffer
 
-	for _, s := range a.Statements {
-		out.WriteString(s.PrintAST(depth) + "\n")
-	}
+	// for _, s := range a.Statements {
+	// 	out.WriteString(s.PrintAST(depth) + "\n")
+	// }
 
 	return out.String()
 }

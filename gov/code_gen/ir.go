@@ -1,4 +1,4 @@
-package gen
+package codegen
 
 import (
 	"bytes"
@@ -65,21 +65,24 @@ func (i *IRVar) Ir(depth int) string {
 	return fmt.Sprintf("%sIR_VAR %s", indent(depth), i.Value.String())
 }
 
-type IRFn struct {
+type TackyFn struct {
 	Name         string
 	Instructions []IR
 }
 
-func (i *IRFn) Ir(depth int) string {
+func (i *TackyFn) Ir(depth int) string {
 	var out bytes.Buffer
 
-	out.WriteString(fmt.Sprintf("%sIR_FN %s[\n", indent(depth), i.Name))
-
-	for _, stmt := range i.Instructions {
-		out.WriteString(stmt.Ir(depth+1) + "\n")
-	}
-
-	out.WriteString(fmt.Sprintf("%s]", indent(depth)))
+	out.WriteString(
+		fmt.Sprintf("%s %s:  \n", indent(depth), i.Name),
+	)
+	// out.WriteString(fmt.Sprintf("%sIR_FN %s[\n", indent(depth), i.Name))
+	//
+	// for _, stmt := range i.Instructions {
+	// 	out.WriteString(stmt.Ir(depth+1) + "\n")
+	// }
+	//
+	// out.WriteString(fmt.Sprintf("%s]", indent(depth)))
 	return out.String()
 }
 

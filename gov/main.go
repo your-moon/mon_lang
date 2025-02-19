@@ -7,10 +7,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/your-moon/mn_compiler_go_version/base"
-	"github.com/your-moon/mn_compiler_go_version/compiler"
-	"github.com/your-moon/mn_compiler_go_version/gen"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 	"github.com/your-moon/mn_compiler_go_version/parser"
+	tackygen "github.com/your-moon/mn_compiler_go_version/tacky_gen"
 )
 
 func main() {
@@ -37,6 +36,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	if base.Debug {
 		fmt.Println("NODE:", node.PrintAST(0))
 	}
@@ -45,8 +45,8 @@ func main() {
 	}
 
 	fmt.Println("---- COMPILING ----:")
-	compilerx := compiler.NewCompiler()
-	compilerx.Compile(node)
+	compilerx := tackygen.NewCompiler()
+	compilerx.GenTacky(node)
 
 	fmt.Println("---- IR LIST ----:")
 	for _, ir := range compilerx.Irs {
@@ -59,8 +59,8 @@ func main() {
 		panic(err)
 	}
 	// target := gen.QBE
-	emitter := gen.NewX86Emitter(openFile, compilerx.Irs)
-	emitter.Emit()
+	// emitter := gen.NewX86Emitter(openFile, compilerx.Irs)
+	// emitter.Emit()
 
 	openFile.Close()
 

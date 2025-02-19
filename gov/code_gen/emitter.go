@@ -1,4 +1,4 @@
-package gen
+package codegen
 
 type MachineTarget string
 

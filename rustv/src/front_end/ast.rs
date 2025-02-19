@@ -3,15 +3,34 @@ pub type Spanned<T> = (T, Span);
 pub type Span = Range<usize>;
 
 #[derive(Debug)]
-pub enum Expr {
-    Number(i32),
-    Op(Box<Expr>, Opcode, Box<Expr>),
+pub struct Program {
+    pub func: FnDef,
 }
 
 #[derive(Debug)]
-pub enum Opcode {
-    Add,
-    Sub,
-    Mul,
-    Div,
+pub struct FnDef {
+    pub name: String,
+    pub body: Stmt,
+}
+
+#[derive(Debug)]
+pub enum Stmt {
+    Return(ReturnStmt),
+}
+
+#[derive(Debug)]
+pub enum Expr {
+    Number(String),
+    Unary(UnaryOp, Box<Expr>),
+}
+
+#[derive(Debug)]
+pub enum UnaryOp {
+    Neg,
+    Complement,
+}
+
+#[derive(Debug)]
+pub struct ReturnStmt {
+    pub expr: Option<Expr>,
 }

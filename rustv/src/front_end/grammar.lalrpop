@@ -1,32 +1,82 @@
 use std::str::FromStr;
+use crate::front_end::lexer;
+use crate::front_end::lexer::Token;
+use crate::front_end::lexer::Error;
 
-use crate::front_end::ast::{Expr, Opcode};
+use crate::front_end::ast;
 
 grammar;
 
-pub Expr: Box<Expr> = {
-    Expr ExprOp Factor => Box::new(Expr::Op(<>)),
-    Factor,
+pub Program: ast::Program = {
+    <function:FnDef> => ast::Program { func:function },
+}
+FnDef: ast::FnDef = {
+    "фн" <name:ident> "(" ")" <return_type:("->" "тоо")?> "{" <body:Stmt> "}" => ast::FnDef { name:name, body:body },
 }
 
-Factor: Box<Expr> = {
-    Factor FactorOp Term => Box::new(Expr::Op(<>)),
-    Term,
+Stmt: ast::Stmt = {
+    ReturnStmt,
 }
 
-FactorOp: Opcode = {
-    "*" => Opcode::Mul,
-    "/" => Opcode::Div,
+ReturnStmt: ast::Stmt = "буц" <expr:Expr?> ";" => ast::Stmt::Return(ast::ReturnStmt { <> });
+
+Expr: ast::Expr = {
+    <num:number> => ast::Expr::Number(num),
+    "(" <Expr> ")",
+    "-" <expr:Expr> => ast::Expr::Unary(ast::UnaryOp::Neg, Box::new(expr)),
+    "~" <expr:Expr> => ast::Expr::Unary(ast::UnaryOp::Complement, Box::new(expr)),
+} 
+
+extern {
+    type Location = usize;
+    type Error = Error;
+
+    enum Token {
+        "үнэн" => Token::True,
+        "худал" => Token::False,
+        "+" => Token::Add,
+        "-" => Token::Minus,
+        "!" => Token::Not,
+        "~" => Token::Tilde,
+        "(" => Token::LParen,
+        ")" => Token::RParen,
+        "{" => Token::LBrace,
+        "}" => Token::RBrace,
+        ";" => Token::Semicolon,
+        "хоосон" => Token::Null,
+        "фн" => Token::Fn,
+        "->" => Token::RightArrow,
+        "тоо" => Token::NumberType,
+        "буц" => Token::Return,
+        ident => Token::Identifier(<String>),
+        string => Token::String(<String>),
+        number => Token::NumberLiteral(<String>),
+    }
 }
 
-ExprOp: Opcode = {
-    "+" => Opcode::Add,
-    "-" => Opcode::Sub,
-}
+// pub Expr: Box<Expr> = {
+//     Expr ExprOp Factor => Box::new(Expr::Op(<>)),
+//     Factor,
+// }
 
-Term: Box<Expr> = {
-    Num => Box::new(Expr::Number(<>)),
-    "(" <Expr> ")"
-}
+// Factor: Box<Expr> = {
+//     Factor FactorOp Term => Box::new(Expr::Op(<>)),
+//     Term,
+// }
 
-Num: i32 = r"[0-9]+" => i32::from_str(<>).unwrap();
+// FactorOp: Opcode = {
+//     "*" => Opcode::Mul,
+//     "/" => Opcode::Div,
+// }
+
+// ExprOp: Opcode = {
+//     "+" => Opcode::Add,
+//     "-" => Opcode::Sub,
+// }
+
+// Term: Box<Expr> = {
+//     Num => Box::new(Expr::Number(<>)),
+//     "(" <Expr> ")"
+// }
+
+// Num: i32 = r"[0-9]+" => i32::from_str(<>).unwrap();

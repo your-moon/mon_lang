@@ -32,12 +32,15 @@ extern {
     type Error = Error;
 
     enum Token {
-        "үнэн" => Token::True,
-        "худал" => Token::False,
-        "+" => Token::Add,
-        "-" => Token::Minus,
         "!" => Token::Not,
         "~" => Token::Tilde,
+
+        "үнэн" => Token::True,
+        "худал" => Token::False,
+
+        "+" => Token::Add,
+        "-" => Token::Minus,
+
         "(" => Token::LParen,
         ")" => Token::RParen,
         "{" => Token::LBrace,

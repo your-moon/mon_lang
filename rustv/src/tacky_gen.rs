@@ -17,13 +17,11 @@ impl TackyGen {
     }
 
     pub fn emit_tacky(&mut self, program: Program) -> tacky::TackyProgram {
-        let mut instructions = Vec::new();
-
         match program.func.body {
             Stmt::Return(ret_stmt) => {
                 if let Some(expr) = ret_stmt.expr {
                     let val = self.emit_expr(expr);
-                    // instructions.push(tacky::Instruction::Return(val));
+                    self.instructions.push(tacky::Instruction::Return(val));
                 }
             }
         }
@@ -31,7 +29,7 @@ impl TackyGen {
         tacky::TackyProgram {
             function: tacky::FunctionDefinition {
                 name: program.func.name,
-                body: instructions,
+                body: self.instructions.clone(),
             },
         }
     }

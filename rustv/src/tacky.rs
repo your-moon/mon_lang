@@ -10,7 +10,7 @@ pub enum TackyVal {
     Var(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Instruction {
     Return(TackyVal),
     Unary {

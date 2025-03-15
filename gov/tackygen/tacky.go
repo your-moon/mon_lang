@@ -21,13 +21,21 @@ type Return struct {
 	Value TackyVal
 }
 
+// instr implements Instruction.
+func (u Return) instr() {}
+
 type Unary struct {
 	Op  UnaryOperator
 	Src TackyVal
 	Dst TackyVal
 }
 
-type Instruction interface{}
+// instr implements Instruction.
+func (u Unary) instr() {}
+
+type Instruction interface {
+	instr()
+}
 
 type TackyFn struct {
 	Name         string
@@ -35,5 +43,5 @@ type TackyFn struct {
 }
 
 type TackyProgram struct {
-	FnDefs []TackyFn
+	FnDef TackyFn
 }

@@ -13,7 +13,7 @@ type Parser struct {
 	Current   lexer.Token
 	PeekToken lexer.Token
 	scanner   lexer.Scanner
-	errors    []string
+	errors    []error
 }
 
 func NewParser(source []int32) Parser {
@@ -27,7 +27,7 @@ func NewParser(source []int32) Parser {
 	return parser
 }
 
-func (p *Parser) Errors() []string {
+func (p *Parser) Errors() []error {
 	return p.errors
 }
 
@@ -57,25 +57,25 @@ func (p *Parser) currIs(expected lexer.TokenType) bool {
 }
 
 func (p *Parser) peekError(t lexer.TokenType) {
-	msg := fmt.Sprintf("expected next token to be %s, got %s instead", t, p.PeekToken.Type)
+	msg := fmt.Errorf("expected next token to be %s, got %s instead", t, p.PeekToken.Type)
 	p.errors = append(p.errors, msg)
 }
 
 func (p *Parser) ParseProgram() (*ASTProgram, error) {
 
 	program := &ASTProgram{}
-	program.Statements = []ASTStmt{}
 
 	for p.Current.Type != lexer.EOF {
-		stmt := p.ParseStmt()
+		stmt := p.ParseFN()
 		if stmt != nil {
-			program.Statements = append(program.Statements, stmt)
+			program.FnDef = *stmt
 		}
 		p.NextToken()
 	}
 
 	return program, nil
 }
+
 func (p *Parser) ParseStmt() ASTStmt {
 	switch p.Current.Type {
 	case lexer.FN:
@@ -125,6 +125,7 @@ func (p *Parser) ParseFN() *ASTFNStmt {
 	ast := &ASTFNStmt{
 		Token: fnName,
 	}
+
 	if !p.expect(lexer.OPEN_PAREN) {
 		return nil
 	}
@@ -142,7 +143,7 @@ func (p *Parser) ParseFN() *ASTFNStmt {
 		return nil
 	}
 
-	ast.Stmts = p.ParseBlockStmt()
+	ast.Stmt = p.ParseBlockStmt()[0]
 
 	return ast
 }

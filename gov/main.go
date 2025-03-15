@@ -9,7 +9,7 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/base"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 	"github.com/your-moon/mn_compiler_go_version/parser"
-	tackygen "github.com/your-moon/mn_compiler_go_version/tacky_gen"
+	"github.com/your-moon/mn_compiler_go_version/tackygen"
 )
 
 func main() {
@@ -41,16 +41,16 @@ func main() {
 		fmt.Println("NODE:", node.PrintAST(0))
 	}
 	if len(parsed.Errors()) > 0 {
-		panic(parsed.Errors()[0])
+		panic(parsed.Errors())
 	}
 
 	fmt.Println("---- COMPILING ----:")
-	compilerx := tackygen.NewCompiler()
-	compilerx.GenTacky(node)
+	compilerx := tackygen.NewTackyGen()
+	tackyprogram := compilerx.EmitTacky(node)
 
-	fmt.Println("---- IR LIST ----:")
-	for _, ir := range compilerx.Irs {
-		fmt.Println(ir.Ir(0))
+	fmt.Println("---- TACKY LIST ----:")
+	for _, ir := range tackyprogram.FnDef.Instructions {
+		fmt.Println(ir)
 	}
 
 	outfile := "out.asm"
@@ -58,45 +58,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// target := gen.QBE
-	// emitter := gen.NewX86Emitter(openFile, compilerx.Irs)
-	// emitter.Emit()
 
 	openFile.Close()
-
-	// if target == gen.QBE {
-	// 	// cmd := exec.Command("qbe", "-t", "arm64_apple", "-o", "out.s", "out.asm")
-	// 	cmd := exec.Command("qbe", "-o", "out.s", "out.asm")
-	// 	if err := cmd.Run(); err != nil {
-	// 		fmt.Println("Error: ", err)
-	// 	}
-	// 	cmd = exec.Command("as", "-o", "out.o", "out.s")
-	// 	if err := cmd.Run(); err != nil {
-	// 		fmt.Println("Error: ", err)
-	// 	}
-	// 	// xcrunCmd := exec.Command("xcrun", "--show-sdk-path")
-	// 	// syslibrootPath, err := xcrunCmd.Output()
-	// 	// if err != nil {
-	// 	// 	fmt.Println("Error getting syslibroot path:", err)
-	// 	// 	os.Exit(1)
-	// 	// }
-	// 	// syslibroot := strings.TrimSpace(string(syslibrootPath))
-	//
-	// 	// Prepare the `ld` command
-	// 	// cmd = exec.Command("ld", "-o", "out", "out.o", "-syslibroot", syslibroot, "-lSystem")
-	//
-	// 	// cmd = exec.Command("./out")
-	//
-	// 	// Set the output to stdout/stderr
-	// 	cmd.Stdout = os.Stdout
-	// 	cmd.Stderr = os.Stderr
-	//
-	// 	// Run the command
-	// 	if err := cmd.Run(); err != nil {
-	// 		fmt.Println("Error executing ld command:", err)
-	// 		os.Exit(1)
-	// 	}
-	// }
 
 }
 

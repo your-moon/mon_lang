@@ -12,6 +12,22 @@ type ASTExpressionStmt struct {
 	Expression ASTExpression
 }
 
+type ASTFNStmt struct {
+	Token      lexer.Token
+	ReturnType lexer.TokenType
+	Stmt       ASTStmt
+}
+
+type ASTReturnStmt struct {
+	Token       lexer.Token
+	ReturnValue ASTExpression
+}
+
+type ASTPrintStmt struct {
+	Token lexer.Token
+	Value ASTExpression
+}
+
 func (a *ASTExpressionStmt) statementNode()       {}
 func (a *ASTExpressionStmt) TokenLiteral() string { return string(a.Token.Type) }
 func (a *ASTExpressionStmt) PrintAST(depth int) string {
@@ -26,12 +42,6 @@ func (a *ASTExpressionStmt) PrintAST(depth int) string {
 	return out.String()
 }
 
-type ASTFNStmt struct {
-	Token      lexer.Token
-	ReturnType lexer.TokenType
-	Stmts      []ASTStmt
-}
-
 func (a *ASTFNStmt) statementNode() {}
 func (a *ASTFNStmt) TokenLiteral() string {
 	return string(a.Token.Type)
@@ -39,19 +49,16 @@ func (a *ASTFNStmt) TokenLiteral() string {
 func (a *ASTFNStmt) PrintAST(depth int) string {
 	var out bytes.Buffer
 
-	out.WriteString(fmt.Sprintf("%sFN %s[\n", indent(depth), *a.Token.Value))
-
-	for _, stmt := range a.Stmts {
-		out.WriteString(stmt.PrintAST(depth+1) + "\n")
+	if a.Token.Value != nil {
+		out.WriteString(fmt.Sprintf("%sFN %s[\n", indent(depth), *a.Token.Value))
 	}
+
+	// for _, stmt := range a.Stmts {
+	out.WriteString(a.Stmt.PrintAST(depth+1) + "\n")
+	// }
 
 	out.WriteString(indent(depth) + "]")
 	return out.String()
-}
-
-type ASTReturnStmt struct {
-	Token       lexer.Token
-	ReturnValue ASTExpression
 }
 
 func (a *ASTReturnStmt) statementNode()       {}
@@ -67,11 +74,6 @@ func (a *ASTReturnStmt) PrintAST(depth int) string {
 
 	out.WriteString(indent(depth) + "]")
 	return out.String()
-}
-
-type ASTPrintStmt struct {
-	Token lexer.Token
-	Value ASTExpression
 }
 
 func (a *ASTPrintStmt) statementNode()       {}

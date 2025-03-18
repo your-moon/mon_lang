@@ -43,6 +43,13 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	return program
 }
 
+func ToTackyOp(op lexer.TokenType) (UnaryOperator, error) {
+	if op == lexer.MINUS {
+		return Negate, nil
+	}
+	return Unknown, fmt.Errorf("Cannot convert token to tackyop")
+}
+
 func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
 	switch expr := node.(type) {
 	case *parser.ASTIntLitExpression:
@@ -50,10 +57,12 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
 	case *parser.ASTUnary:
 		src := c.EmitExpr(expr.Inner)
 		dst := c.makeTemp()
+
 		var op UnaryOperator
 		if expr.Op == lexer.MINUS {
 			op = Negate
 		}
+
 		instr := Unary{
 			Op:  op,
 			Src: src,

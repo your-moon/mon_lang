@@ -51,6 +51,7 @@ func main() {
 	fmt.Println("---- TACKY LIST ----:")
 	for _, ir := range tackyprogram.FnDef.Instructions {
 		fmt.Println(ir)
+		ir.Ir()
 	}
 
 	outfile := "out.asm"

@@ -1,10 +1,13 @@
 package tackygen
 
+import "fmt"
+
 type UnaryOperator string
 
 const (
 	Complement UnaryOperator = "Complement"
 	Negate     UnaryOperator = "Negate"
+	Unknown    UnaryOperator = "Unknown"
 )
 
 type TackyVal interface{}
@@ -22,7 +25,9 @@ type Return struct {
 }
 
 // instr implements Instruction.
-func (u Return) instr() {}
+func (u Return) Ir() {
+	fmt.Println("RETURN")
+}
 
 type Unary struct {
 	Op  UnaryOperator
@@ -31,10 +36,12 @@ type Unary struct {
 }
 
 // instr implements Instruction.
-func (u Unary) instr() {}
+func (u Unary) Ir() {
+	fmt.Println("UNARY")
+}
 
 type Instruction interface {
-	instr()
+	Ir()
 }
 
 type TackyFn struct {

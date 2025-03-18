@@ -58,9 +58,9 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
 		src := c.EmitExpr(expr.Inner)
 		dst := c.makeTemp()
 
-		var op UnaryOperator
-		if expr.Op == lexer.MINUS {
-			op = Negate
+		op, err := ToTackyOp(expr.Op)
+		if err != nil {
+			panic(err)
 		}
 
 		instr := Unary{

@@ -164,24 +164,6 @@ func (p *Parser) ParseBlockStmt() []ASTStmt {
 	return stmtarr
 }
 
-// func (p *Parser) ParseBlockStmt() *ASTBlockStmt {
-// 	ast := &ASTBlockStmt{
-// 		Token:      p.Current,
-// 		Statements: []ASTStmt{},
-// 	}
-// 	p.NextToken()
-//
-// 	for !p.currIs(lexer.CLOSE_BRACE) && !p.currIs(lexer.EOF) {
-// 		stmt := p.ParseStmt()
-// 		if stmt != nil {
-// 			ast.Statements = append(ast.Statements, stmt)
-// 		}
-// 		p.NextToken()
-// 	}
-//
-// 	return ast
-// }
-
 func (p *Parser) ParseReturn() *ASTReturnStmt {
 	ast := &ASTReturnStmt{
 		Token: p.Current,

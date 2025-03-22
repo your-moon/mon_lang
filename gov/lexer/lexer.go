@@ -151,14 +151,6 @@ func (s *Scanner) IsLine() bool {
 
 // RUNEARR: [1092 1085 32 32 32 1092 1085 10]
 // LEN: 8
-// THAT:  1092
-// THAT:  1085
-// THAT:  32
-// THAT:  32
-// THAT:  32
-// THAT:  1092
-// THAT:  1085
-// THAT:  10
 
 func (s *Scanner) Skip() {
 	for s.IsLine() {

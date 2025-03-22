@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/your-moon/mn_compiler_go_version/base"
+	codegen "github.com/your-moon/mn_compiler_go_version/code_gen"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 	"github.com/your-moon/mn_compiler_go_version/parser"
 	"github.com/your-moon/mn_compiler_go_version/tackygen"
@@ -53,6 +54,11 @@ func main() {
 		fmt.Println(ir)
 		ir.Ir()
 	}
+
+	fmt.Println("---- ASMAST ----:")
+	codegen := codegen.NewAsmGen()
+	asmgen := codegen.GenAsm(tackyprogram)
+	fmt.Println(asmgen)
 
 	outfile := "out.asm"
 	openFile, err := os.OpenFile(outfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)

@@ -27,6 +27,7 @@ func (c *TackyGen) makeTemp() Var {
 
 func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	program := TackyProgram{}
+
 	switch ast := node.FnDef.Stmt.(type) {
 	case *parser.ASTReturnStmt:
 		if ast.ReturnValue != nil {
@@ -47,6 +48,10 @@ func ToTackyOp(op lexer.TokenType) (UnaryOperator, error) {
 	if op == lexer.MINUS {
 		return Negate, nil
 	}
+	if op == lexer.TILDE {
+		return Complement, nil
+	}
+
 	return Unknown, fmt.Errorf("Cannot convert token to tackyop")
 }
 

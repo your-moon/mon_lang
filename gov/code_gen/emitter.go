@@ -28,7 +28,7 @@ func (a *AsmGen) GenAsm(program tackygen.TackyProgram) AsmProgram {
 	asmfn := a.GenFn(program.FnDef)
 	asmprogram.AsmFnDef = asmfn
 
-	pass1 := NewReplacement()
+	pass1 := NewReplacementPassGen()
 	asmprogram = pass1.ReplacePseudosInProgram(asmprogram)
 
 	pass2 := NewFixUpPassGen()

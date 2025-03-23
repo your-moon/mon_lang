@@ -6,12 +6,14 @@ func NewFixUpPassGen() FixUpPassGen {
 	return FixUpPassGen{}
 }
 
-func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, fn AsmFnDef, idx int) {
+// in golang if you give array to param, its call by ref that means instructions is mutable
+func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, instructions []AsmInstruction, idx int) {
 	mov, isit := instr.(Mov)
 
 	if isit {
 		srcstack, isit := mov.Src.(Stack)
 		dststack, isitdst := mov.Dst.(Stack)
+		// is invalid mov instruction
 		if isit && isitdst {
 			mov1 := Mov{
 				Src: srcstack,
@@ -22,23 +24,19 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, fn AsmFnDef, idx
 				Dst: dststack,
 			}
 
-			//FIX: FIX
-			// Split the instructions at idx and insert mov1 and mov2
-			right := fn.Irs[idx:]
-			fn.Irs = fn.Irs[:idx]
-			fn.Irs = append(fn.Irs, mov1, mov2)
-			fn.Irs = append(fn.Irs, right...)
+			instructions[idx] = mov1
+			instructions = append(instructions[:idx+1], append([]AsmInstruction{mov2}, instructions[idx+1:]...)...)
 		}
 	}
 }
 
 func (f *FixUpPassGen) FixUpInFn(fn AsmFnDef) AsmFnDef {
 	for i, instr := range fn.Irs {
-		f.FixUpInInstruction(instr, fn, i)
-
+		f.FixUpInInstruction(instr, fn.Irs, i)
 	}
 	return fn
 }
+
 func (f *FixUpPassGen) FixUpProgram(program AsmProgram) AsmProgram {
 	program.AsmFnDef = f.FixUpInFn(program.AsmFnDef)
 	return program

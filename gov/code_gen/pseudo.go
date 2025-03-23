@@ -1,18 +1,18 @@
 package codegen
 
-type ReplacementGen struct {
+type ReplacementPassGen struct {
 	CurrentOffset int
 	OffsetMap     map[string]int
 }
 
-func NewReplacement() ReplacementGen {
-	return ReplacementGen{
+func NewReplacementPassGen() ReplacementPassGen {
+	return ReplacementPassGen{
 		CurrentOffset: 0,
 		OffsetMap:     make(map[string]int),
 	}
 }
 
-func (r *ReplacementGen) ReplaceOperand(operand AsmOperand) AsmOperand {
+func (r *ReplacementPassGen) ReplaceOperand(operand AsmOperand) AsmOperand {
 	pseudo, isit := operand.(Pseudo)
 	if isit {
 		value, exists := r.OffsetMap[pseudo.Ident]
@@ -28,7 +28,7 @@ func (r *ReplacementGen) ReplaceOperand(operand AsmOperand) AsmOperand {
 	}
 }
 
-func (r *ReplacementGen) ReplacePseudosInInstruction(instr AsmInstruction) AsmInstruction {
+func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction) AsmInstruction {
 	switch ast := instr.(type) {
 	case Mov:
 		src := r.ReplaceOperand(ast.Src)
@@ -53,7 +53,7 @@ func (r *ReplacementGen) ReplacePseudosInInstruction(instr AsmInstruction) AsmIn
 	}
 }
 
-func (r *ReplacementGen) ReplacePseudosInFn(fn AsmFnDef) AsmFnDef {
+func (r *ReplacementPassGen) ReplacePseudosInFn(fn AsmFnDef) AsmFnDef {
 	for i, instr := range fn.Irs {
 		replaced := r.ReplacePseudosInInstruction(instr)
 		fn.Irs[i] = replaced
@@ -61,7 +61,7 @@ func (r *ReplacementGen) ReplacePseudosInFn(fn AsmFnDef) AsmFnDef {
 	return fn
 }
 
-func (r *ReplacementGen) ReplacePseudosInProgram(program AsmProgram) AsmProgram {
+func (r *ReplacementPassGen) ReplacePseudosInProgram(program AsmProgram) AsmProgram {
 	program.AsmFnDef = r.ReplacePseudosInFn(program.AsmFnDef)
 	return program
 }

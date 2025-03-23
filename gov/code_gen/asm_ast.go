@@ -1,5 +1,7 @@
 package codegen
 
+import "fmt"
+
 type AsmUnaryOperator string
 
 const (
@@ -15,35 +17,43 @@ const (
 )
 
 type AsmOperand interface {
-	op()
+	Op() string
 }
 
 type Imm struct {
 	Value int
 }
 
-func (a Imm) op() {}
+func (a Imm) Op() string {
+	return fmt.Sprintf("$%d", a.Value)
+}
 
 type Register struct {
 	Reg AsmRegister
 }
 
-func (a Register) op() {}
+func (a Register) Op() string {
+	return string(a.Reg)
+}
 
 type Pseudo struct {
 	Ident string
 }
 
-func (a Pseudo) op() {}
+func (a Pseudo) Op() string {
+	return a.Ident
+}
 
 type Stack struct {
 	Value int
 }
 
-func (a Stack) op() {}
+func (a Stack) Op() string {
+	return fmt.Sprintf("(%d)", a.Value)
+}
 
 type AsmInstruction interface {
-	ir()
+	Ir() string
 }
 
 type Mov struct {
@@ -51,25 +61,33 @@ type Mov struct {
 	Dst AsmOperand
 }
 
-func (a Mov) ir() {}
+func (a Mov) Ir() string {
+	return fmt.Sprintf("mov %s, %s", a.Dst.Op(), a.Src.Op())
+}
 
 type Unary struct {
 	Op  AsmUnaryOperator
 	Dst AsmOperand
 }
 
-func (a Unary) ir() {}
+func (a Unary) Ir() string {
+	return fmt.Sprintf("%s %s", a.Op, a.Dst.Op())
+}
 
 // for prologue subq $n, %rsp that how much stack we need to allocate
 type AllocateStack struct {
 	Value int
 }
 
-func (a AllocateStack) ir() {}
+func (a AllocateStack) Ir() string {
+	return fmt.Sprintf("subq $%d, %s", a.Value, R10)
+}
 
 type Return struct{}
 
-func (a Return) ir() {}
+func (a Return) Ir() string {
+	return fmt.Sprintf("ret")
+}
 
 type AsmFnDef struct {
 	Ident string

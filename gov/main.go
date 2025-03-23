@@ -58,7 +58,9 @@ func main() {
 	fmt.Println("---- ASMAST ----:")
 	codegen := codegen.NewAsmGen()
 	asmgen := codegen.GenAsm(tackyprogram)
-	fmt.Println(asmgen)
+	for _, ir := range asmgen.AsmFnDef.Irs {
+		fmt.Println(ir.Ir())
+	}
 
 	outfile := "out.asm"
 	openFile, err := os.OpenFile(outfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)

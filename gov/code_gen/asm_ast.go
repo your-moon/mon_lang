@@ -2,6 +2,14 @@ package codegen
 
 import "fmt"
 
+type BinaryOp string
+
+const (
+	Add  BinaryOp = "addl"
+	Sub  BinaryOp = "subl"
+	Mult BinaryOp = "imull"
+)
+
 type AsmUnaryOperator string
 
 const (
@@ -14,6 +22,8 @@ type AsmRegister string
 const (
 	AX  AsmRegister = "%eax"  // rax's lower 32 bits
 	R10 AsmRegister = "%r10d" // r10's lower 32 bits
+	DX  AsmRegister = "%edx"
+	R11 AsmRegister = "%r11d"
 )
 
 type AsmOperand interface {
@@ -56,13 +66,38 @@ type AsmInstruction interface {
 	Ir() string
 }
 
+type Binary struct {
+	Op  BinaryOp
+	Src AsmOperand
+	Dst AsmOperand
+}
+
+func (a Binary) Ir() string {
+	return fmt.Sprintf("%s %s, %s", a.Op, a.Src.Op(), a.Dst.Op())
+}
+
+type Idiv struct {
+	Src AsmOperand
+}
+
+func (a Idiv) Ir() string {
+	return fmt.Sprintf("idiv %s", a.Src.Op())
+}
+
+type Cdq struct {
+}
+
+func (a Cdq) Ir() string {
+	return "cdq"
+}
+
 type Mov struct {
 	Src AsmOperand
 	Dst AsmOperand
 }
 
 func (a Mov) Ir() string {
-	return fmt.Sprintf("mov %s, %s", a.Dst.Op(), a.Src.Op())
+	return fmt.Sprintf("mov %s, %s", a.Src.Op(), a.Dst.Op())
 }
 
 type Unary struct {
@@ -86,7 +121,7 @@ func (a AllocateStack) Ir() string {
 type Return struct{}
 
 func (a Return) Ir() string {
-	return fmt.Sprintf("ret")
+	return "ret"
 }
 
 type AsmFnDef struct {

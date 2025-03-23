@@ -43,7 +43,22 @@ func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction) A
 			Dst: dst,
 			Op:  ast.Op,
 		}
+	case Binary:
+		src := r.ReplaceOperand(ast.Src)
+		dst := r.ReplaceOperand(ast.Dst)
+		return Binary{
+			Src: src,
+			Dst: dst,
+			Op:  ast.Op,
+		}
+	case Idiv:
+		src := r.ReplaceOperand(ast.Src)
+		return Idiv{
+			Src: src,
+		}
 	case Return:
+		return instr
+	case Cdq:
 		return instr
 	case AllocateStack:
 		panic("you are not belong to us")

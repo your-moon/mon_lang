@@ -68,8 +68,11 @@ func main() {
 	fmt.Println("---- ASMAST ----:")
 	asmastgen := codegen.NewAsmGen()
 	asmast := asmastgen.GenASTAsm(tackyprogram)
-	fmt.Println(asmast)
+	for _, ir := range asmast.AsmFnDef.Irs {
+		fmt.Println(ir.Ir())
+	}
 
+	fmt.Println("---- ASMGEN ----:")
 	asmgen := codegen.NewGenASM(openFile, codegen.Aarch64)
 	asmgen.GenAsm(asmast)
 

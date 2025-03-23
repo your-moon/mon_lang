@@ -61,6 +61,8 @@ func (a *AsmASTGen) GenASTInstr(instrs []tackygen.Instruction) {
 			ret := Return{}
 			a.EmitInstr(mov)
 			a.EmitInstr(ret)
+		case tackygen.Binary:
+			a.GenASTBinary(ast)
 		case tackygen.Unary:
 			dst := a.GenASTVal(ast.Dst)
 			mov := Mov{
@@ -76,6 +78,63 @@ func (a *AsmASTGen) GenASTInstr(instrs []tackygen.Instruction) {
 		}
 	}
 
+}
+func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
+	if instr.Op == tackygen.Remainder {
+		mov := Mov{
+			Src: a.GenASTVal(instr.Src1),
+			Dst: a.GenASTVal(instr.Dst),
+		}
+		cdq := Cdq{}
+		idiv := Idiv{
+			Src: a.GenASTVal(instr.Src2),
+		}
+		mov2 := Mov{
+			Src: Register{
+				Reg: DX,
+			},
+
+			Dst: a.GenASTVal(instr.Dst),
+		}
+		a.EmitInstr(mov)
+		a.EmitInstr(cdq)
+		a.EmitInstr(idiv)
+		a.EmitInstr(mov2)
+
+	} else if instr.Op == tackygen.Div {
+		mov := Mov{
+			Src: a.GenASTVal(instr.Src1),
+			Dst: a.GenASTVal(instr.Dst),
+		}
+		cdq := Cdq{}
+		idiv := Idiv{
+			Src: a.GenASTVal(instr.Src2),
+		}
+		mov2 := Mov{
+			Src: Register{
+				Reg: AX,
+			},
+
+			Dst: a.GenASTVal(instr.Dst),
+		}
+		a.EmitInstr(mov)
+		a.EmitInstr(cdq)
+		a.EmitInstr(idiv)
+		a.EmitInstr(mov2)
+	} else {
+		mov := Mov{
+			Src: a.GenASTVal(instr.Src1),
+			Dst: a.GenASTVal(instr.Dst),
+		}
+		binary := Binary{
+			Op:  BinaryOp(instr.Op),
+			Src: a.GenASTVal(instr.Src2),
+			Dst: a.GenASTVal(instr.Dst),
+		}
+		a.EmitInstr(mov)
+		a.EmitInstr(binary)
+
+	}
 }
 
 func (a *AsmASTGen) GenASTUnaryOp(op tackygen.UnaryOperator) AsmUnaryOperator {

@@ -10,49 +10,50 @@ type Emitter interface {
 	ending()
 }
 
-type AsmGen struct {
+type AsmASTGen struct {
 	Irs []AsmInstruction
 }
 
-func NewAsmGen() AsmGen {
-	return AsmGen{}
+func NewAsmGen() AsmASTGen {
+	return AsmASTGen{}
 }
 
-func (a *AsmGen) EmitInstr(instr AsmInstruction) {
+func (a *AsmASTGen) EmitInstr(instr AsmInstruction) {
 	a.Irs = append(a.Irs, instr)
 }
 
-func (a *AsmGen) GenAsm(program tackygen.TackyProgram) AsmProgram {
+func (a *AsmASTGen) GenASTAsm(program tackygen.TackyProgram) AsmProgram {
 	asmprogram := AsmProgram{}
 
-	asmfn := a.GenFn(program.FnDef)
+	asmfn := a.GenASTFn(program.FnDef)
 	asmprogram.AsmFnDef = asmfn
 
 	pass1 := NewReplacementPassGen()
 	asmprogram = pass1.ReplacePseudosInProgram(asmprogram)
 
-	pass2 := NewFixUpPassGen()
+	pass2 := NewFixUpPassGen(pass1.CurrentOffset)
 	asmprogram = pass2.FixUpProgram(asmprogram)
 
 	return asmprogram
 }
 
-func (a *AsmGen) GenFn(fn tackygen.TackyFn) AsmFnDef {
+func (a *AsmASTGen) GenASTFn(fn tackygen.TackyFn) AsmFnDef {
 	asmfn := AsmFnDef{}
 
-	a.GenInstr(fn.Instructions)
+	a.GenASTInstr(fn.Instructions)
 	asmfn.Irs = a.Irs
+	asmfn.Ident = fn.Name
 
 	return asmfn
 }
 
-func (a *AsmGen) GenInstr(instrs []tackygen.Instruction) {
+func (a *AsmASTGen) GenASTInstr(instrs []tackygen.Instruction) {
 
 	for _, instr := range instrs {
 		switch ast := instr.(type) {
 		case tackygen.Return:
 			mov := Mov{
-				a.GenVal(ast.Value),
+				a.GenASTVal(ast.Value),
 				Register{
 					Reg: AX,
 				},
@@ -61,13 +62,13 @@ func (a *AsmGen) GenInstr(instrs []tackygen.Instruction) {
 			a.EmitInstr(mov)
 			a.EmitInstr(ret)
 		case tackygen.Unary:
-			dst := a.GenVal(ast.Dst)
+			dst := a.GenASTVal(ast.Dst)
 			mov := Mov{
-				Src: a.GenVal(ast.Src),
-				Dst: a.GenVal(ast.Dst),
+				Src: a.GenASTVal(ast.Src),
+				Dst: a.GenASTVal(ast.Dst),
 			}
 			unary := Unary{
-				Op:  a.GenUnaryOp(ast.Op),
+				Op:  a.GenASTUnaryOp(ast.Op),
 				Dst: dst,
 			}
 			a.EmitInstr(mov)
@@ -77,7 +78,7 @@ func (a *AsmGen) GenInstr(instrs []tackygen.Instruction) {
 
 }
 
-func (a *AsmGen) GenUnaryOp(op tackygen.UnaryOperator) AsmUnaryOperator {
+func (a *AsmASTGen) GenASTUnaryOp(op tackygen.UnaryOperator) AsmUnaryOperator {
 	switch op {
 	case tackygen.Complement:
 		return Not
@@ -88,7 +89,7 @@ func (a *AsmGen) GenUnaryOp(op tackygen.UnaryOperator) AsmUnaryOperator {
 	}
 }
 
-func (a *AsmGen) GenVal(val tackygen.TackyVal) AsmOperand {
+func (a *AsmASTGen) GenASTVal(val tackygen.TackyVal) AsmOperand {
 	switch ast := val.(type) {
 	case tackygen.Constant:
 		return Imm{Value: ast.Value}

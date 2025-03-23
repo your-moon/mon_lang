@@ -44,7 +44,7 @@ func (a *ASTExpressionStmt) PrintAST(depth int) string {
 
 func (a *ASTFNStmt) statementNode() {}
 func (a *ASTFNStmt) TokenLiteral() string {
-	return string(a.Token.Type)
+	return string(*a.Token.Value)
 }
 func (a *ASTFNStmt) PrintAST(depth int) string {
 	var out bytes.Buffer

@@ -5,15 +5,15 @@ import "fmt"
 type AsmUnaryOperator string
 
 const (
-	Not AsmUnaryOperator = "neg"
-	Neg AsmUnaryOperator = "not"
+	Not AsmUnaryOperator = "notl"
+	Neg AsmUnaryOperator = "negl"
 )
 
 type AsmRegister string
 
 const (
-	AX  AsmRegister = "eax"  // rax's lower 32 bits
-	R10 AsmRegister = "r10d" // r10's lower 32 bits
+	AX  AsmRegister = "%eax"  // rax's lower 32 bits
+	R10 AsmRegister = "%r10d" // r10's lower 32 bits
 )
 
 type AsmOperand interface {

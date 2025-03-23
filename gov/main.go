@@ -41,6 +41,7 @@ func main() {
 	if base.Debug {
 		fmt.Println("NODE:", node.PrintAST(0))
 	}
+
 	if len(parsed.Errors()) > 0 {
 		panic(parsed.Errors())
 	}
@@ -55,18 +56,19 @@ func main() {
 		ir.Ir()
 	}
 
-	fmt.Println("---- ASMAST ----:")
-	codegen := codegen.NewAsmGen()
-	asmgen := codegen.GenAsm(tackyprogram)
-	for _, ir := range asmgen.AsmFnDef.Irs {
-		fmt.Println(ir.Ir())
-	}
-
 	outfile := "out.asm"
 	openFile, err := os.OpenFile(outfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Println("---- ASMAST ----:")
+	asmastgen := codegen.NewAsmGen()
+	asmast := asmastgen.GenASTAsm(tackyprogram)
+	fmt.Println(asmast)
+
+	asmgen := codegen.NewGenASM(openFile, codegen.Aarch64)
+	asmgen.GenAsm(asmast)
 
 	openFile.Close()
 

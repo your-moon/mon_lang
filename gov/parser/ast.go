@@ -16,6 +16,10 @@ type ASTExpression interface {
 	expressionNode()
 }
 
+type ASTFactor interface {
+	ASTNode
+}
+
 type ASTStmt interface {
 	ASTNode
 	statementNode()

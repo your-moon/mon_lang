@@ -3,10 +3,11 @@ package lexer
 type TokenType string
 
 const (
-	PLUS  TokenType = "PLUS"
-	MINUS TokenType = "MINUS"
-	MUL   TokenType = "MUL"
-	DIV   TokenType = "DIV"
+	PLUS    TokenType = "PLUS"
+	MINUS   TokenType = "MINUS"
+	MUL     TokenType = "MUL"
+	DIV     TokenType = "DIV"
+	PERCENT TokenType = "PERCENT"
 
 	RETURN TokenType = "RETURN"
 	PRINT  TokenType = "PRINT"

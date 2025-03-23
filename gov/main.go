@@ -34,16 +34,19 @@ func main() {
 
 	parsed := parser.NewParser(runeString)
 	node, err := parsed.ParseProgram()
+
 	if err != nil {
 		panic(err)
 	}
 
-	if base.Debug {
-		fmt.Println("NODE:", node.PrintAST(0))
+	if len(parsed.Errors()) > 0 {
+		panic(parsed.Errors()[0])
 	}
 
-	if len(parsed.Errors()) > 0 {
-		panic(parsed.Errors())
+	if base.Debug {
+		if node != nil {
+			fmt.Println("NODE:", node.PrintAST(0))
+		}
 	}
 
 	fmt.Println("---- COMPILING ----:")

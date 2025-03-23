@@ -86,8 +86,6 @@ func (p *Parser) ParseStmt() ASTStmt {
 		return stmt
 	case lexer.RETURN:
 		return p.ParseReturn()
-	case lexer.PRINT:
-		return p.ParsePrint()
 	default:
 		return p.ParseExpressionStmt()
 	}
@@ -98,22 +96,14 @@ func (p *Parser) ParseExpressionStmt() *ASTExpressionStmt {
 		Token: p.Current,
 	}
 
-	ast.Expression = p.ParseExpr()
+	ast.Expression = p.ParseExpr(Lowest)
 	if base.Debug {
 		fmt.Println(ast.PrintAST(0))
 	}
 
-	return ast
-}
-
-func (p *Parser) ParsePrint() *ASTPrintStmt {
-	ast := &ASTPrintStmt{
-		Token: p.Current,
+	if !p.expect(lexer.SEMICOLON) {
+		return nil
 	}
-
-	value := p.ParseExpr()
-
-	ast.Value = value
 
 	return ast
 }
@@ -122,7 +112,7 @@ func (p *Parser) ParseFN() *ASTFNStmt {
 	p.NextToken()
 	fnName := p.Current
 	fmt.Println("FNNAME", fnName)
-	ast := &ASTFNStmt{
+	ast := ASTFNStmt{
 		Token: fnName,
 	}
 
@@ -145,7 +135,7 @@ func (p *Parser) ParseFN() *ASTFNStmt {
 
 	ast.Stmt = p.ParseBlockStmt()[0]
 
-	return ast
+	return &ast
 }
 
 func (p *Parser) ParseBlockStmt() []ASTStmt {
@@ -169,8 +159,8 @@ func (p *Parser) ParseReturn() *ASTReturnStmt {
 		Token: p.Current,
 	}
 
-	p.NextToken()
-	value := p.ParseExpr()
+	p.NextToken() // consume 'буц'
+	value := p.ParseExpr(Lowest)
 
 	ast.ReturnValue = value
 
@@ -181,14 +171,12 @@ func (p *Parser) ParseReturn() *ASTReturnStmt {
 	return ast
 }
 
-func (p *Parser) ParseExpr() ASTExpression {
+func (p *Parser) ParseFactor() ASTExpression {
 	switch p.Current.Type {
 	case lexer.NUMBER:
 		return p.ParseIntLit()
-	case lexer.MINUS:
-		return p.ParseUnary(lexer.MINUS)
-	case lexer.TILDE:
-		return p.ParseUnary(lexer.TILDE)
+	case lexer.MINUS, lexer.TILDE:
+		return p.ParseUnary(p.Current.Type)
 	case lexer.OPEN_PAREN:
 		return p.ParseGrouping()
 	default:
@@ -196,13 +184,54 @@ func (p *Parser) ParseExpr() ASTExpression {
 	}
 }
 
+func (p *Parser) IsInfixOp() bool {
+	return p.PeekToken.Type == lexer.PLUS || p.PeekToken.Type == lexer.MINUS ||
+		p.PeekToken.Type == lexer.MUL || p.PeekToken.Type == lexer.DIV
+}
+
+func (p *Parser) ParseExpr(prec int) ASTExpression {
+	left := p.ParseFactor()
+	for !p.currIs(lexer.SEMICOLON) && prec < p.peekPrecedence() {
+		if !p.IsInfixOp() {
+			return left
+		}
+
+		p.NextToken() // consume the operator
+		op, _ := p.ParseBinOp()
+		currPrec := p.currPrecedence()
+		p.NextToken() // consume the right operand
+		right := p.ParseExpr(currPrec)
+
+		left = ASTBinary{
+			Left:  left,
+			Right: right,
+			Op:    op,
+		}
+	}
+
+	return left
+}
+
+func (p *Parser) ParseBinOp() (ASTBinOp, error) {
+	if p.Current.Type == lexer.MINUS {
+		return ASTBinOp(A_MINUS), nil
+	} else if p.Current.Type == lexer.PLUS {
+		return ASTBinOp(A_PLUS), nil
+	} else if p.Current.Type == lexer.DIV {
+		return ASTBinOp(A_DIV), nil
+	} else if p.Current.Type == lexer.MUL {
+		return ASTBinOp(A_MUL), nil
+	}
+
+	return ASTBinOp(A_PLUS), fmt.Errorf("unknown bin op: %s", p.Current.Type)
+}
+
 func (p *Parser) ParseUnary(op lexer.TokenType) *ASTUnary {
 	ast := &ASTUnary{
 		Op: op,
 	}
 
-	p.NextToken()
-	right := p.ParseExpr()
+	right := p.ParseFactor()
 
 	ast.Inner = right
 
@@ -210,7 +239,7 @@ func (p *Parser) ParseUnary(op lexer.TokenType) *ASTUnary {
 }
 func (p *Parser) ParseGrouping() ASTExpression {
 	p.NextToken()
-	inner := p.ParseExpr()
+	inner := p.ParseExpr(Lowest)
 	p.expect(lexer.CLOSE_PAREN)
 	return inner
 }
@@ -223,4 +252,36 @@ func (p *Parser) ParseIntLit() ASTExpression {
 	intVal, _ := strconv.ParseInt(*p.Current.Value, 0, 64)
 	ast := &ASTIntLitExpression{Token: p.Current, Value: intVal}
 	return ast
+}
+
+const (
+	_ int = iota
+	Lowest
+	Equals        // =
+	LessOrGreater // < or >
+	Sum           // +
+	Product       // *
+	Prefix        // -X or !X
+	Call          // myFunction(X)
+	Index         // array[index]
+)
+
+var precedences = map[lexer.TokenType]int{
+	lexer.PLUS:  Sum,
+	lexer.MINUS: Sum,
+	lexer.DIV:   Product,
+	lexer.MUL:   Product,
+}
+
+func (p *Parser) currPrecedence() int {
+	if p, ok := precedences[p.Current.Type]; ok {
+		return p
+	}
+	return Lowest
+}
+func (p *Parser) peekPrecedence() int {
+	if p, ok := precedences[p.PeekToken.Type]; ok {
+		return p
+	}
+	return Lowest
 }

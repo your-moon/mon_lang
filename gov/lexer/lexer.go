@@ -195,6 +195,8 @@ func (s *Scanner) Scan() (Token, error) {
 		return s.BuildToken(MUL), nil
 	case '/':
 		return s.BuildToken(DIV), nil
+	case '%':
+		return s.BuildToken(PERCENT), nil
 	case '(':
 		return s.BuildToken(OPEN_PAREN), nil
 	case ')':

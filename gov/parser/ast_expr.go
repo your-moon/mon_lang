@@ -7,6 +7,30 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
 
+type ASTBinOp int
+
+const (
+	A_PLUS int = iota
+	A_MINUS
+	A_DIV
+	A_MUL
+)
+
+func (op ASTBinOp) String() string {
+	switch op {
+	case ASTBinOp(A_PLUS):
+		return "+"
+	case ASTBinOp(A_MINUS):
+		return "-"
+	case ASTBinOp(A_DIV):
+		return "/"
+	case ASTBinOp(A_MUL):
+		return "*"
+	default:
+		return "unknown"
+	}
+}
+
 type ASTIntLitExpression struct {
 	Token lexer.Token
 	Value int64
@@ -42,6 +66,30 @@ func (a *ASTPrefixExpression) PrintAST(depth int) string {
 
 	out.WriteString(fmt.Sprintf("%sPREFIX %s[\n", indent(depth), a.Op))
 
+	if a.Right != nil {
+		out.WriteString(a.Right.PrintAST(depth+1) + "\n")
+	}
+
+	out.WriteString(indent(depth) + "]")
+	return out.String()
+}
+
+type ASTBinary struct {
+	Right ASTExpression
+	Left  ASTExpression
+	Op    ASTBinOp
+}
+
+func (a ASTBinary) expressionNode()      {}
+func (a ASTBinary) TokenLiteral() string { return string(a.Op.String()) }
+func (a ASTBinary) PrintAST(depth int) string {
+	var out bytes.Buffer
+
+	out.WriteString(fmt.Sprintf("%sBINARY %s[\n", indent(depth), a.Op.String()))
+
+	if a.Left != nil {
+		out.WriteString(a.Left.PrintAST(depth+1) + "\n")
+	}
 	if a.Right != nil {
 		out.WriteString(a.Right.PrintAST(depth+1) + "\n")
 	}

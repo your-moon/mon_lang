@@ -44,7 +44,7 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	return program
 }
 
-func ToTackyOp(op lexer.TokenType) (UnaryOperator, error) {
+func ToUnaryTackyOp(op lexer.TokenType) (UnaryOperator, error) {
 	if op == lexer.MINUS {
 		return Negate, nil
 	}
@@ -55,6 +55,23 @@ func ToTackyOp(op lexer.TokenType) (UnaryOperator, error) {
 	return Unknown, fmt.Errorf("Cannot convert token to tackyop")
 }
 
+func ToTackyOp(op parser.ASTBinOp) (BinaryOp, error) {
+	if op == parser.ASTBinOp(parser.A_PLUS) {
+		return Add, nil
+	}
+	if op == parser.ASTBinOp(parser.A_MINUS) {
+		return Sub, nil
+	}
+	if op == parser.ASTBinOp(parser.A_DIV) {
+		return Div, nil
+	}
+	if op == parser.ASTBinOp(parser.A_MUL) {
+		return Mul, nil
+	}
+
+	return Add, fmt.Errorf("Cannot convert token to tackyop")
+}
+
 func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
 	switch expr := node.(type) {
 	case *parser.ASTIntLitExpression:
@@ -63,7 +80,7 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
 		src := c.EmitExpr(expr.Inner)
 		dst := c.makeTemp()
 
-		op, err := ToTackyOp(expr.Op)
+		op, err := ToUnaryTackyOp(expr.Op)
 		if err != nil {
 			panic(err)
 		}
@@ -72,6 +89,22 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
 			Op:  op,
 			Src: src,
 			Dst: dst,
+		}
+		c.Irs = append(c.Irs, instr)
+		return dst
+	case *parser.ASTBinary:
+		v1 := c.EmitExpr(expr.Left)
+		v2 := c.EmitExpr(expr.Right)
+		dst := c.makeTemp()
+		op, err := ToTackyOp(expr.Op)
+		if err != nil {
+			panic(err)
+		}
+		instr := Binary{
+			Op:   op,
+			Src1: v1,
+			Src2: v2,
+			Dst:  dst,
 		}
 		c.Irs = append(c.Irs, instr)
 		return dst

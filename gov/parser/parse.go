@@ -197,12 +197,12 @@ func (p *Parser) ParseExpr(prec int) ASTExpression {
 		}
 
 		p.NextToken() // consume the operator
-		op, _ := p.ParseBinOp()
+		op, _ := p.ParseBinOp(p.Current.Type)
 		currPrec := p.currPrecedence()
 		p.NextToken() // consume the right operand
 		right := p.ParseExpr(currPrec)
 
-		left = ASTBinary{
+		left = &ASTBinary{
 			Left:  left,
 			Right: right,
 			Op:    op,
@@ -212,7 +212,7 @@ func (p *Parser) ParseExpr(prec int) ASTExpression {
 	return left
 }
 
-func (p *Parser) ParseBinOp() (ASTBinOp, error) {
+func (p *Parser) ParseBinOp(op lexer.TokenType) (ASTBinOp, error) {
 	if p.Current.Type == lexer.MINUS {
 		return ASTBinOp(A_MINUS), nil
 	} else if p.Current.Type == lexer.PLUS {

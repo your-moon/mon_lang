@@ -175,7 +175,7 @@ func (p *Parser) ParseFactor() ASTExpression {
 	switch p.Current.Type {
 	case lexer.NUMBER:
 		return p.ParseIntLit()
-	case lexer.MINUS, lexer.TILDE:
+	case lexer.MINUS, lexer.TILDE, lexer.NOT:
 		return p.ParseUnary(p.Current.Type)
 	case lexer.OPEN_PAREN:
 		return p.ParseGrouping()
@@ -186,7 +186,11 @@ func (p *Parser) ParseFactor() ASTExpression {
 
 func (p *Parser) IsInfixOp() bool {
 	return p.PeekToken.Type == lexer.PLUS || p.PeekToken.Type == lexer.MINUS ||
-		p.PeekToken.Type == lexer.MUL || p.PeekToken.Type == lexer.DIV
+		p.PeekToken.Type == lexer.MUL || p.PeekToken.Type == lexer.DIV ||
+		p.PeekToken.Type == lexer.LESSTHAN || p.PeekToken.Type == lexer.LESSTHANEQUAL ||
+		p.PeekToken.Type == lexer.GREATERTHAN || p.PeekToken.Type == lexer.GREATERTHANEQUAL ||
+		p.PeekToken.Type == lexer.EQUALTO || p.PeekToken.Type == lexer.NOTEQUAL ||
+		p.PeekToken.Type == lexer.LOGICAND || p.PeekToken.Type == lexer.LOGICOR
 }
 
 func (p *Parser) ParseExpr(prec int) ASTExpression {
@@ -213,17 +217,34 @@ func (p *Parser) ParseExpr(prec int) ASTExpression {
 }
 
 func (p *Parser) ParseBinOp(op lexer.TokenType) (ASTBinOp, error) {
-	if p.Current.Type == lexer.MINUS {
+	switch p.Current.Type {
+	case lexer.MINUS:
 		return ASTBinOp(A_MINUS), nil
-	} else if p.Current.Type == lexer.PLUS {
+	case lexer.PLUS:
 		return ASTBinOp(A_PLUS), nil
-	} else if p.Current.Type == lexer.DIV {
+	case lexer.DIV:
 		return ASTBinOp(A_DIV), nil
-	} else if p.Current.Type == lexer.MUL {
+	case lexer.MUL:
 		return ASTBinOp(A_MUL), nil
+	case lexer.LOGICAND:
+		return ASTBinOp(A_AND), nil
+	case lexer.LOGICOR:
+		return ASTBinOp(A_OR), nil
+	case lexer.EQUALTO:
+		return ASTBinOp(A_EQUALTO), nil
+	case lexer.NOTEQUAL:
+		return ASTBinOp(A_NOTEQUAL), nil
+	case lexer.LESSTHAN:
+		return ASTBinOp(A_LESSTHAN), nil
+	case lexer.LESSTHANEQUAL:
+		return ASTBinOp(A_LESSTHANEQUAL), nil
+	case lexer.GREATERTHAN:
+		return ASTBinOp(A_GREATERTHAN), nil
+	case lexer.GREATERTHANEQUAL:
+		return ASTBinOp(A_GREATERTHANEQUAL), nil
+	default:
+		return ASTBinOp(A_PLUS), fmt.Errorf("unknown bin op: %s", p.Current.Type)
 	}
-
-	return ASTBinOp(A_PLUS), fmt.Errorf("unknown bin op: %s", p.Current.Type)
 }
 
 func (p *Parser) ParseUnary(op lexer.TokenType) *ASTUnary {
@@ -257,6 +278,7 @@ func (p *Parser) ParseIntLit() ASTExpression {
 const (
 	_ int = iota
 	Lowest
+	Logic         // && ||
 	Equals        // =
 	LessOrGreater // < or >
 	Sum           // +
@@ -267,10 +289,18 @@ const (
 )
 
 var precedences = map[lexer.TokenType]int{
-	lexer.PLUS:  Sum,
-	lexer.MINUS: Sum,
-	lexer.DIV:   Product,
-	lexer.MUL:   Product,
+	lexer.PLUS:             Sum,
+	lexer.MINUS:            Sum,
+	lexer.DIV:              Product,
+	lexer.MUL:              Product,
+	lexer.LESSTHAN:         LessOrGreater,
+	lexer.LESSTHANEQUAL:    LessOrGreater,
+	lexer.GREATERTHAN:      LessOrGreater,
+	lexer.GREATERTHANEQUAL: LessOrGreater,
+	lexer.EQUALTO:          Equals,
+	lexer.NOTEQUAL:         Equals,
+	lexer.LOGICAND:         Logic,
+	lexer.LOGICOR:          Logic,
 }
 
 func (p *Parser) currPrecedence() int {

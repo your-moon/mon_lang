@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/your-moon/mn_compiler_go_version/base"
 	codegen "github.com/your-moon/mn_compiler_go_version/code_gen"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
@@ -13,43 +15,143 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/tackygen"
 )
 
-func main() {
-	base.Debug = true
+var (
+	cfgFile string
+	debug   bool
+)
 
-	filePath := "./test/ch1/return.mn"
-	runeString := convertToRuneArray(func() string {
-		data, err := os.ReadFile(filePath)
+var rootCmd = &cobra.Command{
+	Use:   "compiler",
+	Short: "Mongolian language compiler",
+	Long:  `A compiler for the Mongolian programming language.`,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		base.Debug = debug
+	},
+}
+
+var lexCmd = &cobra.Command{
+	Use:   "lex [file]",
+	Short: "Run only the lexer",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runLexer(args[0])
+	},
+}
+
+var parseCmd = &cobra.Command{
+	Use:   "parse [file]",
+	Short: "Run lexer and parser",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runParser(args[0])
+	},
+}
+
+var tackyCmd = &cobra.Command{
+	Use:   "tacky [file]",
+	Short: "Run lexer, parser, and generate tacky IR",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runTacky(args[0])
+	},
+}
+
+var compileCmd = &cobra.Command{
+	Use:   "compile [file]",
+	Short: "Run lexer, parser, and tacky generation",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runCompiler(args[0])
+	},
+}
+
+var genCmd = &cobra.Command{
+	Use:   "gen [file]",
+	Short: "Run all steps including assembly generation",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runGen(args[0])
+	},
+}
+
+func init() {
+	cobra.OnInitialize(initConfig)
+
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.compiler.yaml)")
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug mode")
+
+	rootCmd.AddCommand(lexCmd, parseCmd, tackyCmd, compileCmd, genCmd)
+}
+
+func initConfig() {
+	if cfgFile != "" {
+		viper.SetConfigFile(cfgFile)
+	} else {
+		home, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Printf("Error reading file: %v\n", err)
-			return ""
+			fmt.Println(err)
+			os.Exit(1)
 		}
-		return string(data)
-	}())
-
-	if base.Debug {
-		for _, item := range runeString {
-			fmt.Printf("val: %s, code: %d\n", string(item), item)
-		}
+		viper.AddConfigPath(home)
+		viper.SetConfigName(".compiler")
 	}
 
+	viper.AutomaticEnv()
+
+	if err := viper.ReadInConfig(); err == nil {
+		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	}
+}
+
+func runLexer(filePath string) error {
+	runeString := readFile(filePath)
+	scanner := lexer.NewScanner(runeString)
+	fmt.Println("---- LEXING ----:")
+	for {
+		token, err := scanner.Scan()
+		if err != nil {
+			return fmt.Errorf("lexing error: %v", err)
+		}
+		if token.Type == lexer.EOF {
+			break
+		}
+		fmt.Printf("Token: %v\n", token)
+	}
+	return nil
+}
+
+func runParser(filePath string) error {
+	runeString := readFile(filePath)
+	if err := runLexer(filePath); err != nil {
+		return err
+	}
+
+	fmt.Println("\n---- PARSING ----:")
 	parsed := parser.NewParser(runeString)
 	node, err := parsed.ParseProgram()
-
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("parsing error: %v", err)
 	}
 
 	if len(parsed.Errors()) > 0 {
-		panic(parsed.Errors()[0])
+		return fmt.Errorf("parser errors: %v", parsed.Errors())
 	}
 
-	if base.Debug {
-		if node != nil {
-			fmt.Println("NODE:", node.PrintAST(0))
-		}
+	if base.Debug && node != nil {
+		fmt.Println("AST:", node.PrintAST(0))
+	}
+	return nil
+}
+
+func runCompiler(filePath string) error {
+	runeString := readFile(filePath)
+	parsed := parser.NewParser(runeString)
+	node, err := parsed.ParseProgram()
+	if err != nil {
+		return fmt.Errorf("parsing error: %v", err)
 	}
 
-	fmt.Println("---- COMPILING ----:")
+	fmt.Println("\n---- COMPILING ----:")
 	compilerx := tackygen.NewTackyGen()
 	tackyprogram := compilerx.EmitTacky(node)
 
@@ -58,22 +160,70 @@ func main() {
 		fmt.Println(ir)
 		ir.Ir()
 	}
+	return nil
+}
 
+func runTacky(filePath string) error {
+	runeString := readFile(filePath)
+	parsed := parser.NewParser(runeString)
+	node, err := parsed.ParseProgram()
+	if err != nil {
+		return fmt.Errorf("parsing error: %v", err)
+	}
+
+	fmt.Println("\n---- GENERATING TACKY IR ----:")
+	compilerx := tackygen.NewTackyGen()
+	tackyprogram := compilerx.EmitTacky(node)
+
+	fmt.Println("---- TACKY IR LIST ----:")
+	for _, ir := range tackyprogram.FnDef.Instructions {
+		ir.Ir()
+	}
+	return nil
+}
+
+func runGen(filePath string) error {
+	runeString := readFile(filePath)
+	parsed := parser.NewParser(runeString)
+	node, err := parsed.ParseProgram()
+	if err != nil {
+		return fmt.Errorf("parsing error: %v", err)
+	}
+
+	compilerx := tackygen.NewTackyGen()
+	tackyprogram := compilerx.EmitTacky(node)
+
+	fmt.Println("\n---- GENERATING ASSEMBLY ----:")
 	outfile := "out.asm"
 	openFile, err := os.OpenFile(outfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error opening output file: %v", err)
 	}
+	defer openFile.Close()
 
 	asmastgen := codegen.NewAsmGen()
 	asmast := asmastgen.GenASTAsm(tackyprogram)
 
-	fmt.Println("---- ASMGEN ----:")
 	asmgen := codegen.NewGenASM(openFile, codegen.Aarch64)
 	asmgen.GenAsm(asmast)
+	fmt.Printf("Assembly generated in %s\n", outfile)
+	return nil
+}
 
-	openFile.Close()
+func readFile(filePath string) []int32 {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		fmt.Printf("Error reading file: %v\n", err)
+		os.Exit(1)
+	}
+	return convertToRuneArray(string(data))
+}
 
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
 
 type FileCheck struct {

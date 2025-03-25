@@ -9,6 +9,18 @@ const (
 	DIV     TokenType = "DIV"
 	PERCENT TokenType = "PERCENT"
 
+	GREATERTHAN      TokenType = "GREATERTHAN"      // >
+	GREATERTHANEQUAL TokenType = "GREATERTHANEQUAL" //>=
+	LESSTHAN         TokenType = "LESSTHAN"         // <
+	LESSTHANEQUAL    TokenType = "LESSTHANEQUAL"    // <=
+	ASSIGN           TokenType = "EQUAL"            // =
+	NOTEQUAL         TokenType = "NOTEQUAL"         // !=
+	EQUALTO          TokenType = "EQUALTO"          // ==
+
+	LOGICAND TokenType = "LOGICAND" // &&
+	LOGICOR  TokenType = "LOGICOR"  // ||
+	NOT      TokenType = "NOT"      // !
+
 	RETURN TokenType = "RETURN"
 	PRINT  TokenType = "PRINT"
 

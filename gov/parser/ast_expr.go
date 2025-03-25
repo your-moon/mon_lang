@@ -14,6 +14,15 @@ const (
 	A_MINUS
 	A_DIV
 	A_MUL
+
+	A_AND
+	A_OR
+	A_EQUALTO
+	A_NOTEQUAL
+	A_LESSTHAN
+	A_LESSTHANEQUAL
+	A_GREATERTHAN
+	A_GREATERTHANEQUAL
 )
 
 func (op ASTBinOp) String() string {
@@ -26,6 +35,22 @@ func (op ASTBinOp) String() string {
 		return "/"
 	case ASTBinOp(A_MUL):
 		return "*"
+	case ASTBinOp(A_AND):
+		return "&&"
+	case ASTBinOp(A_OR):
+		return "||"
+	case ASTBinOp(A_EQUALTO):
+		return "=="
+	case ASTBinOp(A_NOTEQUAL):
+		return "!="
+	case ASTBinOp(A_LESSTHAN):
+		return "<"
+	case ASTBinOp(A_LESSTHANEQUAL):
+		return "<="
+	case ASTBinOp(A_GREATERTHAN):
+		return ">"
+	case ASTBinOp(A_GREATERTHANEQUAL):
+		return ">="
 	default:
 		return "unknown"
 	}

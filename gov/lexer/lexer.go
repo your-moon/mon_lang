@@ -209,6 +209,52 @@ func (s *Scanner) Scan() (Token, error) {
 		return s.BuildToken(SEMICOLON), nil
 	case '~':
 		return s.BuildToken(TILDE), nil
+	case '!':
+		if s.Peek() == '=' {
+			s.Next()
+			return s.BuildToken(NOTEQUAL), nil
+		}
+		return s.BuildToken(NOT), nil
+	case '&':
+		if s.Peek() == '&' {
+			s.Next()
+			return s.BuildToken(LOGICAND), nil
+		}
+		return Token{}, fmt.Errorf(
+			"not implemented: got [%c] and line [%d] where [%d]",
+			c,
+			s.Line,
+			s.Column,
+		)
+	case '|':
+		if s.Peek() == '|' {
+			s.Next()
+			return s.BuildToken(LOGICOR), nil
+		}
+		return Token{}, fmt.Errorf(
+			"not implemented: got [%c] and line [%d] where [%d]",
+			c,
+			s.Line,
+			s.Column,
+		)
+	case '=':
+		if s.Peek() == '=' {
+			s.Next()
+			return s.BuildToken(EQUALTO), nil
+		}
+		return s.BuildToken(ASSIGN), nil
+	case '>':
+		if s.Peek() == '=' {
+			s.Next()
+			return s.BuildToken(GREATERTHANEQUAL), nil
+		}
+		return s.BuildToken(GREATERTHAN), nil
+	case '<':
+		if s.Peek() == '=' {
+			s.Next()
+			return s.BuildToken(LESSTHANEQUAL), nil
+		}
+		return s.BuildToken(LESSTHAN), nil
 	}
 
 	return Token{}, fmt.Errorf(

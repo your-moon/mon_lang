@@ -102,7 +102,7 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
 	if instr.Op == tackygen.Remainder {
 		mov := AsmMov{
 			Src: a.GenASTVal(instr.Src1),
-			Dst: a.GenASTVal(instr.Dst),
+			Dst: Register{Reg: AX},
 		}
 		cdq := Cdq{}
 		idiv := Idiv{
@@ -123,7 +123,7 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
 	} else if instr.Op == tackygen.Div {
 		mov := AsmMov{
 			Src: a.GenASTVal(instr.Src1),
-			Dst: a.GenASTVal(instr.Dst),
+			Dst: Register{Reg: AX},
 		}
 		cdq := Cdq{}
 		idiv := Idiv{

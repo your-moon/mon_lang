@@ -75,17 +75,7 @@ func (a *AsmGen) GenInstr(instr AsmInstruction) {
 func (a *AsmGen) GenOperand(op AsmOperand) string {
 	switch ast := op.(type) {
 	case Register:
-		var regval string
-		if ast.Reg == AX {
-			regval = string(AX)
-		} else if ast.Reg == R10 {
-			regval = string(R10)
-		} else if ast.Reg == R11 {
-			regval = string(R11)
-		} else if ast.Reg == DX {
-			regval = string(DX)
-		}
-		return regval
+		return string(ast.Reg)
 	case Imm:
 		return fmt.Sprintf("$%d", ast.Value)
 	case Stack:

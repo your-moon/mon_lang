@@ -1,6 +1,10 @@
 package codegen
 
-import "github.com/your-moon/mn_compiler_go_version/tackygen"
+import (
+	"fmt"
+
+	"github.com/your-moon/mn_compiler_go_version/tackygen"
+)
 
 type MachineTarget string
 
@@ -28,11 +32,26 @@ func (a *AsmASTGen) GenASTAsm(program tackygen.TackyProgram) AsmProgram {
 	asmfn := a.GenASTFn(program.FnDef)
 	asmprogram.AsmFnDef = asmfn
 
+	fmt.Println("---- ASMAST ----:")
+	for _, instr := range asmprogram.AsmFnDef.Irs {
+		fmt.Println(instr.Ir())
+	}
+
 	pass1 := NewReplacementPassGen()
 	asmprogram = pass1.ReplacePseudosInProgram(asmprogram)
 
+	fmt.Println("---- ASMAST AFTER PSEUDO REPLACEMENT ----:")
+	for _, instr := range asmprogram.AsmFnDef.Irs {
+		fmt.Println(instr.Ir())
+	}
+
 	pass2 := NewFixUpPassGen(pass1.CurrentOffset)
 	asmprogram = pass2.FixUpProgram(asmprogram)
+
+	fmt.Println("---- ASMAST AFTER FIXUP ----:")
+	for _, instr := range asmprogram.AsmFnDef.Irs {
+		fmt.Println(instr.Ir())
+	}
 
 	return asmprogram
 }
@@ -52,7 +71,7 @@ func (a *AsmASTGen) GenASTInstr(instrs []tackygen.Instruction) {
 	for _, instr := range instrs {
 		switch ast := instr.(type) {
 		case tackygen.Return:
-			mov := Mov{
+			mov := AsmMov{
 				a.GenASTVal(ast.Value),
 				Register{
 					Reg: AX,
@@ -65,7 +84,7 @@ func (a *AsmASTGen) GenASTInstr(instrs []tackygen.Instruction) {
 			a.GenASTBinary(ast)
 		case tackygen.Unary:
 			dst := a.GenASTVal(ast.Dst)
-			mov := Mov{
+			mov := AsmMov{
 				Src: a.GenASTVal(ast.Src),
 				Dst: a.GenASTVal(ast.Dst),
 			}
@@ -81,7 +100,7 @@ func (a *AsmASTGen) GenASTInstr(instrs []tackygen.Instruction) {
 }
 func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
 	if instr.Op == tackygen.Remainder {
-		mov := Mov{
+		mov := AsmMov{
 			Src: a.GenASTVal(instr.Src1),
 			Dst: a.GenASTVal(instr.Dst),
 		}
@@ -89,7 +108,7 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
 		idiv := Idiv{
 			Src: a.GenASTVal(instr.Src2),
 		}
-		mov2 := Mov{
+		mov2 := AsmMov{
 			Src: Register{
 				Reg: DX,
 			},
@@ -102,7 +121,7 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
 		a.EmitInstr(mov2)
 
 	} else if instr.Op == tackygen.Div {
-		mov := Mov{
+		mov := AsmMov{
 			Src: a.GenASTVal(instr.Src1),
 			Dst: a.GenASTVal(instr.Dst),
 		}
@@ -110,7 +129,7 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
 		idiv := Idiv{
 			Src: a.GenASTVal(instr.Src2),
 		}
-		mov2 := Mov{
+		mov2 := AsmMov{
 			Src: Register{
 				Reg: AX,
 			},
@@ -122,12 +141,12 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
 		a.EmitInstr(idiv)
 		a.EmitInstr(mov2)
 	} else {
-		mov := Mov{
+		mov := AsmMov{
 			Src: a.GenASTVal(instr.Src1),
 			Dst: a.GenASTVal(instr.Dst),
 		}
-		binary := Binary{
-			Op:  BinaryOp(instr.Op),
+		binary := AsmBinary{
+			Op:  a.GenASTBinaryOp(instr.Op),
 			Src: a.GenASTVal(instr.Src2),
 			Dst: a.GenASTVal(instr.Dst),
 		}
@@ -135,6 +154,18 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
 		a.EmitInstr(binary)
 
 	}
+}
+
+func (a *AsmASTGen) GenASTBinaryOp(op tackygen.TackyBinaryOp) AsmAstBinaryOp {
+	switch op {
+	case tackygen.Mul:
+		return Mult
+	case tackygen.Add:
+		return Add
+	case tackygen.Sub:
+		return Sub
+	}
+	panic("unimplemented tacky op on asm gen")
 }
 
 func (a *AsmASTGen) GenASTUnaryOp(op tackygen.UnaryOperator) AsmUnaryOperator {

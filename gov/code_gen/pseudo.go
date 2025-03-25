@@ -30,10 +30,10 @@ func (r *ReplacementPassGen) ReplaceOperand(operand AsmOperand) AsmOperand {
 
 func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction) AsmInstruction {
 	switch ast := instr.(type) {
-	case Mov:
+	case AsmMov:
 		src := r.ReplaceOperand(ast.Src)
 		dst := r.ReplaceOperand(ast.Dst)
-		return Mov{
+		return AsmMov{
 			Src: src,
 			Dst: dst,
 		}
@@ -43,10 +43,10 @@ func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction) A
 			Dst: dst,
 			Op:  ast.Op,
 		}
-	case Binary:
+	case AsmBinary:
 		src := r.ReplaceOperand(ast.Src)
 		dst := r.ReplaceOperand(ast.Dst)
-		return Binary{
+		return AsmBinary{
 			Src: src,
 			Dst: dst,
 			Op:  ast.Op,

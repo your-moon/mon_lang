@@ -1,95 +1,110 @@
 package codegen
 
 type FixUpPassGen struct {
-	stackSize int
+	stackSize         int
+	fixedInstructions []AsmInstruction
 }
 
 func NewFixUpPassGen(stackSize int) FixUpPassGen {
 	return FixUpPassGen{
-		stackSize: stackSize,
+		stackSize:         stackSize,
+		fixedInstructions: []AsmInstruction{},
 	}
 }
 
+func (f *FixUpPassGen) AppendFixedInstruction(instr AsmInstruction) {
+	f.fixedInstructions = append(f.fixedInstructions, instr)
+}
+
 // in golang if you give array to param, its call by ref that means instructions is mutable
-func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, instructions []AsmInstruction, idx int) []AsmInstruction {
+func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, instructions []AsmInstruction, idx int) {
 	switch ast := instr.(type) {
-	case Mov:
+	case AsmMov:
 		srcstack, isit := ast.Src.(Stack)
 		dststack, isitdst := ast.Dst.(Stack)
 		// is invalid mov instruction
 		if isit && isitdst {
-			mov1 := Mov{
+			mov1 := AsmMov{
 				Src: srcstack,
 				Dst: Register{Reg: R10},
 			}
-			mov2 := Mov{
+			mov2 := AsmMov{
 				Src: Register{Reg: R10},
 				Dst: dststack,
 			}
-
-			instructions[idx] = mov1
-			instructions = append(instructions[:idx+1], append([]AsmInstruction{mov2}, instructions[idx+1:]...)...)
-			return instructions
+			f.AppendFixedInstruction(mov1)
+			f.AppendFixedInstruction(mov2)
+			return
 		}
-	case Binary:
+	case AsmBinary:
 		//check invalid check is both stack
 		srcstack, isit := ast.Src.(Stack)
 		dststack, isitdst := ast.Dst.(Stack)
 		if isit && isitdst && (ast.Op == Add || ast.Op == Sub) {
-			mov := Mov{
+			mov := AsmMov{
 				Src: srcstack,
 				Dst: Register{Reg: R10},
 			}
-			binary := Binary{
+			binary := AsmBinary{
 				Op:  ast.Op,
 				Src: Register{Reg: R10},
 				Dst: dststack,
 			}
-			instructions[idx] = mov
-			instructions = append(instructions[:idx+1], append([]AsmInstruction{binary}, instructions[idx+1:]...)...)
+			// instructions[idx] = binary
+			// instructions = append(instructions[:idx+1], append([]AsmInstruction{mov}, instructions[idx+1:]...)...)
+			f.AppendFixedInstruction(binary)
+			f.AppendFixedInstruction(mov)
+			return
 		}
 		//FIX: this type is wrong
-		if ast.Op == Mult {
-			mov := Mov{
-				Src: srcstack,
-				Dst: Register{Reg: R10},
+		if ast.Op == Mult && isitdst {
+			mov := AsmMov{
+				Src: dststack,
+				Dst: Register{Reg: R11},
 			}
-			binary := Binary{
+			binary := AsmBinary{
 				Op:  ast.Op,
 				Src: ast.Src,
-				Dst: Register{Reg: R10},
+				Dst: Register{Reg: R11},
 			}
-			mov2 := Mov{
-				Src: Register{Reg: R10},
-				Dst: ast.Dst,
+			mov2 := AsmMov{
+				Src: Register{Reg: R11},
+				Dst: dststack,
 			}
-			instructions[idx] = mov
-			instructions = append(instructions[:idx+1], append([]AsmInstruction{binary}, instructions[idx+1:]...)...)
-			instructions = append(instructions[:idx+2], append([]AsmInstruction{mov2}, instructions[idx+1:]...)...)
+
+			f.AppendFixedInstruction(mov)
+			f.AppendFixedInstruction(binary)
+			f.AppendFixedInstruction(mov2)
+			return
 		}
 	case Idiv:
-		mov := Mov{
+		mov := AsmMov{
 			Src: ast.Src,
 			Dst: Register{Reg: R10},
 		}
 		idiv := Idiv{
 			Src: Register{Reg: R10},
 		}
-		instructions[idx] = mov
-		instructions = append(instructions[:idx+1], append([]AsmInstruction{idiv}, instructions[idx+1:]...)...)
+		f.AppendFixedInstruction(mov)
+		f.AppendFixedInstruction(idiv)
+		return
 	}
-
-	return instructions
+	f.AppendFixedInstruction(instr)
+	return
 }
 
 func (f *FixUpPassGen) FixUpInFn(fn AsmFnDef) AsmFnDef {
 	allocStack := AllocateStack{
 		Value: absInt(f.stackSize),
 	}
-	fn.Irs = append([]AsmInstruction{allocStack}, fn.Irs...)
+	// fn.Irs = append([]AsmInstruction{allocStack}, fn.Irs...)
+	f.fixedInstructions = append(f.fixedInstructions, allocStack)
+
 	for i, instr := range fn.Irs {
-		fn.Irs = f.FixUpInInstruction(instr, fn.Irs, i)
+		f.FixUpInInstruction(instr, f.fixedInstructions, i)
 	}
+
+	fn.Irs = f.fixedInstructions
 	return fn
 }
 

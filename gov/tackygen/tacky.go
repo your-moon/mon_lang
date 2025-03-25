@@ -2,14 +2,14 @@ package tackygen
 
 import "fmt"
 
-type BinaryOp string
+type TackyBinaryOp string
 
 const (
-	Add       BinaryOp = "add"
-	Sub       BinaryOp = "sub"
-	Mul       BinaryOp = "mul"
-	Div       BinaryOp = "div"
-	Remainder BinaryOp = "remainder"
+	Add       TackyBinaryOp = "add"
+	Sub       TackyBinaryOp = "sub"
+	Mul       TackyBinaryOp = "mul"
+	Div       TackyBinaryOp = "div"
+	Remainder TackyBinaryOp = "remainder"
 )
 
 type UnaryOperator string
@@ -35,7 +35,7 @@ type Return struct {
 }
 
 type Binary struct {
-	Op   BinaryOp
+	Op   TackyBinaryOp
 	Src1 TackyVal
 	Src2 TackyVal
 	Dst  TackyVal

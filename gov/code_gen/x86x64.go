@@ -45,7 +45,20 @@ func (a *AsmGen) GenFn(fn AsmFnDef) {
 
 func (a *AsmGen) GenInstr(instr AsmInstruction) {
 	switch ast := instr.(type) {
-	case Mov:
+	case AsmBinary:
+		if ast.Op == Mult {
+			a.Write(fmt.Sprintf("    imull %s, %s", a.GenOperand(ast.Src), a.GenOperand(ast.Dst)))
+		} else if ast.Op == Add {
+			a.Write(fmt.Sprintf("    addl %s, %s", a.GenOperand(ast.Src), a.GenOperand(ast.Dst)))
+		} else if ast.Op == Sub {
+			a.Write(fmt.Sprintf("    subl %s, %s", a.GenOperand(ast.Src), a.GenOperand(ast.Dst)))
+		}
+
+	case Cdq:
+		a.Write("    cdq")
+	case Idiv:
+		a.Write(fmt.Sprintf("    idivl %s", a.GenOperand(ast.Src)))
+	case AsmMov:
 		a.Write(fmt.Sprintf("    movl %s, %s", a.GenOperand(ast.Src), a.GenOperand(ast.Dst)))
 	case Return:
 		a.Write("    movq %rbp, %rsp")
@@ -67,6 +80,10 @@ func (a *AsmGen) GenOperand(op AsmOperand) string {
 			regval = string(AX)
 		} else if ast.Reg == R10 {
 			regval = string(R10)
+		} else if ast.Reg == R11 {
+			regval = string(R11)
+		} else if ast.Reg == DX {
+			regval = string(DX)
 		}
 		return regval
 	case Imm:

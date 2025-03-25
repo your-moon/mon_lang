@@ -55,7 +55,7 @@ func ToUnaryTackyOp(op lexer.TokenType) (UnaryOperator, error) {
 	return Unknown, fmt.Errorf("Cannot convert token to tackyop")
 }
 
-func ToTackyOp(op parser.ASTBinOp) (BinaryOp, error) {
+func ToTackyOp(op parser.ASTBinOp) (TackyBinaryOp, error) {
 	if op == parser.ASTBinOp(parser.A_PLUS) {
 		return Add, nil
 	}

@@ -2,12 +2,12 @@ package codegen
 
 import "fmt"
 
-type BinaryOp string
+type AsmAstBinaryOp string
 
 const (
-	Add  BinaryOp = "addl"
-	Sub  BinaryOp = "subl"
-	Mult BinaryOp = "imull"
+	Add  AsmAstBinaryOp = "addl"
+	Sub  AsmAstBinaryOp = "subl"
+	Mult AsmAstBinaryOp = "imull"
 )
 
 type AsmUnaryOperator string
@@ -66,13 +66,13 @@ type AsmInstruction interface {
 	Ir() string
 }
 
-type Binary struct {
-	Op  BinaryOp
+type AsmBinary struct {
+	Op  AsmAstBinaryOp
 	Src AsmOperand
 	Dst AsmOperand
 }
 
-func (a Binary) Ir() string {
+func (a AsmBinary) Ir() string {
 	return fmt.Sprintf("%s %s, %s", a.Op, a.Src.Op(), a.Dst.Op())
 }
 
@@ -91,12 +91,12 @@ func (a Cdq) Ir() string {
 	return "cdq"
 }
 
-type Mov struct {
+type AsmMov struct {
 	Src AsmOperand
 	Dst AsmOperand
 }
 
-func (a Mov) Ir() string {
+func (a AsmMov) Ir() string {
 	return fmt.Sprintf("mov %s, %s", a.Src.Op(), a.Dst.Op())
 }
 

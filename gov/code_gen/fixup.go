@@ -52,8 +52,8 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, instructions []A
 			}
 			// instructions[idx] = binary
 			// instructions = append(instructions[:idx+1], append([]AsmInstruction{mov}, instructions[idx+1:]...)...)
-			f.AppendFixedInstruction(binary)
 			f.AppendFixedInstruction(mov)
+			f.AppendFixedInstruction(binary)
 			return
 		}
 		//FIX: this type is wrong

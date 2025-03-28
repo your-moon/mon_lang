@@ -2,6 +2,18 @@ package codegen
 
 import "fmt"
 
+// cond_code = E | NE | G | GE | L | LE
+type CondCode string
+
+const (
+	E  CondCode = "e"
+	NE CondCode = "ne"
+	G  CondCode = "g"
+	GE CondCode = "ge"
+	L  CondCode = "l"
+	LE CondCode = "le"
+)
+
 type AsmAstBinaryOp string
 
 const (
@@ -64,6 +76,49 @@ func (a Stack) Op() string {
 
 type AsmInstruction interface {
 	Ir() string
+}
+
+type Cmp struct {
+	Src AsmOperand
+	Dst AsmOperand
+}
+
+func (a Cmp) Ir() string {
+	return fmt.Sprintf("cmp %s, %s", a.Src.Op(), a.Dst.Op())
+}
+
+type Jmp struct {
+	Ident string
+}
+
+func (a Jmp) Ir() string {
+	return fmt.Sprintf("jmp %s", a.Ident)
+}
+
+type JmpCC struct {
+	CC    CondCode
+	Ident string
+}
+
+func (a JmpCC) Ir() string {
+	return fmt.Sprintf("jmpcc%s %s", a.CC, a.Ident)
+}
+
+type SetCC struct {
+	CC CondCode
+	Op AsmOperand
+}
+
+func (a SetCC) Ir() string {
+	return fmt.Sprintf("setcc%s %s", a.CC, a.Op.Op())
+}
+
+type Label struct {
+	Ident string
+}
+
+func (a Label) Ir() string {
+	return fmt.Sprintf("label %s", a.Ident)
 }
 
 type AsmBinary struct {

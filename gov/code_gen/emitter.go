@@ -70,6 +70,44 @@ func (a *AsmASTGen) GenASTInstr(instrs []tackygen.Instruction) {
 
 	for _, instr := range instrs {
 		switch ast := instr.(type) {
+		case tackygen.Jump:
+			jmp := Jmp{
+				Ident: ast.Target,
+			}
+			a.EmitInstr(jmp)
+		case tackygen.Label:
+			lbl := Label{
+				Ident: ast.Ident,
+			}
+			a.EmitInstr(lbl)
+		case tackygen.Copy:
+			mov := AsmMov{
+				Src: a.GenASTVal(ast.Src),
+				Dst: a.GenASTVal(ast.Dst),
+			}
+			a.EmitInstr(mov)
+		case tackygen.JumpIfZero:
+			cmp := Cmp{
+				Src:  Imm{Value: 0},
+				Dst: a.GenASTVal(ast.Val),
+			}
+			jmpcc := JmpCC{
+				CC:    E,
+				Ident: ast.Ident,
+			}
+			a.EmitInstr(cmp)
+			a.EmitInstr(jmpcc)
+		case tackygen.JumpIfNotZero:
+			cmp := Cmp{
+				Src:  Imm{Value: 0},
+				Dst: a.GenASTVal(ast.Val),
+			}
+			jmpcc := JmpCC{
+				CC:    NE,
+				Ident: ast.Ident,
+			}
+			a.EmitInstr(cmp)
+			a.EmitInstr(jmpcc)
 		case tackygen.Return:
 			mov := AsmMov{
 				a.GenASTVal(ast.Value),
@@ -83,6 +121,25 @@ func (a *AsmASTGen) GenASTInstr(instrs []tackygen.Instruction) {
 		case tackygen.Binary:
 			a.GenASTBinary(ast)
 		case tackygen.Unary:
+			if ast.Op == tackygen.Not {
+				cmp := Cmp{
+					Src:  Imm{Value: 0},
+					Dst: a.GenASTVal(ast.Src),
+				}
+				mov := AsmMov{
+					Src: Imm{Value: 0},
+					Dst: a.GenASTVal(ast.Dst),
+				}
+				setcc := SetCC{
+					CC: E,
+					Op: a.GenASTVal(ast.Dst),
+				}
+				a.EmitInstr(cmp)
+				a.EmitInstr(mov)
+				a.EmitInstr(setcc)
+				return
+			}
+
 			dst := a.GenASTVal(ast.Dst)
 			mov := AsmMov{
 				Src: a.GenASTVal(ast.Src),
@@ -98,7 +155,47 @@ func (a *AsmASTGen) GenASTInstr(instrs []tackygen.Instruction) {
 	}
 
 }
+
+func (a *AsmASTGen) ConvOpToCond(op tackygen.TackyBinaryOp) CondCode {
+	switch op {
+	case tackygen.GreaterThan:
+		return G
+	case tackygen.GreaterThanEqual:
+		return GE
+	case tackygen.LessThan:
+		return L
+	case tackygen.LessThanEqual:
+		return LE
+	case tackygen.Equal:
+		return E
+	case tackygen.NotEqual:
+		return NE
+	default:
+		panic("the op is not relational op")
+
+	}
+}
+
 func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
+	//is relational op
+	if instr.Op == tackygen.GreaterThan || instr.Op == tackygen.GreaterThanEqual || instr.Op == tackygen.LessThan || instr.Op == tackygen.LessThanEqual || instr.Op == tackygen.Equal || instr.Op == tackygen.NotEqual {
+		cmp := Cmp{
+			Src:  a.GenASTVal(instr.Src1),
+			Dst: a.GenASTVal(instr.Src2),
+		}
+		mov := AsmMov{
+			Src: Imm{Value: 0},
+			Dst: a.GenASTVal(instr.Dst),
+		}
+		setcc := SetCC{
+			CC: a.ConvOpToCond(instr.Op),
+			Op: a.GenASTVal(instr.Dst),
+		}
+		a.EmitInstr(cmp)
+		a.EmitInstr(mov)
+		a.EmitInstr(setcc)
+		return
+	}
 	if instr.Op == tackygen.Remainder {
 		mov := AsmMov{
 			Src: a.GenASTVal(instr.Src1),
@@ -119,7 +216,7 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
 		a.EmitInstr(cdq)
 		a.EmitInstr(idiv)
 		a.EmitInstr(mov2)
-
+		return
 	} else if instr.Op == tackygen.Div {
 		mov := AsmMov{
 			Src: a.GenASTVal(instr.Src1),
@@ -140,6 +237,7 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
 		a.EmitInstr(cdq)
 		a.EmitInstr(idiv)
 		a.EmitInstr(mov2)
+		return
 	} else {
 		mov := AsmMov{
 			Src: a.GenASTVal(instr.Src1),
@@ -152,7 +250,7 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
 		}
 		a.EmitInstr(mov)
 		a.EmitInstr(binary)
-
+		return
 	}
 }
 

@@ -19,6 +19,41 @@ func (f *FixUpPassGen) AppendFixedInstruction(instr AsmInstruction) {
 // in golang if you give array to param, its call by ref that means instructions is mutable
 func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, instructions []AsmInstruction, idx int) {
 	switch ast := instr.(type) {
+	case Cmp:
+		srcstack, isit := ast.Src.(Stack)
+		dststack, isitdst := ast.Dst.(Stack)
+
+		// is invalid mov instruction
+		if isit && isitdst {
+			mov1 := AsmMov{
+				Src: srcstack,
+				Dst: Register{Reg: R10},
+			}
+			cmp := Cmp{
+				Src: Register{Reg: R10},
+				Dst: dststack,
+			}
+			f.AppendFixedInstruction(mov1)
+			f.AppendFixedInstruction(cmp)
+			return
+		}
+
+		srcreg, isit := ast.Src.(Register)
+		dstimm, isitdst := ast.Dst.(Imm)
+		if isit && isitdst {
+			mov1 := AsmMov{
+				Src: dstimm,
+				Dst: Register{Reg: R11},
+			}
+			cmp := Cmp{
+				Src: srcreg,
+				Dst: Register{Reg: R11},
+			}
+			f.AppendFixedInstruction(mov1)
+			f.AppendFixedInstruction(cmp)
+			return
+		}
+
 	case AsmMov:
 		srcstack, isit := ast.Src.(Stack)
 		dststack, isitdst := ast.Dst.(Stack)

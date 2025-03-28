@@ -30,6 +30,19 @@ func (r *ReplacementPassGen) ReplaceOperand(operand AsmOperand) AsmOperand {
 
 func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction) AsmInstruction {
 	switch ast := instr.(type) {
+	case SetCC:
+		op := r.ReplaceOperand(ast.Op)
+		return SetCC{
+			Op: op,
+			CC: ast.CC,
+		}
+	case Cmp:
+		src := r.ReplaceOperand(ast.Src)
+		dst := r.ReplaceOperand(ast.Dst)
+		return Cmp{
+			Src: src,
+			Dst: dst,
+		}
 	case AsmMov:
 		src := r.ReplaceOperand(ast.Src)
 		dst := r.ReplaceOperand(ast.Dst)
@@ -63,8 +76,8 @@ func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction) A
 	case AllocateStack:
 		panic("you are not belong to us")
 	default:
-		panic("unimplemented pseudo ininstruction")
-
+		return instr
+		// panic("unimplemented pseudo ininstruction")
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
 	"github.com/your-moon/mn_compiler_go_version/base"
 	codegen "github.com/your-moon/mn_compiler_go_version/code_gen"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
@@ -169,6 +170,10 @@ func runTacky(filePath string) error {
 	node, err := parsed.ParseProgram()
 	if err != nil {
 		return fmt.Errorf("parsing error: %v", err)
+	}
+
+	if base.Debug && node != nil {
+		fmt.Println("AST:", node.PrintAST(0))
 	}
 
 	fmt.Println("\n---- GENERATING TACKY IR ----:")

@@ -252,7 +252,8 @@ func (p *Parser) ParseUnary(op lexer.TokenType) *ASTUnary {
 		Op: op,
 	}
 
-	right := p.ParseFactor()
+	p.NextToken()
+	right := p.ParseExpr(Lowest)
 
 	ast.Inner = right
 

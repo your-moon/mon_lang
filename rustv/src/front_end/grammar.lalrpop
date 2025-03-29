@@ -5,7 +5,10 @@ use crate::front_end::lexer::Error;
 
 use crate::front_end::ast;
 
+
 grammar;
+
+Spanned<T>: ast::Spanned<T> = <l:@L> <t:T> <r:@R> => (t, l..r);
 
 pub Program: ast::Program = {
     <function:FnDef> => ast::Program { func:function },
@@ -18,14 +21,68 @@ Stmt: ast::Stmt = {
     ReturnStmt,
 }
 
-ReturnStmt: ast::Stmt = "буц" <expr:Expr?> ";" => ast::Stmt::Return(ast::ReturnStmt { <> });
+ReturnStmt: ast::Stmt = "буц" <expr:Expression?> ";" => ast::Stmt::Return(ast::ReturnStmt { expr:expr });
 
-Expr: ast::Expr = {
-    <num:number> => ast::Expr::Number(num),
-    "(" <Expr> ")",
-    "-" <expr:Expr> => ast::Expr::Unary(ast::UnaryOp::Neg, Box::new(expr)),
-    "~" <expr:Expr> => ast::Expr::Unary(ast::UnaryOp::Complement, Box::new(expr)),
-} 
+
+Expression = ExprLogicAnd;
+
+ExprLogicAnd = ExprInfix<ExprLogicAnd, OpLogicAnd, ExprLogicOr>;
+OpLogicAnd: ast::OpInfix = {
+    "&&" => ast::OpInfix::And,
+}
+
+ExprLogicOr = ExprInfix<ExprLogicOr, OpLogicOr, ExprComparison>;
+OpLogicOr: ast::OpInfix = {
+    "||" => ast::OpInfix::Or,
+}
+
+ExprComparison = ExprInfix<ExprComparison, OpComparison, ExprTerm>;
+OpComparison: ast::OpInfix = {
+    "==" => ast::OpInfix::Eq,
+    "!=" => ast::OpInfix::Ne,
+    "<" => ast::OpInfix::Lt,
+    ">" => ast::OpInfix::Gt,
+    "<=" => ast::OpInfix::Le,
+    ">=" => ast::OpInfix::Ge,
+}
+
+ExprTerm = ExprInfix<ExprTerm, OpTerm, ExprFactor>;
+OpTerm: ast::OpInfix = {
+    "+" => ast::OpInfix::Add,
+    "-" => ast::OpInfix::Sub,
+}
+
+//this is precedence that prefix is higher than infix
+ExprFactor = ExprInfix<ExprFactor, OpFactor, ExprUnary>;
+OpFactor: ast::OpInfix = {
+    "*" => ast::OpInfix::Mul,
+    "/" => ast::OpInfix::Div,
+}
+
+ExprInfix<Lhs, Op, Rhs>: ast::Expr =  {
+    <lhs:Spanned<Lhs>> <op:Op> <rhs:Spanned<Rhs>> =>
+    ast::Expr::Binary(Box::new(ast::ExprInfix { <> })),
+    Rhs,
+}
+
+
+ExprUnary: ast::Expr = {
+    <op:OpUnary> <expr:Spanned<ExprPrimary>> =>
+        ast::Expr::Unary(Box::new(ast::ExprUnary { <> })),
+    ExprPrimary,
+}
+
+OpUnary: ast::UnaryOp = {
+    "-" => ast::UnaryOp::Neg,
+    "~" => ast::UnaryOp::Complement,
+    "!" => ast::UnaryOp::Not,
+}
+
+ExprPrimary: ast::Expr = {
+    number => ast::Expr::Literal(ast::ExprLiteral::Number(<>)),
+    string => ast::Expr::Literal(ast::ExprLiteral::String(<>)),
+    "(" <expr:Expression> ")" => expr,
+}
 
 extern {
     type Location = usize;
@@ -34,12 +91,24 @@ extern {
     enum Token {
         "!" => Token::Not,
         "~" => Token::Tilde,
+        "&&" => Token::And,
+        "||" => Token::Or,
+
+        "==" => Token::Eq,
+        "!=" => Token::Ne,
+
+        "<" => Token::Lt,
+        ">" => Token::Gt,
+        "<=" => Token::Le,
+        ">=" => Token::Ge,
 
         "үнэн" => Token::True,
         "худал" => Token::False,
 
         "+" => Token::Add,
         "-" => Token::Minus,
+        "*" => Token::Mul,
+        "/" => Token::Div,
 
         "(" => Token::LParen,
         ")" => Token::RParen,
@@ -56,30 +125,3 @@ extern {
         number => Token::NumberLiteral(<String>),
     }
 }
-
-// pub Expr: Box<Expr> = {
-//     Expr ExprOp Factor => Box::new(Expr::Op(<>)),
-//     Factor,
-// }
-
-// Factor: Box<Expr> = {
-//     Factor FactorOp Term => Box::new(Expr::Op(<>)),
-//     Term,
-// }
-
-// FactorOp: Opcode = {
-//     "*" => Opcode::Mul,
-//     "/" => Opcode::Div,
-// }
-
-// ExprOp: Opcode = {
-//     "+" => Opcode::Add,
-//     "-" => Opcode::Sub,
-// }
-
-// Term: Box<Expr> = {
-//     Num => Box::new(Expr::Number(<>)),
-//     "(" <Expr> ")"
-// }
-
-// Num: i32 = r"[0-9]+" => i32::from_str(<>).unwrap();

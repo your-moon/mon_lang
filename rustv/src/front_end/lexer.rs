@@ -40,9 +40,36 @@ pub enum Token {
     #[token("->")]
     RightArrow,
 
-    #[token("тоо")]
-    NumberType,
+    #[token("&")]
+    Ampersand,
 
+    #[token("|")]
+    Pipe,
+
+    #[token("&&")]
+    And,
+
+    #[token("||")]
+    Or, 
+    
+    #[token("==")]
+    Eq,
+
+    #[token("!=")]
+    Ne,
+    
+    #[token("<")]
+    Lt,
+
+    #[token(">")]
+    Gt,    
+    
+    #[token("<=")]
+    Le,
+
+    #[token(">=")]
+    Ge,
+    
     #[token("буц")]
     Return,
 
@@ -57,6 +84,12 @@ pub enum Token {
 
     #[token("-")]
     Minus,
+
+    #[token("*")]
+    Mul,
+
+    #[token("/")]
+    Div,
 
     #[token("!")]
     Not,
@@ -90,6 +123,9 @@ pub enum Token {
 
     #[regex(r"[0-9]+", mnnumber)]
     NumberLiteral(String),
+
+    #[token("тоо")]
+    NumberType,
 }
 
 fn mnnumber(lexer: &mut logos::Lexer<Token>) -> String {

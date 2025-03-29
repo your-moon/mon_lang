@@ -38,15 +38,14 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, instructions []A
 			return
 		}
 
-		srcreg, isit := ast.Src.(Register)
 		dstimm, isitdst := ast.Dst.(Imm)
-		if isit && isitdst {
+		if isitdst {
 			mov1 := AsmMov{
 				Src: dstimm,
 				Dst: Register{Reg: R11},
 			}
 			cmp := Cmp{
-				Src: srcreg,
+				Src: ast.Src,
 				Dst: Register{Reg: R11},
 			}
 			f.AppendFixedInstruction(mov1)

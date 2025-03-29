@@ -2,6 +2,15 @@
 pub enum UnaryOperator {
     Complement,
     Negate,
+    Not,
+}
+
+#[derive(Debug, Clone)]
+pub enum InfixOperator {
+    Add,
+    Sub,
+    Mul,
+    Div,
 }
 
 #[derive(Debug, Clone)]
@@ -16,6 +25,12 @@ pub enum Instruction {
     Unary {
         op: UnaryOperator,
         src: TackyVal,
+        dst: TackyVal,
+        },
+    Binary {
+        op: InfixOperator,
+        left: TackyVal,
+        right: TackyVal,
         dst: TackyVal,
     },
 }

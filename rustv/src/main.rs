@@ -1,6 +1,5 @@
 use std::fs;
 
-mod gen;
 mod tacky;
 mod tacky_gen;
 use anyhow::{Ok, Result};
@@ -19,6 +18,8 @@ struct Commands {
     lex: bool,
     #[arg(short, long)]
     parse: bool,
+    #[arg(short, long)]
+    tacky: bool,
     #[arg(short, long)]
     gen: bool,
     #[arg(short, long)]
@@ -40,8 +41,25 @@ impl Commands {
             let contents =
                 fs::read_to_string(IN_FILE_URL).expect("Should have been able to read the file");
             let lexer = Lexer::new(&contents);
+            for token in lexer {
+                println!("{:?}", token);
+            }
+
+            let lexer = Lexer::new(&contents);
             let parsed = lang::ProgramParser::new().parse(lexer).unwrap();
             println!("{:?}", parsed);
+            return Ok(());
+        }
+        if self.tacky {
+            let contents =
+                fs::read_to_string(IN_FILE_URL).expect("Should have been able to read the file");
+            let lexer = Lexer::new(&contents);
+            let parsed = lang::ProgramParser::new().parse(lexer).unwrap();
+            let mut tack_gen = tacky_gen::TackyGen::new();
+            let tacky_program = tack_gen.emit_tacky(parsed);
+            for instr in tacky_program.function.body {
+                println!("{:?}", instr);
+            }
             return Ok(());
         }
         if self.gen {

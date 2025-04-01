@@ -135,7 +135,7 @@ func runParser(filePath string) error {
 	}
 
 	if len(parsed.Errors()) > 0 {
-		return fmt.Errorf("parser errors: %v", parsed.Errors())
+		return fmt.Errorf("parser errors: %v", parsed.Errors()[0].Error())
 	}
 
 	if base.Debug && node != nil {

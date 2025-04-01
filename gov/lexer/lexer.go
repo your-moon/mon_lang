@@ -87,9 +87,9 @@ func (s *Scanner) Peek() int32 {
 func (s *Scanner) BuildToken(ttype TokenType) Token {
 	if ttype == IDENT || ttype == NUMBER {
 		str := string(s.Source[s.Start:s.Cursor])
-		return BuildToken(ttype, &str)
+		return BuildToken(ttype, &str, int(s.Line), int(s.Start), int(s.Cursor))
 	}
-	return BuildToken(ttype, nil)
+	return BuildToken(ttype, nil, int(s.Line), int(s.Start), int(s.Cursor))
 }
 
 func (s *Scanner) ToKeyword() (Token, bool) {
@@ -97,6 +97,9 @@ func (s *Scanner) ToKeyword() (Token, bool) {
 
 	if str == string(KeywordFn) {
 		return s.BuildToken(FN), true
+	}
+	if str == string(KeywordDecl) {
+		return s.BuildToken(DECL), true
 	}
 	if str == string(KeywordInt) {
 		return s.BuildToken(INT_TYPE), true
@@ -205,6 +208,8 @@ func (s *Scanner) Scan() (Token, error) {
 		return s.BuildToken(OPEN_BRACE), nil
 	case '}':
 		return s.BuildToken(CLOSE_BRACE), nil
+	case ':':
+		return s.BuildToken(COLON), nil
 	case ';':
 		return s.BuildToken(SEMICOLON), nil
 	case '~':

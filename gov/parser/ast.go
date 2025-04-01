@@ -4,7 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+
+	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
+
+type BlockItem interface {
+	ASTNode
+}
 
 type ASTNode interface {
 	TokenLiteral() string
@@ -26,11 +32,17 @@ type ASTStmt interface {
 }
 
 type ASTProgram struct {
-	FnDef ASTFNStmt
+	FnDef ASTFNDef
 }
 
 func (a *ASTProgram) TokenLiteral() string {
 	return a.FnDef.TokenLiteral()
+}
+
+type ASTFNDef struct {
+	Token      lexer.Token
+	ReturnType lexer.TokenType
+	BlockItem  []BlockItem
 }
 
 func (a *ASTProgram) PrintAST(depth int) string {

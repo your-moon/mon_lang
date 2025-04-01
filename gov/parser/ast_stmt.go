@@ -7,15 +7,16 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
 
+type ASTNullStmt struct {
+	Token lexer.Token
+}
+
+func (a *ASTNullStmt) statementNode()       {}
+func (a *ASTNullStmt) TokenLiteral() string { return string(a.Token.Type) }
+
 type ASTExpressionStmt struct {
 	Token      lexer.Token
 	Expression ASTExpression
-}
-
-type ASTFNStmt struct {
-	Token      lexer.Token
-	ReturnType lexer.TokenType
-	Stmt       ASTStmt
 }
 
 type ASTReturnStmt struct {
@@ -42,19 +43,19 @@ func (a *ASTExpressionStmt) PrintAST(depth int) string {
 	return out.String()
 }
 
-func (a *ASTFNStmt) statementNode() {}
-func (a *ASTFNStmt) TokenLiteral() string {
+func (a *ASTFNDef) statementNode() {}
+func (a *ASTFNDef) TokenLiteral() string {
 	return string(*a.Token.Value)
 }
-func (a *ASTFNStmt) PrintAST(depth int) string {
+func (a *ASTFNDef) PrintAST(depth int) string {
 	var out bytes.Buffer
 
 	if a.Token.Value != nil {
 		out.WriteString(fmt.Sprintf("%sFN %s[\n", indent(depth), *a.Token.Value))
 	}
 
-	if a.Stmt != nil {
-		out.WriteString(a.Stmt.PrintAST(depth+1) + "\n")
+	for _, b := range a.BlockItem {
+		out.WriteString(b.PrintAST(depth+1) + "\n")
 	}
 
 	out.WriteString(indent(depth) + "]")

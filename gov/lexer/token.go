@@ -13,7 +13,7 @@ const (
 	GREATERTHANEQUAL TokenType = "GREATERTHANEQUAL" //>=
 	LESSTHAN         TokenType = "LESSTHAN"         // <
 	LESSTHANEQUAL    TokenType = "LESSTHANEQUAL"    // <=
-	ASSIGN           TokenType = "EQUAL"            // =
+	ASSIGN           TokenType = "ASSIGN"           // =
 	NOTEQUAL         TokenType = "NOTEQUAL"         // !=
 	EQUALTO          TokenType = "EQUALTO"          // ==
 
@@ -27,12 +27,14 @@ const (
 	IDENT       TokenType = "IDENT"
 	NUMBER      TokenType = "NUMBER"
 	FN          TokenType = "FN"
+	DECL        TokenType = "DECL"
 	OPEN_PAREN  TokenType = "OPEN_PAREN"
 	CLOSE_PAREN TokenType = "CLOSE_PAREN"
 	RIGHT_ARROW TokenType = "RIGHT_ARROW"
 	OPEN_BRACE  TokenType = "OPEN_BRACE"
 	CLOSE_BRACE TokenType = "CLOSE_BRACE"
 	SEMICOLON   TokenType = "SEMICOLON"
+	COLON       TokenType = "COLON"
 	TILDE       TokenType = "TILDE"
 	EOF         TokenType = "EOF"
 
@@ -43,11 +45,20 @@ const (
 type Token struct {
 	Type  TokenType
 	Value *string
+	Line  int
+	Span  Span
 }
 
-func BuildToken(ttype TokenType, value *string) Token {
+type Span struct {
+	Start int
+	End   int
+}
+
+func BuildToken(ttype TokenType, value *string, line int, start int, end int) Token {
 	return Token{
 		Type:  ttype,
 		Value: value,
+		Line:  line,
+		Span:  Span{Start: start, End: end},
 	}
 }

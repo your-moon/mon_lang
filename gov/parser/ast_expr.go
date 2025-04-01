@@ -15,6 +15,8 @@ const (
 	A_DIV
 	A_MUL
 
+	A_ASSIGN
+
 	A_AND
 	A_OR
 	A_EQUALTO
@@ -54,6 +56,16 @@ func (op ASTBinOp) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+type ASTIdent struct {
+	Token lexer.Token
+}
+
+func (a *ASTIdent) expressionNode()      {}
+func (a *ASTIdent) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTIdent) PrintAST(depth int) string {
+	return indent(depth) + *a.Token.Value
 }
 
 type ASTIntLitExpression struct {
@@ -117,6 +129,49 @@ func (a ASTBinary) PrintAST(depth int) string {
 	}
 	if a.Right != nil {
 		out.WriteString(a.Right.PrintAST(depth+1) + "\n")
+	}
+
+	out.WriteString(indent(depth) + "]")
+	return out.String()
+}
+
+type ASTAssignment struct {
+	Left  ASTExpression
+	Right ASTExpression
+}
+
+func (a *ASTAssignment) expressionNode()      {}
+func (a *ASTAssignment) TokenLiteral() string { return "VAR" }
+func (a *ASTAssignment) PrintAST(depth int) string {
+	var out bytes.Buffer
+
+	out.WriteString(fmt.Sprintf("%sASSIGNMENT[\n", indent(depth)))
+
+	if a.Left != nil {
+		out.WriteString(a.Left.PrintAST(depth+1) + "\n")
+	}
+
+	if a.Right != nil {
+		out.WriteString(a.Right.PrintAST(depth+1) + "\n")
+	}
+
+	out.WriteString(indent(depth) + "]")
+	return out.String()
+}
+
+type ASTVar struct {
+	Ident ASTExpression
+}
+
+func (a *ASTVar) expressionNode()      {}
+func (a *ASTVar) TokenLiteral() string { return "VAR" }
+func (a *ASTVar) PrintAST(depth int) string {
+	var out bytes.Buffer
+
+	out.WriteString(fmt.Sprintf("%sVAR[\n", indent(depth)))
+
+	if a.Ident != nil {
+		out.WriteString(a.Ident.PrintAST(depth+1) + "\n")
 	}
 
 	out.WriteString(indent(depth) + "]")

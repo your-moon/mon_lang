@@ -37,14 +37,17 @@ func (c *TackyGen) makeLabel(prefix string) Var {
 func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	program := TackyProgram{}
 
-	switch ast := node.FnDef.Stmt.(type) {
-	case *parser.ASTReturnStmt:
-		if ast.ReturnValue != nil {
-			val := c.EmitExpr(ast.ReturnValue)
-			c.Irs = append(c.Irs, Return{Value: val})
-		}
+	for _, stmt := range node.FnDef.BlockItem {
+		switch ast := stmt.(type) {
+		case *parser.ASTReturnStmt:
+			if ast.ReturnValue != nil {
+				val := c.EmitExpr(ast.ReturnValue)
+				c.Irs = append(c.Irs, Return{Value: val})
+			}
 
+		}
 	}
+
 	program.FnDef = TackyFn{
 		Name:         node.FnDef.TokenLiteral(),
 		Instructions: c.Irs,

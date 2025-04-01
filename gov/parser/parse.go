@@ -8,12 +8,22 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
 
+type ParseError struct {
+	message string
+	Line    int
+	Span    lexer.Span
+}
+
+func (p *ParseError) Error() string {
+	return fmt.Sprintf("line: %d, start: %d, end: %d, message: %s", p.Line, p.Span.Start, p.Span.End, p.message)
+}
+
 type Parser struct {
-	Source    []int32
-	Current   lexer.Token
-	PeekToken lexer.Token
-	scanner   lexer.Scanner
-	errors    []error
+	Source      []int32
+	Current     lexer.Token
+	PeekToken   lexer.Token
+	scanner     lexer.Scanner
+	parseErrors []ParseError
 }
 
 func NewParser(source []int32) Parser {
@@ -27,8 +37,8 @@ func NewParser(source []int32) Parser {
 	return parser
 }
 
-func (p *Parser) Errors() []error {
-	return p.errors
+func (p *Parser) Errors() []ParseError {
+	return p.parseErrors
 }
 
 func (p *Parser) NextToken() {
@@ -39,8 +49,12 @@ func (p *Parser) NextToken() {
 	}
 }
 
-func (p *Parser) current() lexer.Token {
-	return p.Current
+func (p *Parser) checkOptional(expected lexer.TokenType) bool {
+	if p.PeekToken.Type == expected {
+		p.NextToken()
+		return true
+	}
+	return false
 }
 
 func (p *Parser) expect(expected lexer.TokenType) bool {
@@ -56,11 +70,23 @@ func (p *Parser) currIs(expected lexer.TokenType) bool {
 	return p.Current.Type == expected
 }
 
-func (p *Parser) peekError(t lexer.TokenType) {
-	msg := fmt.Errorf("expected next token to be %s, got %s instead", t, p.PeekToken.Type)
-	p.errors = append(p.errors, msg)
+func (p *Parser) appendError(message string) {
+	p.parseErrors = append(p.parseErrors, ParseError{
+		message: message,
+		Line:    p.Current.Line,
+		Span:    p.Current.Span,
+	})
 }
 
+func (p *Parser) peekError(t lexer.TokenType) {
+	p.parseErrors = append(p.parseErrors, ParseError{
+		message: fmt.Sprintf("expected next token to be %s, got %s instead", t, p.PeekToken.Type),
+		Line:    p.Current.Line,
+		Span:    p.Current.Span,
+	})
+}
+
+// <program> ::= <function>
 func (p *Parser) ParseProgram() (*ASTProgram, error) {
 
 	program := &ASTProgram{}
@@ -76,16 +102,16 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 	return program, nil
 }
 
-func (p *Parser) ParseStmt() ASTStmt {
+// <block-item> ::= <statement> | <declaration>
+func (p *Parser) ParseBlockItem() BlockItem {
 	switch p.Current.Type {
-	case lexer.FN:
-		stmt := p.ParseFN()
-		if stmt == nil {
-			return nil
-		}
-		return stmt
+	//<declaration>
+	case lexer.DECL:
+		return p.ParseDecl()
+	// <statement>
 	case lexer.RETURN:
 		return p.ParseReturn()
+	// <statement>
 	default:
 		return p.ParseExpressionStmt()
 	}
@@ -108,11 +134,12 @@ func (p *Parser) ParseExpressionStmt() *ASTExpressionStmt {
 	return ast
 }
 
-func (p *Parser) ParseFN() *ASTFNStmt {
+// <function> ::= "фн" <identifier> "(" "" ")" "->" "тоо" "{" { <block-item> } "}"
+func (p *Parser) ParseFN() *ASTFNDef {
 	p.NextToken()
 	fnName := p.Current
 	fmt.Println("FNNAME", fnName)
-	ast := ASTFNStmt{
+	ast := ASTFNDef{
 		Token: fnName,
 	}
 
@@ -133,18 +160,19 @@ func (p *Parser) ParseFN() *ASTFNStmt {
 		return nil
 	}
 
-	ast.Stmt = p.ParseBlockStmt()[0]
+	ast.BlockItem = p.ParseBlockItems()
 
 	return &ast
 }
 
-func (p *Parser) ParseBlockStmt() []ASTStmt {
-	var stmtarr []ASTStmt
+// <block-item> ::= <statement> | <declaration>
+func (p *Parser) ParseBlockItems() []BlockItem {
+	var stmtarr []BlockItem
 
 	p.NextToken()
 
 	for !p.currIs(lexer.CLOSE_BRACE) && !p.currIs(lexer.EOF) {
-		stmt := p.ParseStmt()
+		stmt := p.ParseBlockItem()
 		if stmt != nil {
 			stmtarr = append(stmtarr, stmt)
 		}
@@ -152,6 +180,40 @@ func (p *Parser) ParseBlockStmt() []ASTStmt {
 	}
 
 	return stmtarr
+}
+
+// <declaration> ::= "зарла" <identifier> [ ":" "тоo" ] "=" <exp> ";"
+func (p *Parser) ParseDecl() *Decl {
+	ast := &Decl{}
+
+	p.NextToken() // consume 'зарла'
+
+	if p.Current.Value == nil {
+		p.appendError("declaration value must be set on lexer")
+	}
+
+	ident := *p.Current.Value
+
+	//has [ ":" "тоо" ]
+	if p.checkOptional(lexer.COLON) {
+		if !p.expect(lexer.INT_TYPE) {
+			return nil
+		}
+	}
+	ast.Ident = ident
+
+	if !p.expect(lexer.ASSIGN) {
+		return nil
+	}
+
+	p.NextToken()
+	ast.Expr = p.ParseExpr(Lowest)
+
+	if !p.expect(lexer.SEMICOLON) {
+		return nil
+	}
+
+	return ast
 }
 
 func (p *Parser) ParseReturn() *ASTReturnStmt {
@@ -171,8 +233,11 @@ func (p *Parser) ParseReturn() *ASTReturnStmt {
 	return ast
 }
 
+// <factor> ::= <int> | <identifier> | <unop> <factor> | "(" <exp> ")"
 func (p *Parser) ParseFactor() ASTExpression {
 	switch p.Current.Type {
+	case lexer.IDENT:
+		return p.ParseIdent()
 	case lexer.NUMBER:
 		return p.ParseIntLit()
 	case lexer.MINUS, lexer.TILDE, lexer.NOT:
@@ -180,7 +245,8 @@ func (p *Parser) ParseFactor() ASTExpression {
 	case lexer.OPEN_PAREN:
 		return p.ParseGrouping()
 	default:
-		panic(fmt.Sprintf("dont know this expr %s", p.Current.Type))
+		p.appendError(fmt.Sprintf("dont know this expr %s", p.Current.Type))
+		return nil
 	}
 }
 
@@ -190,7 +256,8 @@ func (p *Parser) IsInfixOp() bool {
 		p.PeekToken.Type == lexer.LESSTHAN || p.PeekToken.Type == lexer.LESSTHANEQUAL ||
 		p.PeekToken.Type == lexer.GREATERTHAN || p.PeekToken.Type == lexer.GREATERTHANEQUAL ||
 		p.PeekToken.Type == lexer.EQUALTO || p.PeekToken.Type == lexer.NOTEQUAL ||
-		p.PeekToken.Type == lexer.LOGICAND || p.PeekToken.Type == lexer.LOGICOR
+		p.PeekToken.Type == lexer.LOGICAND || p.PeekToken.Type == lexer.LOGICOR || p.PeekToken.Type == lexer.ASSIGN
+
 }
 
 func (p *Parser) ParseExpr(prec int) ASTExpression {
@@ -203,6 +270,16 @@ func (p *Parser) ParseExpr(prec int) ASTExpression {
 		p.NextToken() // consume the operator
 		op, _ := p.ParseBinOp(p.Current.Type)
 		currPrec := p.currPrecedence()
+
+		if op == ASTBinOp(A_ASSIGN) {
+			p.NextToken()
+			right := p.ParseExpr(currPrec)
+			left := &ASTAssignment{
+				Left:  left,
+				Right: right,
+			}
+			return left
+		}
 		p.NextToken() // consume the right operand
 		right := p.ParseExpr(currPrec)
 
@@ -230,6 +307,8 @@ func (p *Parser) ParseBinOp(op lexer.TokenType) (ASTBinOp, error) {
 		return ASTBinOp(A_AND), nil
 	case lexer.LOGICOR:
 		return ASTBinOp(A_OR), nil
+	case lexer.ASSIGN:
+		return ASTBinOp(A_ASSIGN), nil
 	case lexer.EQUALTO:
 		return ASTBinOp(A_EQUALTO), nil
 	case lexer.NOTEQUAL:
@@ -266,8 +345,9 @@ func (p *Parser) ParseGrouping() ASTExpression {
 	return inner
 }
 
-func (p *Parser) ParseInFixExpr(op lexer.TokenType) *ASTInfixExpression {
-	panic("not implemented")
+func (p *Parser) ParseIdent() ASTExpression {
+	ast := &ASTIdent{Token: p.Current}
+	return ast
 }
 
 func (p *Parser) ParseIntLit() ASTExpression {
@@ -279,8 +359,9 @@ func (p *Parser) ParseIntLit() ASTExpression {
 const (
 	_ int = iota
 	Lowest
+	Assign        // =
 	Logic         // && ||
-	Equals        // =
+	Equals        // ==
 	LessOrGreater // < or >
 	Sum           // +
 	Product       // *
@@ -302,6 +383,7 @@ var precedences = map[lexer.TokenType]int{
 	lexer.NOTEQUAL:         Equals,
 	lexer.LOGICAND:         Logic,
 	lexer.LOGICOR:          Logic,
+	lexer.ASSIGN:           Assign,
 }
 
 func (p *Parser) currPrecedence() int {

@@ -1,5 +1,5 @@
-.globl майн
-майн:
+.globl _main
+_main:
     pushq %rbp
     movq %rsp, %rbp
     subq $4, %rsp

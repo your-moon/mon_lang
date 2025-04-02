@@ -54,9 +54,9 @@ func (a *ASTFNDef) PrintAST(depth int) string {
 		out.WriteString(fmt.Sprintf("%sFN %s[\n", indent(depth), *a.Token.Value))
 	}
 
-	for _, b := range a.BlockItem {
-		out.WriteString(b.PrintAST(depth+1) + "\n")
-	}
+	// for _, b := range a.BlockItem {
+	// out.WriteString(b.PrintAST(depth+1) + "\n")
+	// }
 
 	out.WriteString(indent(depth) + "]")
 	return out.String()

@@ -9,7 +9,6 @@ import (
 )
 
 type BlockItem interface {
-	ASTNode
 }
 
 type ASTNode interface {

@@ -109,9 +109,15 @@ func (p *Parser) ParseBlockItem() BlockItem {
 	case lexer.DECL:
 		return p.ParseDecl()
 	// <statement>
+	default:
+		return p.ParseStmt()
+	}
+}
+
+func (p *Parser) ParseStmt() ASTStmt {
+	switch p.Current.Type {
 	case lexer.RETURN:
 		return p.ParseReturn()
-	// <statement>
 	default:
 		return p.ParseExpressionStmt()
 	}

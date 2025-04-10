@@ -13,6 +13,7 @@ import (
 	codegen "github.com/your-moon/mn_compiler_go_version/code_gen"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 	"github.com/your-moon/mn_compiler_go_version/parser"
+	semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
 	"github.com/your-moon/mn_compiler_go_version/tackygen"
 )
 
@@ -45,6 +46,15 @@ var parseCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runParser(args[0])
+	},
+}
+
+var validateCmd = &cobra.Command{
+	Use:   "validate [file]",
+	Short: "Run validate",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runValidate(args[0])
 	},
 }
 
@@ -118,6 +128,37 @@ func runLexer(filePath string) error {
 		}
 		fmt.Printf("Token: %v\n", token)
 	}
+	return nil
+}
+
+func runValidate(filePath string) error {
+	runeString := readFile(filePath)
+	if err := runLexer(filePath); err != nil {
+		return err
+	}
+
+	fmt.Println("\n---- PARSING ----:")
+	parsed := parser.NewParser(runeString)
+	node, err := parsed.ParseProgram()
+	if err != nil {
+		return fmt.Errorf("parsing error: %v", err)
+	}
+
+	if len(parsed.Errors()) > 0 {
+		return fmt.Errorf("parser errors: %v", parsed.Errors()[0].Error())
+	}
+
+	if base.Debug && node != nil {
+		fmt.Println("AST:", node.PrintAST(0))
+	}
+
+	resolver := semanticanalysis.New()
+
+	_, err = resolver.Resolve(node)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

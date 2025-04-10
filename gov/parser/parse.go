@@ -166,7 +166,7 @@ func (p *Parser) ParseFN() *ASTFNDef {
 		return nil
 	}
 
-	ast.BlockItem = p.ParseBlockItems()
+	ast.BlockItems = p.ParseBlockItems()
 
 	return &ast
 }

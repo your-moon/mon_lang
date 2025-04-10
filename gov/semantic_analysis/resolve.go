@@ -1,200 +1,190 @@
 package semanticanalysis
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/your-moon/mn_compiler_go_version/lexer"
 	"github.com/your-moon/mn_compiler_go_version/parser"
 )
 
-// Scope represents a lexical scope for variable declarations
-type Scope struct {
-	variables map[string]*SymbolInfo
-	parent    *Scope
-}
-
-// SymbolInfo stores information about a declared variable
-type SymbolInfo struct {
-	Type        lexer.TokenType
-	Declared    bool
-	Initialized bool
-}
-
-// NewScope creates a new scope with an optional parent scope
-func NewScope(parent *Scope) *Scope {
-	return &Scope{
-		variables: make(map[string]*SymbolInfo),
-		parent:    parent,
-	}
-}
-
-// Declare adds a variable to the current scope
-func (s *Scope) Declare(name string, typ lexer.TokenType) error {
-	if _, exists := s.variables[name]; exists {
-		return fmt.Errorf("variable %s already declared in this scope", name)
-	}
-	s.variables[name] = &SymbolInfo{
-		Type:        typ,
-		Declared:    true,
-		Initialized: false,
-	}
-	return nil
-}
-
-// Lookup searches for a variable in the current scope and parent scopes
-func (s *Scope) Lookup(name string) (*SymbolInfo, bool) {
-	if info, exists := s.variables[name]; exists {
-		return info, true
-	}
-	if s.parent != nil {
-		return s.parent.Lookup(name)
-	}
-	return nil, false
-}
-
-// Resolver performs semantic analysis on the AST
 type Resolver struct {
-	parser       *parser.Parser
-	currentScope *Scope
-	errors       []string
+	variableMap map[string]string
+	tempCounter int
 }
 
-func NewResolver(parser *parser.Parser) *Resolver {
-	return &Resolver{
-		parser:       parser,
-		currentScope: NewScope(nil),
-		errors:       make([]string, 0),
+func New() Resolver {
+	return Resolver{
+		variableMap: make(map[string]string),
+		tempCounter: 0,
 	}
 }
 
-func (r *Resolver) pushScope() {
-	r.currentScope = NewScope(r.currentScope)
+func (r *Resolver) makeNamedTemporary(name string) string {
+	r.tempCounter++
+	return fmt.Sprintf("%s_%d", name, r.tempCounter)
 }
 
-func (r *Resolver) popScope() {
-	if r.currentScope.parent != nil {
-		r.currentScope = r.currentScope.parent
-	}
-}
-
-func (r *Resolver) addError(msg string) {
-	r.errors = append(r.errors, msg)
-}
-
-func (r *Resolver) Resolve() error {
-	program, err := r.parser.ParseProgram()
+func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, error) {
+	fndef, err := r.ResolveFnDef(program.FnDef)
 	if err != nil {
-		return fmt.Errorf("parsing error: %v", err)
+		return nil, err
 	}
 
-	r.VisitProgram(program)
+	program.FnDef = fndef
+	return program, nil
+}
 
-	if len(r.errors) > 0 {
-		return fmt.Errorf("semantic errors: %v", r.errors)
+func (r *Resolver) ResolveFnDef(fndef parser.ASTFNDef) (parser.ASTFNDef, error) {
+	// Create a new scope for the function
+	oldMap := r.variableMap
+	r.variableMap = make(map[string]string)
+	defer func() { r.variableMap = oldMap }()
+
+	for i, item := range fndef.BlockItems {
+		blockitem, err := r.ResolveBlockItem(item)
+		if err != nil {
+			return parser.ASTFNDef{}, err
+		}
+		fndef.BlockItems[i] = blockitem
 	}
-
-	return nil
+	return fndef, nil
 }
 
-// VisitProgram visits the program node
-func (r *Resolver) VisitProgram(program *parser.ASTProgram) {
-	r.pushScope() // Create global scope
-	r.VisitFnDef(&program.FnDef)
-	r.popScope()
-}
-
-func (r *Resolver) VisitFnDef(fn *parser.ASTFNDef) {
-	r.pushScope() // Create function scope
-	r.VisitBlockItems(fn.BlockItem)
-	r.popScope()
-}
-
-func (r *Resolver) VisitBlockItems(blockItems []parser.BlockItem) {
-	for _, item := range blockItems {
-		r.VisitBlockItem(item)
-	}
-}
-
-func (r *Resolver) VisitBlockItem(blockItem parser.BlockItem) {
-	switch item := blockItem.(type) {
+func (r *Resolver) ResolveBlockItem(program parser.BlockItem) (parser.BlockItem, error) {
+	switch nodetype := program.(type) {
 	case parser.ASTStmt:
-		r.VisitStmt(item)
+		stmt, err := r.ResolveStmt(nodetype)
+		if err != nil {
+			return stmt, err
+		}
+		return stmt, nil
 	case *parser.Decl:
-		r.VisitDecl(item)
+		decl, err := r.ResolveDecl(nodetype)
+		if err != nil {
+			return decl, err
+		}
+		return decl, nil
 	}
+
+	return nil, errors.New("unreachable point")
 }
 
-func (r *Resolver) VisitStmt(stmt parser.ASTStmt) {
-	switch s := stmt.(type) {
-	case *parser.ASTExpressionStmt:
-		r.VisitExpressionStmt(s)
+func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
+	switch nodetype := program.(type) {
 	case *parser.ASTReturnStmt:
-		if s.ReturnValue != nil {
-			r.VisitExpr(s.ReturnValue)
+		retval, err := r.ResolveExpr(nodetype.ReturnValue)
+		if err != nil {
+			return nodetype, err
 		}
-	case *parser.ASTPrintStmt:
-		if s.Value != nil {
-			r.VisitExpr(s.Value)
+		nodetype.ReturnValue = retval
+		return nodetype, nil
+	case *parser.ASTExpressionStmt:
+		expr, err := r.ResolveExpr(nodetype.Expression)
+		if err != nil {
+			return nodetype, err
 		}
+		nodetype.Expression = expr
+		return nodetype, nil
 	}
+	return program, nil
 }
 
-func (r *Resolver) VisitDecl(decl *parser.Decl) {
-	// Handle variable declaration
-	if err := r.currentScope.Declare(decl.Ident, lexer.INT_TYPE); err != nil {
-		r.addError(err.Error())
-		return
+func (r *Resolver) ResolveDecl(program *parser.Decl) (*parser.Decl, error) {
+	// Check for duplicate declaration
+	if _, exists := r.variableMap[program.Ident]; exists {
+		return nil, fmt.Errorf("duplicate variable declaration: %s", program.Ident)
 	}
 
-	if decl.Expr != nil {
-		exprType := r.VisitExpr(decl.Expr)
-		if exprType != lexer.INT_TYPE {
-			r.addError(fmt.Sprintf("type mismatch in declaration of %s: expected INT_TYPE, got %v",
-				decl.Ident, exprType))
-			return
-		}
+	uniqueName := r.makeNamedTemporary(program.Ident)
+	r.variableMap[program.Ident] = uniqueName
 
-		if info, exists := r.currentScope.Lookup(decl.Ident); exists {
-			info.Initialized = true
+	if program.Expr != nil {
+		resolved, err := r.ResolveExpr(program.Expr)
+		if err != nil {
+			return nil, err
 		}
+		program.Expr = resolved
 	}
+
+	program.Ident = uniqueName
+	return program, nil
 }
 
-func (r *Resolver) VisitExpr(expr parser.ASTExpression) lexer.TokenType {
-	switch e := expr.(type) {
-	case *parser.ASTIdent:
-		if e.Token.Value == nil {
-			r.addError("identifier token has nil value")
-			return lexer.NUMBER
+func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpression, error) {
+	if program == nil {
+		return nil, nil
+	}
+
+	switch nodetype := program.(type) {
+	case *parser.ASTAssignment:
+		left, ok := nodetype.Left.(*parser.ASTVar)
+		if !ok {
+			return nil, fmt.Errorf("expected variable on left hand side of assignment statement, found %s", nodetype.Left.TokenLiteral())
 		}
 
-		if info, exists := r.currentScope.Lookup(*e.Token.Value); exists {
-			if !info.Initialized {
-				r.addError(fmt.Sprintf("use of uninitialized variable %s", *e.Token.Value))
-			}
-			return info.Type
+		resolvedLeft, err := r.ResolveExpr(left)
+		if err != nil {
+			return nil, err
 		}
-		r.addError(fmt.Sprintf("undefined variable %s", *e.Token.Value))
-		return lexer.NUMBER
 
-	case *parser.ASTIntLitExpression:
-		return lexer.INT_TYPE
+		resolvedRight, err := r.ResolveExpr(nodetype.Right)
+		if err != nil {
+			return nil, err
+		}
+
+		return &parser.ASTAssignment{
+			Left:  resolvedLeft,
+			Right: resolvedRight,
+		}, nil
+
+	case *parser.ASTVar:
+		ident, ok := nodetype.Ident.(*parser.ASTIdent)
+		if !ok {
+			return nil, fmt.Errorf("expected identifier in variable reference, found %s", nodetype.Ident.TokenLiteral())
+		}
+
+		uniqueName, exists := r.variableMap[*ident.Token.Value]
+		if !exists {
+			return nil, fmt.Errorf("undeclared variable: %s", *ident.Token.Value)
+		}
+
+		newIdent := &parser.ASTIdent{Token: ident.Token}
+		*newIdent.Token.Value = uniqueName
+		return &parser.ASTVar{Ident: newIdent}, nil
+
+	case *parser.ASTUnary:
+		resolvedInner, err := r.ResolveExpr(nodetype.Inner)
+		if err != nil {
+			return nil, err
+		}
+		return &parser.ASTUnary{
+			Inner: resolvedInner,
+			Op:    nodetype.Op,
+		}, nil
 
 	case *parser.ASTBinary:
-		leftType := r.VisitExpr(e.Left)
-		rightType := r.VisitExpr(e.Right)
-
-		if leftType != rightType {
-			r.addError(fmt.Sprintf("type mismatch in binary expression: %v %s %v",
-				leftType, e.Op.String(), rightType))
-			return lexer.NUMBER
+		resolvedLeft, err := r.ResolveExpr(nodetype.Left)
+		if err != nil {
+			return nil, err
 		}
-		return leftType
+
+		resolvedRight, err := r.ResolveExpr(nodetype.Right)
+		if err != nil {
+			return nil, err
+		}
+
+		return &parser.ASTBinary{
+			Left:  resolvedLeft,
+			Right: resolvedRight,
+			Op:    nodetype.Op,
+		}, nil
+
+	case *parser.ASTIntLitExpression:
+		return nodetype, nil
+
+	case *parser.ASTIdent:
+		return nodetype, nil
 	}
 
-	return lexer.NUMBER
-}
-
-func (r *Resolver) VisitExpressionStmt(stmt *parser.ASTExpressionStmt) {
-	r.VisitExpr(stmt.Expression)
+	return nil, fmt.Errorf("unknown expression type: %T", program)
 }

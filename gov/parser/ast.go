@@ -9,6 +9,7 @@ import (
 )
 
 type BlockItem interface {
+	PrintAST(depth int) string
 }
 
 type ASTNode interface {
@@ -41,7 +42,7 @@ func (a *ASTProgram) TokenLiteral() string {
 type ASTFNDef struct {
 	Token      lexer.Token
 	ReturnType lexer.TokenType
-	BlockItem  []BlockItem
+	BlockItems  []BlockItem
 }
 
 func (a *ASTProgram) PrintAST(depth int) string {

@@ -2,10 +2,6 @@ package parser
 
 import "fmt"
 
-type ASTDecl interface {
-	ASTNode
-}
-
 type Decl struct {
 	Ident string
 	Expr  ASTExpression

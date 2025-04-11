@@ -123,8 +123,8 @@ func (p *Parser) ParseStmt() ASTStmt {
 	}
 }
 
-func (p *Parser) ParseExpressionStmt() *ASTExpressionStmt {
-	ast := &ASTExpressionStmt{
+func (p *Parser) ParseExpressionStmt() *ExpressionStmt {
+	ast := &ExpressionStmt{
 		Token: p.Current,
 	}
 
@@ -141,11 +141,11 @@ func (p *Parser) ParseExpressionStmt() *ASTExpressionStmt {
 }
 
 // <function> ::= "фн" <identifier> "(" "" ")" "->" "тоо" "{" { <block-item> } "}"
-func (p *Parser) ParseFN() *ASTFNDef {
+func (p *Parser) ParseFN() *FNDef {
 	p.NextToken()
 	fnName := p.Current
 	fmt.Println("FNNAME", fnName)
-	ast := ASTFNDef{
+	ast := FNDef{
 		Token: fnName,
 	}
 
@@ -281,7 +281,7 @@ func (p *Parser) ParseExpr(prec int) ASTExpression {
 			p.NextToken()
 			right := p.ParseExpr(currPrec)
 			left := &ASTAssignment{
-				Left:  left,
+				Left:  &ASTVar{Ident: left},
 				Right: right,
 			}
 			return left

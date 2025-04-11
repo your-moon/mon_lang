@@ -14,7 +14,7 @@ type ASTNullStmt struct {
 func (a *ASTNullStmt) statementNode()       {}
 func (a *ASTNullStmt) TokenLiteral() string { return string(a.Token.Type) }
 
-type ASTExpressionStmt struct {
+type ExpressionStmt struct {
 	Token      lexer.Token
 	Expression ASTExpression
 }
@@ -29,9 +29,9 @@ type ASTPrintStmt struct {
 	Value ASTExpression
 }
 
-func (a *ASTExpressionStmt) statementNode()       {}
-func (a *ASTExpressionStmt) TokenLiteral() string { return string(a.Token.Type) }
-func (a *ASTExpressionStmt) PrintAST(depth int) string {
+func (a *ExpressionStmt) statementNode()       {}
+func (a *ExpressionStmt) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ExpressionStmt) PrintAST(depth int) string {
 	var out bytes.Buffer
 
 	out.WriteString(indent(depth) + a.TokenLiteral() + " ")
@@ -43,11 +43,11 @@ func (a *ASTExpressionStmt) PrintAST(depth int) string {
 	return out.String()
 }
 
-func (a *ASTFNDef) statementNode() {}
-func (a *ASTFNDef) TokenLiteral() string {
+func (a *FNDef) statementNode() {}
+func (a *FNDef) TokenLiteral() string {
 	return string(*a.Token.Value)
 }
-func (a *ASTFNDef) PrintAST(depth int) string {
+func (a *FNDef) PrintAST(depth int) string {
 	var out bytes.Buffer
 
 	if a.Token.Value != nil {

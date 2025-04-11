@@ -163,9 +163,9 @@ type ASTVar struct {
 	Ident ASTExpression
 }
 
-func (a *ASTVar) expressionNode()      {}
-func (a *ASTVar) TokenLiteral() string { return "VAR" }
-func (a *ASTVar) PrintAST(depth int) string {
+func (a ASTVar) expressionNode()      {}
+func (a ASTVar) TokenLiteral() string { return "VAR" }
+func (a ASTVar) PrintAST(depth int) string {
 	var out bytes.Buffer
 
 	out.WriteString(fmt.Sprintf("%sVAR[\n", indent(depth)))

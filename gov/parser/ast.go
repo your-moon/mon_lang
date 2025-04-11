@@ -32,17 +32,17 @@ type ASTStmt interface {
 }
 
 type ASTProgram struct {
-	FnDef ASTFNDef
+	FnDef FNDef
 }
 
 func (a *ASTProgram) TokenLiteral() string {
 	return a.FnDef.TokenLiteral()
 }
 
-type ASTFNDef struct {
+type FNDef struct {
 	Token      lexer.Token
 	ReturnType lexer.TokenType
-	BlockItems  []BlockItem
+	BlockItems []BlockItem
 }
 
 func (a *ASTProgram) PrintAST(depth int) string {

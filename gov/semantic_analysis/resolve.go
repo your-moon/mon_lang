@@ -34,7 +34,7 @@ func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, erro
 	return program, nil
 }
 
-func (r *Resolver) ResolveFnDef(fndef parser.ASTFNDef) (parser.ASTFNDef, error) {
+func (r *Resolver) ResolveFnDef(fndef parser.FNDef) (parser.FNDef, error) {
 	// Create a new scope for the function
 	oldMap := r.variableMap
 	r.variableMap = make(map[string]string)
@@ -43,7 +43,7 @@ func (r *Resolver) ResolveFnDef(fndef parser.ASTFNDef) (parser.ASTFNDef, error) 
 	for i, item := range fndef.BlockItems {
 		blockitem, err := r.ResolveBlockItem(item)
 		if err != nil {
-			return parser.ASTFNDef{}, err
+			return parser.FNDef{}, err
 		}
 		fndef.BlockItems[i] = blockitem
 	}
@@ -78,7 +78,7 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 		}
 		nodetype.ReturnValue = retval
 		return nodetype, nil
-	case *parser.ASTExpressionStmt:
+	case *parser.ExpressionStmt:
 		expr, err := r.ResolveExpr(nodetype.Expression)
 		if err != nil {
 			return nodetype, err
@@ -117,7 +117,7 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 
 	switch nodetype := program.(type) {
 	case *parser.ASTAssignment:
-		left, ok := nodetype.Left.(*parser.ASTVar)
+		left, ok := nodetype.Left.(parser.ASTVar)
 		if !ok {
 			return nil, fmt.Errorf("expected variable on left hand side of assignment statement, found %s", nodetype.Left.TokenLiteral())
 		}

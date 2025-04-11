@@ -91,7 +91,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.compiler.yaml)")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug mode")
 
-	rootCmd.AddCommand(lexCmd, parseCmd, tackyCmd, compileCmd, genCmd)
+	rootCmd.AddCommand(lexCmd, parseCmd, validateCmd, tackyCmd, compileCmd, genCmd)
 }
 
 func initConfig() {

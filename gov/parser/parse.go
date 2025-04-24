@@ -431,8 +431,8 @@ func (p *Parser) ParseExpr(minPrec int) ASTExpression {
 				Else: right,
 			}
 		} else {
-			p.NextToken()                      // consume the right operand
-			right := p.ParseExpr(nextPrec + 1) // Use nextPrec + 1 for left associativity
+			p.NextToken()                  // consume the right operand
+			right := p.ParseExpr(nextPrec) // Use nextPrec for proper precedence
 			left = &ASTBinary{
 				Left:  left,
 				Right: right,

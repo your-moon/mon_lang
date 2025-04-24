@@ -10,7 +10,7 @@ type Decl struct {
 // PrintAST implements BlockItem.
 func (d *Decl) PrintAST(depth int) string {
 	if d.Expr != nil {
-		return fmt.Sprintf("%sDeclaration: %s\n%s└─ Initial Value:\n%s",
+		return fmt.Sprintf("%sDeclaration: %s\n%s└─ Initial Value:%s",
 			indent(depth),
 			d.Ident,
 			indent(depth),

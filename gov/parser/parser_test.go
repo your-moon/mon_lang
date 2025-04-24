@@ -230,3 +230,158 @@ func convertToRuneArray(dataString string) []int32 {
 	runeString = append(runeString, 0)
 	return runeString
 }
+
+func TestOperatorPrecedence(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+		check  func(t *testing.T, expr ASTExpression)
+	}{
+		{
+			name:   "multiplication before addition",
+			source: "функц майн() -> тоо { буц 10 + 3 * 5; }",
+			check: func(t *testing.T, expr ASTExpression) {
+				bin, ok := expr.(*ASTBinary)
+				if !ok {
+					t.Fatal("Expected binary expression")
+				}
+				if bin.Op != ASTBinOp(A_PLUS) {
+					t.Errorf("Expected root operator to be +, got %v", bin.Op)
+				}
+				left, ok := bin.Left.(*ASTConstant)
+				if !ok || left.Value != 10 {
+					t.Error("Expected left operand to be constant 10")
+				}
+				right, ok := bin.Right.(*ASTBinary)
+				if !ok || right.Op != ASTBinOp(A_MUL) {
+					t.Error("Expected right operand to be multiplication")
+				}
+				rightLeft, ok := right.Left.(*ASTConstant)
+				if !ok || rightLeft.Value != 3 {
+					t.Error("Expected first multiplicand to be 3")
+				}
+				rightRight, ok := right.Right.(*ASTConstant)
+				if !ok || rightRight.Value != 5 {
+					t.Error("Expected second multiplicand to be 5")
+				}
+			},
+		},
+		{
+			name:   "complex arithmetic precedence",
+			source: "функц майн() -> тоо { буц 10 + 3 * 5 + 2 * 4; }",
+			check: func(t *testing.T, expr ASTExpression) {
+				// Should parse as ((10 + (3 * 5)) + (2 * 4))
+				bin, ok := expr.(*ASTBinary)
+				if !ok || bin.Op != ASTBinOp(A_PLUS) {
+					t.Fatal("Expected top-level addition")
+				}
+
+				left, ok := bin.Left.(*ASTBinary)
+				if !ok || left.Op != ASTBinOp(A_PLUS) {
+					t.Error("Expected left to be addition")
+				}
+
+				leftLeft, ok := left.Left.(*ASTConstant)
+				if !ok || leftLeft.Value != 10 {
+					t.Error("Expected leftmost operand to be 10")
+				}
+
+				leftRight, ok := left.Right.(*ASTBinary)
+				if !ok || leftRight.Op != ASTBinOp(A_MUL) {
+					t.Error("Expected 3 * 5 multiplication")
+				}
+
+				right, ok := bin.Right.(*ASTBinary)
+				if !ok || right.Op != ASTBinOp(A_MUL) {
+					t.Error("Expected 2 * 4 multiplication")
+				}
+			},
+		},
+		{
+			name:   "parentheses override precedence",
+			source: "функц майн() -> тоо { буц (10 + 3) * 5; }",
+			check: func(t *testing.T, expr ASTExpression) {
+				bin, ok := expr.(*ASTBinary)
+				if !ok || bin.Op != ASTBinOp(A_MUL) {
+					t.Fatal("Expected multiplication at root")
+				}
+
+				left, ok := bin.Left.(*ASTBinary)
+				if !ok || left.Op != ASTBinOp(A_PLUS) {
+					t.Error("Expected addition in parentheses")
+				}
+
+				right, ok := bin.Right.(*ASTConstant)
+				if !ok || right.Value != 5 {
+					t.Error("Expected right operand to be 5")
+				}
+			},
+		},
+		{
+			name:   "logical operators precedence",
+			source: "функц майн() -> тоо { буц 1 > 0 && 2 > 1 || 3 > 2; }",
+			check: func(t *testing.T, expr ASTExpression) {
+				// Should parse as ((1 > 0 && 2 > 1) || 3 > 2)
+				bin, ok := expr.(*ASTBinary)
+				if !ok || bin.Op != ASTBinOp(A_OR) {
+					t.Fatal("Expected OR at root")
+				}
+
+				left, ok := bin.Left.(*ASTBinary)
+				if !ok || left.Op != ASTBinOp(A_AND) {
+					t.Error("Expected AND as left child")
+				}
+
+				right, ok := bin.Right.(*ASTBinary)
+				if !ok || right.Op != ASTBinOp(A_GREATERTHAN) {
+					t.Error("Expected > comparison as right child")
+				}
+			},
+		},
+		{
+			name:   "comparison and arithmetic precedence",
+			source: "функц майн() -> тоо { буц 10 + 3 > 5 * 2; }",
+			check: func(t *testing.T, expr ASTExpression) {
+				// Should parse as ((10 + 3) > (5 * 2))
+				bin, ok := expr.(*ASTBinary)
+				if !ok || bin.Op != ASTBinOp(A_GREATERTHAN) {
+					t.Fatal("Expected > at root")
+				}
+
+				left, ok := bin.Left.(*ASTBinary)
+				if !ok || left.Op != ASTBinOp(A_PLUS) {
+					t.Error("Expected addition as left child")
+				}
+
+				right, ok := bin.Right.(*ASTBinary)
+				if !ok || right.Op != ASTBinOp(A_MUL) {
+					t.Error("Expected multiplication as right child")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := []int32(tt.source)
+			p := NewParser(source)
+			program, err := p.ParseProgram()
+			if err != nil {
+				t.Fatalf("Failed to parse %s: %v", tt.name, err)
+			}
+			if len(p.Errors()) > 0 {
+				t.Errorf("Parse errors in %s: %v", tt.name, p.Errors())
+			}
+			if program == nil {
+				t.Fatalf("Program is nil for %s", tt.name)
+			}
+
+			returnStmt, ok := program.FnDef.BlockItems[0].(*ASTReturnStmt)
+			if !ok {
+				t.Fatalf("Expected return statement for %s", tt.name)
+			}
+
+			tt.check(t, returnStmt.ReturnValue)
+		})
+	}
+}

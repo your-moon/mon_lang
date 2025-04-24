@@ -170,21 +170,36 @@ func (s *Scanner) IsLine() bool {
 	return false
 }
 
-// RUNEARR: [1092 1085 32 32 32 1092 1085 10]
-// LEN: 8
-
 func (s *Scanner) Skip() {
-	for s.IsLine() {
-		s.Next()
-		s.Line++
-		s.Column = 0
-	}
+	for {
+		if s.IsLine() {
+			s.Next()
+			s.Line++
+			s.Column = 0
+			continue
+		}
 
-	for s.IsWhiteSpace() {
-		s.Next()
-	}
-	for s.IsTab() {
-		s.Next()
+		if s.IsWhiteSpace() {
+			s.Next()
+			continue
+		}
+
+		if s.IsTab() {
+			s.Next()
+			continue
+		}
+
+		if s.Peek() == '/' && s.Cursor+1 < uint(len(s.Source)) && s.Source[s.Cursor+1] == '/' {
+			s.Next()
+			s.Next()
+
+			for !s.IsLine() && !s.isAtEnd() {
+				s.Next()
+			}
+			continue
+		}
+
+		break
 	}
 }
 func (s *Scanner) Scan() (Token, error) {

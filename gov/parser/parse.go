@@ -78,9 +78,9 @@ func (p *Parser) Errors() []ParseError {
 func (p *Parser) NextToken() {
 	p.Current = p.PeekToken
 	p.PeekToken, _ = p.scanner.Scan()
-	if base.Debug {
-		fmt.Println("ADVANCING TOKEN:", p.PeekToken)
-	}
+	// if base.Debug {
+	// 	fmt.Println("ADVANCING TOKEN:", p.PeekToken)
+	// }
 }
 
 func (p *Parser) checkOptional(expected lexer.TokenType) bool {

@@ -7,6 +7,13 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/parser"
 )
 
+const (
+	ErrDuplicateVariable  = "хувьсагч '%s' нь давхардсан байна"
+	ErrInvalidAssignment  = "хувьсагчид утга оноох үед зүүн талд хувьсагч байх ёстой, олдсон: '%s'"
+	ErrUndeclaredVariable = "хувьсагч '%s'-г зарлаагүй байна"
+	ErrUnknownExpression  = "үл мэдэгдэх илэрхийллийн төрөл: '%T'"
+)
+
 type Resolver struct {
 	variableMap map[string]string
 	tempCounter int
@@ -78,6 +85,27 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 		}
 		nodetype.ReturnValue = retval
 		return nodetype, nil
+	case *parser.ASTIfStmt:
+		cond, err := r.ResolveExpr(nodetype.Cond)
+		if err != nil {
+			return nodetype, err
+		}
+
+		nodetype.Cond = cond
+
+		then, err := r.ResolveStmt(nodetype.Then)
+		if err != nil {
+			return nodetype, err
+		}
+
+		nodetype.Then = then
+		klse, err := r.ResolveStmt(nodetype.Else)
+		if err != nil {
+			return nodetype, err
+		}
+
+		nodetype.Else = klse
+		return nodetype, nil
 	case *parser.ExpressionStmt:
 		expr, err := r.ResolveExpr(nodetype.Expression)
 		if err != nil {
@@ -92,7 +120,7 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 func (r *Resolver) ResolveDecl(program *parser.Decl) (*parser.Decl, error) {
 	// Check for duplicate declaration
 	if _, exists := r.variableMap[program.Ident]; exists {
-		return nil, fmt.Errorf("duplicate variable declaration: %s", program.Ident)
+		return nil, fmt.Errorf(ErrDuplicateVariable, program.Ident)
 	}
 
 	uniqueName := r.makeNamedTemporary(program.Ident)
@@ -116,10 +144,31 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 	}
 
 	switch nodetype := program.(type) {
+	case *parser.ASTConditional:
+		cond, err := r.ResolveExpr(nodetype.Cond)
+		if err != nil {
+			return nodetype, err
+		}
+
+		nodetype.Cond = cond
+
+		then, err := r.ResolveExpr(nodetype.Then)
+		if err != nil {
+			return nodetype, err
+		}
+
+		nodetype.Then = then
+		klse, err := r.ResolveExpr(nodetype.Else)
+		if err != nil {
+			return nodetype, err
+		}
+
+		nodetype.Else = klse
+		return nodetype, nil
 	case *parser.ASTAssignment:
 		left, ok := nodetype.Left.(*parser.ASTVar)
 		if !ok {
-			return nil, fmt.Errorf("expected variable on left hand side of assignment statement, found %s", nodetype.Left.TokenLiteral())
+			return nil, fmt.Errorf(ErrInvalidAssignment, nodetype.Left.TokenLiteral())
 		}
 
 		resolvedLeft, err := r.ResolveExpr(left)
@@ -140,7 +189,7 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 	case *parser.ASTVar:
 		uniqueName, exists := r.variableMap[nodetype.Ident]
 		if !exists {
-			return nil, fmt.Errorf("undeclared variable: %s", nodetype.Ident)
+			return nil, fmt.Errorf(ErrUndeclaredVariable, nodetype.Ident)
 		}
 
 		return &parser.ASTVar{Ident: uniqueName}, nil
@@ -179,5 +228,5 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 		// 	return nodetype, nil
 	}
 
-	return nil, fmt.Errorf("unknown expression type: %T", program)
+	return nil, fmt.Errorf(ErrUnknownExpression, program)
 }

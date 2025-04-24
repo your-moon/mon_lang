@@ -18,21 +18,14 @@ func (a *ASTIfStmt) TokenLiteral() string { return "IF" }
 func (a *ASTIfStmt) PrintAST(depth int) string {
 	var out bytes.Buffer
 
-	out.WriteString(fmt.Sprintf("%sIF Statement:\n", indent(depth)))
-	out.WriteString(fmt.Sprintf("%s├─ Condition:\n", indent(depth)))
-
-	if a.Cond != nil {
-		out.WriteString(a.Cond.PrintAST(depth+1) + "\n")
-	}
-
-	out.WriteString(fmt.Sprintf("%s├─ Then Branch:\n", indent(depth)))
+	out.WriteString(fmt.Sprintf("%sif %s then:\n", indent(depth), a.Cond.PrintAST(depth)))
 	if a.Then != nil {
-		out.WriteString(a.Then.PrintAST(depth+1) + "\n")
+		out.WriteString(fmt.Sprintf("%s|   %s\n", indent(depth), a.Then.PrintAST(depth)))
 	}
 
 	if a.Else != nil {
-		out.WriteString(fmt.Sprintf("%s└─ Else Branch:\n", indent(depth)))
-		out.WriteString(a.Else.PrintAST(depth+1) + "\n")
+		out.WriteString(fmt.Sprintf("%selse:\n", indent(depth)))
+		out.WriteString(fmt.Sprintf("%s|   %s\n", indent(depth), a.Else.PrintAST(depth)))
 	}
 
 	return out.String()
@@ -45,7 +38,7 @@ type ASTNullStmt struct {
 func (a *ASTNullStmt) statementNode()       {}
 func (a *ASTNullStmt) TokenLiteral() string { return string(a.Token.Type) }
 func (a *ASTNullStmt) PrintAST(depth int) string {
-	return fmt.Sprintf("%s└─ Null Statement", indent(depth))
+	return fmt.Sprintf("%s// empty statement", indent(depth))
 }
 
 type ExpressionStmt struct {
@@ -65,16 +58,10 @@ type ASTPrintStmt struct {
 func (a *ExpressionStmt) statementNode()       {}
 func (a *ExpressionStmt) TokenLiteral() string { return "EXPRESSIONSTMT" }
 func (a *ExpressionStmt) PrintAST(depth int) string {
-	var out bytes.Buffer
-
-	out.WriteString(fmt.Sprintf("%sExpression Statement:\n", indent(depth)))
-	out.WriteString(fmt.Sprintf("%s└─ ", indent(depth)))
-
 	if a.Expression != nil {
-		out.WriteString(a.Expression.PrintAST(depth + 1))
+		return fmt.Sprintf("%s%s", indent(depth), a.Expression.PrintAST(depth))
 	}
-
-	return out.String()
+	return fmt.Sprintf("%s// empty expression", indent(depth))
 }
 
 func (a *FNDef) statementNode() {}
@@ -85,47 +72,31 @@ func (a *FNDef) PrintAST(depth int) string {
 	var out bytes.Buffer
 
 	if a.Token.Value != nil {
-		out.WriteString(fmt.Sprintf("%sFunction Definition: %s\n", indent(depth), *a.Token.Value))
+		out.WriteString(fmt.Sprintf("%sfunction %s() -> int {\n", indent(depth), *a.Token.Value))
 	}
 
-	for i, b := range a.BlockItems {
-		if i == len(a.BlockItems)-1 {
-			out.WriteString(fmt.Sprintf("%s└─ ", indent(depth)))
-		} else {
-			out.WriteString(fmt.Sprintf("%s├─ ", indent(depth)))
-		}
+	for _, b := range a.BlockItems {
 		out.WriteString(b.PrintAST(depth+1) + "\n")
 	}
 
+	out.WriteString(fmt.Sprintf("%s}\n", indent(depth)))
 	return out.String()
 }
 
 func (a *ASTReturnStmt) statementNode()       {}
 func (a *ASTReturnStmt) TokenLiteral() string { return string(a.Token.Type) }
 func (a *ASTReturnStmt) PrintAST(depth int) string {
-	var out bytes.Buffer
-
-	out.WriteString(fmt.Sprintf("%sReturn Statement:\n", indent(depth)))
-	out.WriteString(fmt.Sprintf("%s└─ ", indent(depth)))
-
 	if a.ReturnValue != nil {
-		out.WriteString(a.ReturnValue.PrintAST(depth+1) + "\n")
+		return fmt.Sprintf("%sreturn %s", indent(depth), a.ReturnValue.PrintAST(depth))
 	}
-
-	return out.String()
+	return fmt.Sprintf("%sreturn", indent(depth))
 }
 
 func (a *ASTPrintStmt) statementNode()       {}
 func (a *ASTPrintStmt) TokenLiteral() string { return string(a.Token.Type) }
 func (a *ASTPrintStmt) PrintAST(depth int) string {
-	var out bytes.Buffer
-
-	out.WriteString(fmt.Sprintf("%sPrint Statement:\n", indent(depth)))
-	out.WriteString(fmt.Sprintf("%s└─ ", indent(depth)))
-
 	if a.Value != nil {
-		out.WriteString(a.Value.PrintAST(depth + 1))
+		return fmt.Sprintf("%sprint %s", indent(depth), a.Value.PrintAST(depth))
 	}
-
-	return out.String()
+	return fmt.Sprintf("%sprint", indent(depth))
 }

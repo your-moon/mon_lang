@@ -72,20 +72,15 @@ func (a *ASTConditional) TokenLiteral() string { return "CONDITIONAL" }
 func (a *ASTConditional) PrintAST(depth int) string {
 	var out bytes.Buffer
 
-	out.WriteString(fmt.Sprintf("%sConditional Expression:\n", indent(depth)))
-	out.WriteString(fmt.Sprintf("%s├─ Condition:\n", indent(depth)))
-	if a.Cond != nil {
-		out.WriteString(a.Cond.PrintAST(depth+1) + "\n")
-	}
-
-	out.WriteString(fmt.Sprintf("%s├─ Then:\n", indent(depth)))
+	out.WriteString(fmt.Sprintf("%sTernary Expression:\n", indent(depth)))
+	out.WriteString(fmt.Sprintf("%s├── If %s then:\n", indent(depth), a.Cond.PrintAST(depth+1)))
 	if a.Then != nil {
-		out.WriteString(a.Then.PrintAST(depth+1) + "\n")
+		out.WriteString(fmt.Sprintf("%s│   └── %s\n", indent(depth), a.Then.PrintAST(depth+1)))
 	}
 
-	out.WriteString(fmt.Sprintf("%s└─ Else:\n", indent(depth)))
+	out.WriteString(fmt.Sprintf("%s└── Else:\n", indent(depth)))
 	if a.Else != nil {
-		out.WriteString(a.Else.PrintAST(depth+1) + "\n")
+		out.WriteString(fmt.Sprintf("%s    └── %s\n", indent(depth), a.Else.PrintAST(depth+1)))
 	}
 
 	return out.String()
@@ -99,7 +94,7 @@ type ASTConstant struct {
 func (a *ASTConstant) expressionNode()      {}
 func (a *ASTConstant) TokenLiteral() string { return string(a.Token.Type) }
 func (a *ASTConstant) PrintAST(depth int) string {
-	return fmt.Sprintf("%s└─ Constant: %s", indent(depth), *a.Token.Value)
+	return fmt.Sprintf("%d", a.Value)
 }
 
 type ASTStringExpression struct {
@@ -144,17 +139,10 @@ func (a ASTBinary) expressionNode()      {}
 func (a ASTBinary) TokenLiteral() string { return string(a.Op.String()) }
 func (a ASTBinary) PrintAST(depth int) string {
 	var out bytes.Buffer
-
-	out.WriteString(fmt.Sprintf("%sBinary Expression (%s):\n", indent(depth), a.Op.String()))
-	out.WriteString(fmt.Sprintf("%s├─ Left:\n", indent(depth)))
-	if a.Left != nil {
-		out.WriteString(a.Left.PrintAST(depth+1) + "\n")
-	}
-	out.WriteString(fmt.Sprintf("%s└─ Right:\n", indent(depth)))
-	if a.Right != nil {
-		out.WriteString(a.Right.PrintAST(depth+1) + "\n")
-	}
-
+	out.WriteString(fmt.Sprintf("(%s %s %s)",
+		a.Left.PrintAST(depth),
+		a.Op.String(),
+		a.Right.PrintAST(depth)))
 	return out.String()
 }
 
@@ -167,18 +155,9 @@ func (a *ASTAssignment) expressionNode()      {}
 func (a *ASTAssignment) TokenLiteral() string { return "VAR" }
 func (a *ASTAssignment) PrintAST(depth int) string {
 	var out bytes.Buffer
-
-	out.WriteString(fmt.Sprintf("%sAssignment:\n", indent(depth)))
-	out.WriteString(fmt.Sprintf("%s├─ Variable:\n", indent(depth)))
-	if a.Left != nil {
-		out.WriteString(a.Left.PrintAST(depth+1) + "\n")
-	}
-
-	out.WriteString(fmt.Sprintf("%s└─ Value:\n", indent(depth)))
-	if a.Right != nil {
-		out.WriteString(a.Right.PrintAST(depth+1) + "\n")
-	}
-
+	out.WriteString(fmt.Sprintf("%s = %s",
+		a.Left.PrintAST(depth),
+		a.Right.PrintAST(depth)))
 	return out.String()
 }
 
@@ -189,7 +168,7 @@ type ASTVar struct {
 func (a ASTVar) expressionNode()      {}
 func (a ASTVar) TokenLiteral() string { return "VAR" }
 func (a ASTVar) PrintAST(depth int) string {
-	return fmt.Sprintf("%s└─ Variable: %s", indent(depth), a.Ident)
+	return a.Ident
 }
 
 type ASTUnary struct {
@@ -201,14 +180,9 @@ func (a *ASTUnary) expressionNode()      {}
 func (a *ASTUnary) TokenLiteral() string { return string(a.Op) }
 func (a *ASTUnary) PrintAST(depth int) string {
 	var out bytes.Buffer
-
-	out.WriteString(fmt.Sprintf("%sUnary Expression (%s):\n", indent(depth), a.Op))
-	out.WriteString(fmt.Sprintf("%s└─ ", indent(depth)))
-
-	if a.Inner != nil {
-		out.WriteString(a.Inner.PrintAST(depth+1) + "\n")
-	}
-
+	out.WriteString(fmt.Sprintf("%s%s",
+		a.Op,
+		a.Inner.PrintAST(depth)))
 	return out.String()
 }
 

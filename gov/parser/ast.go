@@ -2,7 +2,6 @@ package parser
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 
 	"github.com/your-moon/mn_compiler_go_version/lexer"
@@ -53,5 +52,5 @@ func (a *ASTProgram) PrintAST(depth int) string {
 }
 
 func indent(depth int) string {
-	return fmt.Sprintf("%s", strings.Repeat("  ", depth))
+	return strings.Repeat("  ", depth)
 }

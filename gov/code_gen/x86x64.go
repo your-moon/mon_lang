@@ -46,7 +46,7 @@ func (a *AsmGen) GenFn(fn AsmFnDef) {
 func (a *AsmGen) GenInstr(instr AsmInstruction) {
 	switch ast := instr.(type) {
 	case Label:
-		a.Write(fmt.Sprintf(".L%s", ast.Ident))
+		a.Write(fmt.Sprintf(".L%s:", ast.Ident))
 	case SetCC:
 		a.Write(fmt.Sprintf("    set%s %s", ast.CC, a.GenOperand(ast.Op)))
 	case JmpCC:

@@ -36,7 +36,7 @@ type Constant struct {
 }
 
 func (c Constant) val() string {
-	return fmt.Sprintf("Constant(%d)", c.Value)
+	return fmt.Sprintf("%d", c.Value)
 }
 
 type Var struct {
@@ -44,7 +44,7 @@ type Var struct {
 }
 
 func (v Var) val() string {
-	return fmt.Sprintf("Var(%s)", v.Name)
+	return v.Name
 }
 
 type Copy struct {
@@ -53,7 +53,7 @@ type Copy struct {
 }
 
 func (j Copy) Ir() {
-	fmt.Println(fmt.Sprintf("COPY %s, %s", j.Src.val(), j.Dst.val()))
+	fmt.Printf("%s := %s\n", j.Dst.val(), j.Src.val())
 }
 
 type Jump struct {
@@ -61,7 +61,7 @@ type Jump struct {
 }
 
 func (j Jump) Ir() {
-	fmt.Println(fmt.Sprintf("JUMP %s", j.Target))
+	fmt.Printf("goto %s\n", j.Target)
 }
 
 type JumpIfZero struct {
@@ -69,9 +69,8 @@ type JumpIfZero struct {
 	Ident string
 }
 
-// Ir implements Instruction.
 func (j JumpIfZero) Ir() {
-	fmt.Println(fmt.Sprintf("JUMPIFZERO %s %s", j.Val.val(), j.Ident))
+	fmt.Printf("if %s == 0 goto %s\n", j.Val.val(), j.Ident)
 }
 
 type JumpIfNotZero struct {
@@ -80,7 +79,7 @@ type JumpIfNotZero struct {
 }
 
 func (j JumpIfNotZero) Ir() {
-	fmt.Println(fmt.Sprintf("JUMPIFNOTZERO %s %s", j.Val.val(), j.Ident))
+	fmt.Printf("if %s != 0 goto %s\n", j.Val.val(), j.Ident)
 }
 
 type Label struct {
@@ -88,7 +87,7 @@ type Label struct {
 }
 
 func (u Label) Ir() {
-	fmt.Println(fmt.Sprintf("LABEL %s", u.Ident))
+	fmt.Printf("%s:\n", u.Ident)
 }
 
 type Return struct {
@@ -96,7 +95,7 @@ type Return struct {
 }
 
 func (u Return) Ir() {
-	fmt.Println(fmt.Sprintf("RETURN %s", u.Value.val()))
+	fmt.Printf("return %s\n", u.Value.val())
 }
 
 type Binary struct {
@@ -107,7 +106,11 @@ type Binary struct {
 }
 
 func (u Binary) Ir() {
-	fmt.Println(fmt.Sprintf("BINARY %s %s %s %s", u.Op, u.Src1.val(), u.Src2.val(), u.Dst.val()))
+	fmt.Printf("%s := %s %s %s\n",
+		u.Dst.val(),
+		u.Src1.val(),
+		u.Op,
+		u.Src2.val())
 }
 
 type Unary struct {
@@ -116,9 +119,11 @@ type Unary struct {
 	Dst TackyVal
 }
 
-// instr implements Instruction.
 func (u Unary) Ir() {
-	fmt.Println(fmt.Sprintf("UNARY %s %s %s", u.Op, u.Src.val(), u.Dst.val()))
+	fmt.Printf("%s := %s %s\n",
+		u.Dst.val(),
+		u.Op,
+		u.Src.val())
 }
 
 type Instruction interface {

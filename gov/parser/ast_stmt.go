@@ -44,6 +44,9 @@ type ASTNullStmt struct {
 
 func (a *ASTNullStmt) statementNode()       {}
 func (a *ASTNullStmt) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTNullStmt) PrintAST(depth int) string {
+	return fmt.Sprintf("%s└─ Null Statement", indent(depth))
+}
 
 type ExpressionStmt struct {
 	Expression ASTExpression

@@ -271,3 +271,13 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
 func (c *TackyGen) Emit(op Instruction) {
 	c.Irs = append(c.Irs, op)
 }
+
+func (c *TackyGen) PrettyPrint(program TackyProgram) {
+	fmt.Printf("\n// Function: %s\n", program.FnDef.Name)
+	fmt.Println("// Three-address code:")
+	fmt.Println()
+	for _, instr := range program.FnDef.Instructions {
+		instr.Ir()
+	}
+	fmt.Println()
+}

@@ -266,41 +266,88 @@ func (p *Parser) IsInfixOp() bool {
 		p.PeekToken.Type == lexer.LESSTHAN || p.PeekToken.Type == lexer.LESSTHANEQUAL ||
 		p.PeekToken.Type == lexer.GREATERTHAN || p.PeekToken.Type == lexer.GREATERTHANEQUAL ||
 		p.PeekToken.Type == lexer.EQUALTO || p.PeekToken.Type == lexer.NOTEQUAL ||
-		p.PeekToken.Type == lexer.LOGICAND || p.PeekToken.Type == lexer.LOGICOR || p.PeekToken.Type == lexer.ASSIGN
+		p.PeekToken.Type == lexer.LOGICAND || p.PeekToken.Type == lexer.LOGICOR || p.PeekToken.Type == lexer.ASSIGN ||
+		p.PeekToken.Type == lexer.QUESTIONMARK || p.PeekToken.Type == lexer.COLON
 
 }
 
-func (p *Parser) ParseExpr(prec int) ASTExpression {
+const (
+	_           int = iota
+	Lowest          // 0
+	Assign          // = (1)
+	Conditional     // ? (3)
+	LogicOr         // || (5)
+	LogicAnd        // && (10)
+	Equals          // == != (30)
+	Compare         // < <= > >= (35)
+	Sum             // + - (45)
+	Product         // * / % (50)
+	Prefix          // -X or !X
+	Call            // myFunction(X)
+)
+
+var precedences = map[lexer.TokenType]int{
+	lexer.PLUS:             Sum,
+	lexer.MINUS:            Sum,
+	lexer.DIV:              Product,
+	lexer.MUL:              Product,
+	lexer.LESSTHAN:         Compare,
+	lexer.LESSTHANEQUAL:    Compare,
+	lexer.GREATERTHAN:      Compare,
+	lexer.GREATERTHANEQUAL: Compare,
+	lexer.EQUALTO:          Equals,
+	lexer.NOTEQUAL:         Equals,
+	lexer.LOGICAND:         LogicAnd,
+	lexer.LOGICOR:          LogicOr,
+	lexer.QUESTIONMARK:     Conditional,
+	lexer.ASSIGN:           Assign,
+}
+
+func (p *Parser) ParseExpr(minPrec int) ASTExpression {
 	left := p.ParseFactor()
-	for !p.currIs(lexer.SEMICOLON) && prec < p.peekPrecedence() {
+
+	for !p.currIs(lexer.SEMICOLON) && minPrec < p.peekPrecedence() {
 		if !p.IsInfixOp() {
 			return left
 		}
 
 		p.NextToken() // consume the operator
 		op, _ := p.ParseBinOp(p.Current.Type)
-		currPrec := p.currPrecedence()
+		nextPrec := p.currPrecedence()
 
 		if op == ASTBinOp(A_ASSIGN) {
 			p.NextToken()
-			right := p.ParseExpr(currPrec)
+			right := p.ParseExpr(nextPrec)
 			leftIdent, ok := left.(*ASTVar)
 			if !ok {
 				panic("left side of assign must be var")
 			}
-			left := &ASTAssignment{
+			left = &ASTAssignment{
 				Left:  leftIdent,
 				Right: right,
 			}
-			return left
-		}
-		p.NextToken() // consume the right operand
-		right := p.ParseExpr(currPrec)
+		} else if op == ASTBinOp(A_QUESTIONMARK) {
+			p.NextToken()
+			middle := p.ParseExpr(Lowest)
 
-		left = &ASTBinary{
-			Left:  left,
-			Right: right,
-			Op:    op,
+			if !p.expect(lexer.COLON) {
+				panic("expected colon after middle expression in ternary")
+			}
+			p.NextToken()
+			right := p.ParseExpr(nextPrec)
+			left = &ASTConditional{
+				Cond: left,
+				Then: middle,
+				Else: right,
+			}
+		} else {
+			p.NextToken()                      // consume the right operand
+			right := p.ParseExpr(nextPrec + 1) // Use nextPrec + 1 for left associativity
+			left = &ASTBinary{
+				Left:  left,
+				Right: right,
+				Op:    op,
+			}
 		}
 	}
 
@@ -309,6 +356,8 @@ func (p *Parser) ParseExpr(prec int) ASTExpression {
 
 func (p *Parser) ParseBinOp(op lexer.TokenType) (ASTBinOp, error) {
 	switch p.Current.Type {
+	case lexer.QUESTIONMARK:
+		return ASTBinOp(A_QUESTIONMARK), nil
 	case lexer.MINUS:
 		return ASTBinOp(A_MINUS), nil
 	case lexer.PLUS:
@@ -368,36 +417,6 @@ func (p *Parser) ParseIntLit() ASTExpression {
 	intVal, _ := strconv.ParseInt(*p.Current.Value, 0, 64)
 	ast := &ASTConstant{Token: p.Current, Value: intVal}
 	return ast
-}
-
-const (
-	_ int = iota
-	Lowest
-	Assign        // =
-	Logic         // && ||
-	Equals        // ==
-	LessOrGreater // < or >
-	Sum           // +
-	Product       // *
-	Prefix        // -X or !X
-	Call          // myFunction(X)
-	Index         // array[index]
-)
-
-var precedences = map[lexer.TokenType]int{
-	lexer.PLUS:             Sum,
-	lexer.MINUS:            Sum,
-	lexer.DIV:              Product,
-	lexer.MUL:              Product,
-	lexer.LESSTHAN:         LessOrGreater,
-	lexer.LESSTHANEQUAL:    LessOrGreater,
-	lexer.GREATERTHAN:      LessOrGreater,
-	lexer.GREATERTHANEQUAL: LessOrGreater,
-	lexer.EQUALTO:          Equals,
-	lexer.NOTEQUAL:         Equals,
-	lexer.LOGICAND:         Logic,
-	lexer.LOGICOR:          Logic,
-	lexer.ASSIGN:           Assign,
 }
 
 func (p *Parser) currPrecedence() int {

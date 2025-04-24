@@ -18,8 +18,11 @@ Lexer -> Parser -> Compiler -> Gen -> Link
 <function> ::= "функц" <identifier> "(" "" ")" "->" "тоо" "{" { <block-item> } "}"
 <block-item> ::= <statement> | <declaration>
 <declaration> ::= "зарла" <identifier> [ ":" "тоo" ] "=" <exp> ";"
-<statement> ::= "буц" <exp> ";" | <exp> ";" | ";"
-<exp> ::= <factor> | <exp> <binop> <exp>
+<statement> ::=   "буц" <exp> ";"
+                | "хэрэв" <exp> "бол" <statement> [ "үгүй бол" <statement> ] ";"
+                | <exp> ";" | ";"
+
+<exp> ::= <factor> | <exp> <binop> <exp> | <exp> "?" <exp> ":" <exp>
 <factor> ::= <int> | <identifier> | <unop> <factor> | "(" <exp> ")"
 <unop> ::= "-" | "~" | "!"
 <binop> ::= "-" | "+" | "*" | "/" | "%" | "&&" | "||"

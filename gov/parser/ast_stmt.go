@@ -7,6 +7,35 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
 
+type ASTIfStmt struct {
+	Cond ASTExpression
+	Then ASTExpression
+	Else ASTExpression
+}
+
+func (a *ASTIfStmt) statementNode()       {}
+func (a *ASTIfStmt) TokenLiteral() string { return "IF" }
+func (a *ASTIfStmt) PrintAST(depth int) string {
+	var out bytes.Buffer
+
+	out.WriteString(fmt.Sprintf("%sIF[\n", indent(depth)))
+
+	if a.Cond != nil {
+		out.WriteString(a.Cond.PrintAST(depth+1) + "\n")
+	}
+
+	if a.Then != nil {
+		out.WriteString(a.Then.PrintAST(depth+1) + "\n")
+	}
+
+	if a.Else != nil {
+		out.WriteString(a.Else.PrintAST(depth+1) + "\n")
+	}
+
+	out.WriteString(indent(depth) + "]")
+	return out.String()
+}
+
 type ASTNullStmt struct {
 	Token lexer.Token
 }

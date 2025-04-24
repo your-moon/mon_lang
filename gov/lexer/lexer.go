@@ -72,11 +72,17 @@ func (s *Scanner) isAlpha(c int32) bool {
 	return false
 }
 func (s *Scanner) Next() int32 {
+	if s.Cursor >= uint(len(s.Source)) {
+		s.Current = 0
+		return 0
+	}
 	prev := s.Source[s.Cursor]
+	s.Cursor++
+	s.Column++
 	if s.Cursor < uint(len(s.Source)) {
-		s.Current = s.Source[s.Cursor+1]
-		s.Cursor++
-		s.Column++
+		s.Current = s.Source[s.Cursor]
+	} else {
+		s.Current = 0
 	}
 	return prev
 }
@@ -214,6 +220,8 @@ func (s *Scanner) Scan() (Token, error) {
 		return s.BuildToken(SEMICOLON), nil
 	case '~':
 		return s.BuildToken(TILDE), nil
+	case '?':
+		return s.BuildToken(QUESTIONMARK), nil
 	case '!':
 		if s.Peek() == '=' {
 			s.Next()

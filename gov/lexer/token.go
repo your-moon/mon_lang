@@ -17,6 +17,8 @@ const (
 	NOTEQUAL         TokenType = "NOTEQUAL"         // !=
 	EQUALTO          TokenType = "EQUALTO"          // ==
 
+	QUESTIONMARK TokenType = "QUESTIONMARK" // ?
+
 	LOGICAND TokenType = "LOGICAND" // &&
 	LOGICOR  TokenType = "LOGICOR"  // ||
 	NOT      TokenType = "NOT"      // !

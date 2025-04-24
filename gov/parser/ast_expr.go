@@ -12,6 +12,7 @@ type ASTBinOp int
 const (
 	A_PLUS int = iota
 	A_MINUS
+	A_QUESTIONMARK
 	A_DIV
 	A_MUL
 
@@ -29,6 +30,8 @@ const (
 
 func (op ASTBinOp) String() string {
 	switch op {
+	case ASTBinOp(A_QUESTIONMARK):
+		return "?"
 	case ASTBinOp(A_PLUS):
 		return "+"
 	case ASTBinOp(A_MINUS):
@@ -58,15 +61,34 @@ func (op ASTBinOp) String() string {
 	}
 }
 
-// type ASTIdent struct {
-// 	Token lexer.Token
-// }
-//
-// func (a *ASTIdent) expressionNode()      {}
-// func (a *ASTIdent) TokenLiteral() string { return string(a.Token.Type) }
-// func (a *ASTIdent) PrintAST(depth int) string {
-// 	return indent(depth) + *a.Token.Value
-// }
+type ASTConditional struct {
+	Cond ASTExpression
+	Then ASTExpression
+	Else ASTExpression
+}
+
+func (a *ASTConditional) expressionNode()      {}
+func (a *ASTConditional) TokenLiteral() string { return "CONDITIONAL" }
+func (a *ASTConditional) PrintAST(depth int) string {
+	var out bytes.Buffer
+
+	out.WriteString(fmt.Sprintf("%sCONDITIONAL[\n", indent(depth)))
+
+	if a.Cond != nil {
+		out.WriteString(a.Cond.PrintAST(depth+1) + "\n")
+	}
+
+	if a.Then != nil {
+		out.WriteString(a.Then.PrintAST(depth+1) + "\n")
+	}
+
+	if a.Else != nil {
+		out.WriteString(a.Else.PrintAST(depth+1) + "\n")
+	}
+
+	out.WriteString(indent(depth) + "]")
+	return out.String()
+}
 
 type ASTConstant struct {
 	Token lexer.Token
@@ -170,9 +192,7 @@ func (a ASTVar) PrintAST(depth int) string {
 
 	out.WriteString(fmt.Sprintf("%sVAR[\n", indent(depth)))
 
-	// if a.Ident != nil {
-	// 	out.WriteString(a.Ident.PrintAST(depth+1) + "\n")
-	// }
+	out.WriteString(a.Ident)
 
 	out.WriteString(indent(depth) + "]")
 	return out.String()

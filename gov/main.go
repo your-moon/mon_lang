@@ -334,7 +334,7 @@ func convertToRuneArray(dataString string) []int32 {
 }
 
 func canLex() []FileCheck {
-	dir := "./test/ch1/"
+	dir := "./test/spacetab/"
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		fmt.Printf("Error reading directory: %v\n", err)

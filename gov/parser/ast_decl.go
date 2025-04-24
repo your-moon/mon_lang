@@ -10,9 +10,13 @@ type Decl struct {
 // PrintAST implements BlockItem.
 func (d *Decl) PrintAST(depth int) string {
 	if d.Expr != nil {
-		return fmt.Sprintf("Decl: %s = %s", d.Ident, d.Expr.PrintAST(depth+1))
+		return fmt.Sprintf("%sDeclaration: %s\n%s└─ Initial Value:\n%s",
+			indent(depth),
+			d.Ident,
+			indent(depth),
+			d.Expr.PrintAST(depth+1))
 	} else {
-		return fmt.Sprintf("Decl: %s", d.Ident)
+		return fmt.Sprintf("%sDeclaration: %s", indent(depth), d.Ident)
 	}
 }
 

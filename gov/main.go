@@ -38,6 +38,7 @@ var lexCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runLexer(args[0])
 	},
+	SilenceUsage: true,
 }
 
 var parseCmd = &cobra.Command{
@@ -47,6 +48,7 @@ var parseCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runParser(args[0])
 	},
+	SilenceUsage: true,
 }
 
 var validateCmd = &cobra.Command{
@@ -56,6 +58,7 @@ var validateCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runValidate(args[0])
 	},
+	SilenceUsage: true,
 }
 
 var tackyCmd = &cobra.Command{
@@ -65,6 +68,7 @@ var tackyCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runTacky(args[0])
 	},
+	SilenceUsage: true,
 }
 
 var compileCmd = &cobra.Command{
@@ -74,6 +78,7 @@ var compileCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runCompiler(args[0])
 	},
+	SilenceUsage: true,
 }
 
 var genCmd = &cobra.Command{
@@ -83,6 +88,7 @@ var genCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runGen(args[0])
 	},
+	SilenceUsage: true,
 }
 
 func init() {
@@ -117,7 +123,6 @@ func initConfig() {
 func runLexer(filePath string) error {
 	runeString := readFile(filePath)
 	scanner := lexer.NewScanner(runeString)
-	fmt.Println("---- LEXING ----:")
 	for {
 		token, err := scanner.Scan()
 		if err != nil {
@@ -126,7 +131,6 @@ func runLexer(filePath string) error {
 		if token.Type == lexer.EOF {
 			break
 		}
-		fmt.Printf("Token: %v\n", token)
 	}
 	return nil
 }
@@ -168,15 +172,11 @@ func runParser(filePath string) error {
 		return err
 	}
 
-	fmt.Println("\n---- PARSING ----:")
 	parsed := parser.NewParser(runeString)
 	node, err := parsed.ParseProgram()
 	if err != nil {
-		return fmt.Errorf("parsing error: %v", err)
-	}
-
-	if len(parsed.Errors()) > 0 {
-		return fmt.Errorf("parser errors: %v", parsed.Errors()[0].Error())
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
 	}
 
 	if base.Debug && node != nil {
@@ -281,7 +281,6 @@ func readFile(filePath string) []int32 {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 }

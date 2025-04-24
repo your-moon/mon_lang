@@ -18,6 +18,9 @@ const (
 	EQUALTO          TokenType = "EQUALTO"          // ==
 
 	QUESTIONMARK TokenType = "QUESTIONMARK" // ?
+	IF           TokenType = "IF"
+	IS           TokenType = "IS"
+	IFNOT        TokenType = "IFNOT" //үгүй
 
 	LOGICAND TokenType = "LOGICAND" // &&
 	LOGICOR  TokenType = "LOGICOR"  // ||

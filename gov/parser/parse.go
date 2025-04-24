@@ -124,9 +124,7 @@ func (p *Parser) ParseStmt() ASTStmt {
 }
 
 func (p *Parser) ParseExpressionStmt() *ExpressionStmt {
-	ast := &ExpressionStmt{
-		Token: p.Current,
-	}
+	ast := &ExpressionStmt{}
 
 	ast.Expression = p.ParseExpr(Lowest)
 	if base.Debug {
@@ -140,7 +138,7 @@ func (p *Parser) ParseExpressionStmt() *ExpressionStmt {
 	return ast
 }
 
-// <function> ::= "фн" <identifier> "(" "" ")" "->" "тоо" "{" { <block-item> } "}"
+// <function> ::= "функц" <identifier> "(" "" ")" "->" "тоо" "{" { <block-item> } "}"
 func (p *Parser) ParseFN() *FNDef {
 	p.NextToken()
 	fnName := p.Current
@@ -198,7 +196,7 @@ func (p *Parser) ParseDecl() *Decl {
 		p.appendError("declaration value must be set on lexer")
 	}
 
-	ident := *p.Current.Value
+	ident := p.Current
 
 	//has [ ":" "тоо" ]
 	if p.checkOptional(lexer.COLON) {
@@ -206,10 +204,16 @@ func (p *Parser) ParseDecl() *Decl {
 			return nil
 		}
 	}
-	ast.Ident = ident
 
-	if !p.expect(lexer.ASSIGN) {
-		return nil
+	ast.Ident = *ident.Value
+
+	if !p.checkOptional(lexer.ASSIGN) {
+
+		if !p.expect(lexer.SEMICOLON) {
+			return nil
+		}
+
+		return ast
 	}
 
 	p.NextToken()
@@ -280,8 +284,12 @@ func (p *Parser) ParseExpr(prec int) ASTExpression {
 		if op == ASTBinOp(A_ASSIGN) {
 			p.NextToken()
 			right := p.ParseExpr(currPrec)
+			leftIdent, ok := left.(*ASTVar)
+			if !ok {
+				panic("left side of assign must be var")
+			}
 			left := &ASTAssignment{
-				Left:  &ASTVar{Ident: left},
+				Left:  leftIdent,
 				Right: right,
 			}
 			return left
@@ -352,13 +360,13 @@ func (p *Parser) ParseGrouping() ASTExpression {
 }
 
 func (p *Parser) ParseIdent() ASTExpression {
-	ast := &ASTIdent{Token: p.Current}
+	ast := &ASTVar{Ident: *p.Current.Value}
 	return ast
 }
 
 func (p *Parser) ParseIntLit() ASTExpression {
 	intVal, _ := strconv.ParseInt(*p.Current.Value, 0, 64)
-	ast := &ASTIntLitExpression{Token: p.Current, Value: intVal}
+	ast := &ASTConstant{Token: p.Current, Value: intVal}
 	return ast
 }
 

@@ -197,6 +197,13 @@ func runCompiler(filePath string) error {
 	compilerx := tackygen.NewTackyGen()
 	tackyprogram := compilerx.EmitTacky(node)
 
+	resolver := semanticanalysis.New()
+
+	_, err = resolver.Resolve(node)
+	if err != nil {
+		return err
+	}
+
 	fmt.Println("---- TACKY LIST ----:")
 	for _, ir := range tackyprogram.FnDef.Instructions {
 		fmt.Println(ir)
@@ -215,6 +222,13 @@ func runTacky(filePath string) error {
 
 	if base.Debug && node != nil {
 		fmt.Println("AST:", node.PrintAST(0))
+	}
+
+	resolver := semanticanalysis.New()
+
+	_, err = resolver.Resolve(node)
+	if err != nil {
+		return err
 	}
 
 	fmt.Println("\n---- GENERATING TACKY IR ----:")

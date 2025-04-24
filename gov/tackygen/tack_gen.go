@@ -39,21 +39,37 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 
 	for _, stmt := range node.FnDef.BlockItems {
 		switch ast := stmt.(type) {
-		case *parser.ASTReturnStmt:
-			if ast.ReturnValue != nil {
-				val := c.EmitExpr(ast.ReturnValue)
-				c.Irs = append(c.Irs, Return{Value: val})
+		case *parser.Decl:
+			if ast.Expr != nil {
+				c.EmitExpr(&parser.ASTAssignment{
+					Left:  &parser.ASTVar{Ident: ast.Ident},
+					Right: ast.Expr,
+				})
 			}
-
+		case parser.ASTStmt:
+			c.EmitTackyStmt(ast)
 		}
 	}
 
+	c.Irs = append(c.Irs, Return{Value: Constant{Value: 0}})
 	program.FnDef = TackyFn{
 		Name:         node.FnDef.TokenLiteral(),
 		Instructions: c.Irs,
 	}
 
 	return program
+}
+
+func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
+	switch ast := node.(type) {
+	case *parser.ASTReturnStmt:
+		if ast.ReturnValue != nil {
+			val := c.EmitExpr(ast.ReturnValue)
+			c.Irs = append(c.Irs, Return{Value: val})
+		}
+	case *parser.ExpressionStmt:
+		c.EmitExpr(ast.Expression)
+	}
 }
 
 func ToUnaryTackyOp(op lexer.TokenType) (UnaryOperator, error) {
@@ -193,7 +209,19 @@ func (c *TackyGen) EmitOrExpr(expr *parser.ASTBinary) TackyVal {
 
 func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
 	switch expr := node.(type) {
-	case *parser.ASTIntLitExpression:
+	case *parser.ASTVar:
+		return Var{Name: expr.Ident}
+	case *parser.ASTAssignment:
+		astVar, ok := expr.Left.(*parser.ASTVar)
+		if !ok {
+			panic("assignment left side must be var")
+		}
+
+		rhsResult := c.EmitExpr(expr.Right)
+
+		c.Irs = append(c.Irs, Copy{Src: rhsResult, Dst: Var{Name: astVar.Ident}})
+		return Var{Name: astVar.Ident}
+	case *parser.ASTConstant:
 		return Constant{Value: int(expr.Value)}
 	case *parser.ASTUnary:
 		src := c.EmitExpr(expr.Inner)
@@ -236,7 +264,7 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
 		c.Irs = append(c.Irs, instr)
 		return dst
 	default:
-		panic("unimplemented")
+		panic(fmt.Sprintf("unimplemented expr: %s", node.TokenLiteral()))
 	}
 }
 

@@ -138,19 +138,12 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 		}, nil
 
 	case *parser.ASTVar:
-		ident, ok := nodetype.Ident.(*parser.ASTIdent)
-		if !ok {
-			return nil, fmt.Errorf("expected identifier in variable reference, found %s", nodetype.Ident.TokenLiteral())
-		}
-
-		uniqueName, exists := r.variableMap[*ident.Token.Value]
+		uniqueName, exists := r.variableMap[nodetype.Ident]
 		if !exists {
-			return nil, fmt.Errorf("undeclared variable: %s", *ident.Token.Value)
+			return nil, fmt.Errorf("undeclared variable: %s", nodetype.Ident)
 		}
 
-		newIdent := &parser.ASTIdent{Token: ident.Token}
-		*newIdent.Token.Value = uniqueName
-		return &parser.ASTVar{Ident: newIdent}, nil
+		return &parser.ASTVar{Ident: uniqueName}, nil
 
 	case *parser.ASTUnary:
 		resolvedInner, err := r.ResolveExpr(nodetype.Inner)
@@ -179,11 +172,11 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 			Op:    nodetype.Op,
 		}, nil
 
-	case *parser.ASTIntLitExpression:
+	case *parser.ASTConstant:
 		return nodetype, nil
 
-	case *parser.ASTIdent:
-		return nodetype, nil
+		// case *parser.ASTIdent:
+		// 	return nodetype, nil
 	}
 
 	return nil, fmt.Errorf("unknown expression type: %T", program)

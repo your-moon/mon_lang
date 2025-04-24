@@ -9,7 +9,11 @@ type Decl struct {
 
 // PrintAST implements BlockItem.
 func (d *Decl) PrintAST(depth int) string {
-	return fmt.Sprintf("Decl: %s = %s", d.Ident, d.Expr.PrintAST(depth+1))
+	if d.Expr != nil {
+		return fmt.Sprintf("Decl: %s = %s", d.Ident, d.Expr.PrintAST(depth+1))
+	} else {
+		return fmt.Sprintf("Decl: %s", d.Ident)
+	}
 }
 
 // TokenLiteral implements BlockItem.

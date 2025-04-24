@@ -58,24 +58,24 @@ func (op ASTBinOp) String() string {
 	}
 }
 
-type ASTIdent struct {
-	Token lexer.Token
-}
+// type ASTIdent struct {
+// 	Token lexer.Token
+// }
+//
+// func (a *ASTIdent) expressionNode()      {}
+// func (a *ASTIdent) TokenLiteral() string { return string(a.Token.Type) }
+// func (a *ASTIdent) PrintAST(depth int) string {
+// 	return indent(depth) + *a.Token.Value
+// }
 
-func (a *ASTIdent) expressionNode()      {}
-func (a *ASTIdent) TokenLiteral() string { return string(a.Token.Type) }
-func (a *ASTIdent) PrintAST(depth int) string {
-	return indent(depth) + *a.Token.Value
-}
-
-type ASTIntLitExpression struct {
+type ASTConstant struct {
 	Token lexer.Token
 	Value int64
 }
 
-func (a *ASTIntLitExpression) expressionNode()      {}
-func (a *ASTIntLitExpression) TokenLiteral() string { return string(a.Token.Type) }
-func (a *ASTIntLitExpression) PrintAST(depth int) string {
+func (a *ASTConstant) expressionNode()      {}
+func (a *ASTConstant) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTConstant) PrintAST(depth int) string {
 	return indent(depth) + *a.Token.Value
 }
 
@@ -160,7 +160,7 @@ func (a *ASTAssignment) PrintAST(depth int) string {
 }
 
 type ASTVar struct {
-	Ident ASTExpression
+	Ident string
 }
 
 func (a ASTVar) expressionNode()      {}
@@ -170,9 +170,9 @@ func (a ASTVar) PrintAST(depth int) string {
 
 	out.WriteString(fmt.Sprintf("%sVAR[\n", indent(depth)))
 
-	if a.Ident != nil {
-		out.WriteString(a.Ident.PrintAST(depth+1) + "\n")
-	}
+	// if a.Ident != nil {
+	// 	out.WriteString(a.Ident.PrintAST(depth+1) + "\n")
+	// }
 
 	out.WriteString(indent(depth) + "]")
 	return out.String()

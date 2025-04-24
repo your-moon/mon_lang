@@ -15,7 +15,7 @@ Lexer -> Parser -> Compiler -> Gen -> Link
 ```sh
 ===EBNF===
 <program> ::= <function>
-<function> ::= "фн" <identifier> "(" "" ")" "->" "тоо" "{" { <block-item> } "}"
+<function> ::= "функц" <identifier> "(" "" ")" "->" "тоо" "{" { <block-item> } "}"
 <block-item> ::= <statement> | <declaration>
 <declaration> ::= "зарла" <identifier> [ ":" "тоo" ] "=" <exp> ";"
 <statement> ::= "буц" <exp> ";" | <exp> ";" | ";"

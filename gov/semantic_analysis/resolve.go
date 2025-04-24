@@ -117,7 +117,7 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 
 	switch nodetype := program.(type) {
 	case *parser.ASTAssignment:
-		left, ok := nodetype.Left.(parser.ASTVar)
+		left, ok := nodetype.Left.(*parser.ASTVar)
 		if !ok {
 			return nil, fmt.Errorf("expected variable on left hand side of assignment statement, found %s", nodetype.Left.TokenLiteral())
 		}

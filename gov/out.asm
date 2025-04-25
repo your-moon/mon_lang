@@ -28,7 +28,9 @@ _main:
     movl $1, %eax
     movq %rbp, %rsp
     popq %rbp
-    ret
+    movq %rax, %rdi
+    movq $60, %rax
+    syscall
     cmpl $0, -28(%rbp)
     je .Lif_end.0
 .Lif_end.0:
@@ -78,7 +80,9 @@ _main:
     movl $2, %eax
     movq %rbp, %rsp
     popq %rbp
-    ret
+    movq %rax, %rdi
+    movq $60, %rax
+    syscall
     cmpl $0, -60(%rbp)
     je .Lif_end.1
 .Lif_end.1:
@@ -106,8 +110,12 @@ _main:
     movl -84(%rbp), %eax
     movq %rbp, %rsp
     popq %rbp
-    ret
+    movq %rax, %rdi
+    movq $60, %rax
+    syscall
     movl $0, %eax
     movq %rbp, %rsp
     popq %rbp
-    ret
+    movq %rax, %rdi
+    movq $60, %rax
+    syscall

@@ -12,6 +12,16 @@ const (
 	Aarch64 OsType = "arch64"
 )
 
+// Comment represents an assembly comment
+type Comment struct {
+	Text string
+}
+
+// Ir returns the IR representation of a comment
+func (a Comment) Ir() string {
+	return fmt.Sprintf("# %s", a.Text)
+}
+
 type AsmGen struct {
 	file   *os.File
 	ostype OsType
@@ -72,7 +82,9 @@ func (a *AsmGen) GenInstr(instr AsmInstruction) {
 	case Return:
 		a.Write("    movq %rbp, %rsp")
 		a.Write("    popq %rbp")
-		a.Write("    ret")
+		a.Write("    movq %rax, %rdi") // Move return value to %rdi for syscall
+		a.Write("    movq $60, %rax")  // Exit syscall number
+		a.Write("    syscall")         // Make the syscall
 	case Unary:
 		a.Write(fmt.Sprintf("    %s %s", string(ast.Op), a.GenOperand(ast.Dst)))
 	case AllocateStack:

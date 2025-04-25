@@ -6,12 +6,38 @@ import (
 
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
+
 type ASTBlock struct {
-	BlockItem []BlockItem
+	BlockItems []BlockItem
 }
 
-type ASTCompountStmt struct {
+func (a *ASTBlock) statementNode()       {}
+func (a *ASTBlock) TokenLiteral() string { return "BLOCK" }
+func (a *ASTBlock) PrintAST(depth int) string {
+	var out bytes.Buffer
+
+	for _, b := range a.BlockItems {
+		out.WriteString(b.PrintAST(depth+1) + "\n")
+	}
+
+	return out.String()
+}
+
+type ASTCompoundStmt struct {
 	Block ASTBlock
+}
+
+func (a *ASTCompoundStmt) statementNode()       {}
+func (a *ASTCompoundStmt) TokenLiteral() string { return "COMPOUND" }
+func (a *ASTCompoundStmt) PrintAST(depth int) string {
+	var out bytes.Buffer
+
+	out.WriteString(fmt.Sprintf("%s{\n", indent(depth)))
+	for _, b := range a.Block.BlockItems {
+		out.WriteString(b.PrintAST(depth+1) + "\n")
+	}
+	out.WriteString(fmt.Sprintf("%s}\n", indent(depth)))
+	return out.String()
 }
 
 type ASTIfStmt struct {
@@ -82,7 +108,7 @@ func (a *FNDef) PrintAST(depth int) string {
 		out.WriteString(fmt.Sprintf("%sfunction %s() -> int {\n", indent(depth), *a.Token.Value))
 	}
 
-	for _, b := range a.BlockItems {
+	for _, b := range a.Block.BlockItems {
 		out.WriteString(b.PrintAST(depth+1) + "\n")
 	}
 

@@ -30,11 +30,11 @@ func TestParseSimple(t *testing.T) {
 		t.Errorf("Expected function name to be 'майн', got %v", program.FnDef.Token.Value)
 	}
 
-	if len(program.FnDef.BlockItems) != 1 {
-		t.Errorf("Expected 1 statement in function body, got %d", len(program.FnDef.BlockItems))
+	if len(program.FnDef.Block.BlockItems) != 1 {
+		t.Errorf("Expected 1 statement in function body, got %d", len(program.FnDef.Block.BlockItems))
 	}
 
-	returnStmt, ok := program.FnDef.BlockItems[0].(*ASTReturnStmt)
+	returnStmt, ok := program.FnDef.Block.BlockItems[0].(*ASTReturnStmt)
 	if !ok {
 		t.Error("Expected return statement")
 	} else {
@@ -75,11 +75,11 @@ func TestParseBinaryOperators(t *testing.T) {
 				t.Fatalf("Program is nil for %s", tt.name)
 			}
 
-			if len(program.FnDef.BlockItems) != 1 {
-				t.Errorf("Expected 1 statement in function body, got %d", len(program.FnDef.BlockItems))
+			if len(program.FnDef.Block.BlockItems) != 1 {
+				t.Errorf("Expected 1 statement in function body, got %d", len(program.FnDef.Block.BlockItems))
 			}
 
-			returnStmt, ok := program.FnDef.BlockItems[0].(*ASTReturnStmt)
+			returnStmt, ok := program.FnDef.Block.BlockItems[0].(*ASTReturnStmt)
 			if !ok {
 				t.Error("Expected return statement")
 			} else {
@@ -106,11 +106,11 @@ func TestParseConditional(t *testing.T) {
 		t.Fatal("Program is nil")
 	}
 
-	if len(program.FnDef.BlockItems) != 1 {
-		t.Errorf("Expected 1 statement in function body, got %d", len(program.FnDef.BlockItems))
+	if len(program.FnDef.Block.BlockItems) != 1 {
+		t.Errorf("Expected 1 statement in function body, got %d", len(program.FnDef.Block.BlockItems))
 	}
 
-	stmt, ok := program.FnDef.BlockItems[0].(*ExpressionStmt)
+	stmt, ok := program.FnDef.Block.BlockItems[0].(*ExpressionStmt)
 	if !ok {
 		t.Error("Expected expression statement")
 	} else {
@@ -140,17 +140,17 @@ func TestParseDeclarations(t *testing.T) {
 		t.Fatal("Program is nil")
 	}
 
-	if len(program.FnDef.BlockItems) != 4 {
-		t.Errorf("Expected 4 statements in function body, got %d", len(program.FnDef.BlockItems))
+	if len(program.FnDef.Block.BlockItems) != 4 {
+		t.Errorf("Expected 4 statements in function body, got %d", len(program.FnDef.Block.BlockItems))
 	}
 
-	if decl, ok := program.FnDef.BlockItems[0].(*Decl); !ok {
+	if decl, ok := program.FnDef.Block.BlockItems[0].(*Decl); !ok {
 		t.Error("Expected first statement to be declaration")
 	} else if decl.Ident != "б" {
 		t.Errorf("Expected first declaration name to be 'б', got %s", decl.Ident)
 	}
 
-	if decl, ok := program.FnDef.BlockItems[1].(*Decl); !ok {
+	if decl, ok := program.FnDef.Block.BlockItems[1].(*Decl); !ok {
 		t.Error("Expected second statement to be declaration")
 	} else {
 		if decl.Ident != "а" {
@@ -161,7 +161,7 @@ func TestParseDeclarations(t *testing.T) {
 		}
 	}
 
-	if stmt, ok := program.FnDef.BlockItems[2].(*ExpressionStmt); !ok {
+	if stmt, ok := program.FnDef.Block.BlockItems[2].(*ExpressionStmt); !ok {
 		t.Error("Expected third statement to be assignment")
 	} else {
 		if _, ok := stmt.Expression.(*ASTAssignment); !ok {
@@ -169,7 +169,7 @@ func TestParseDeclarations(t *testing.T) {
 		}
 	}
 
-	if _, ok := program.FnDef.BlockItems[3].(*ASTReturnStmt); !ok {
+	if _, ok := program.FnDef.Block.BlockItems[3].(*ASTReturnStmt); !ok {
 		t.Error("Expected fourth statement to be return")
 	}
 }
@@ -179,6 +179,7 @@ func TestParseExamples(t *testing.T) {
 		"../test",
 		"../test/binary",
 		"../test/spacetab",
+		"../test/precedence",
 	}
 
 	for _, dir := range testDirs {
@@ -376,7 +377,7 @@ func TestOperatorPrecedence(t *testing.T) {
 				t.Fatalf("Program is nil for %s", tt.name)
 			}
 
-			returnStmt, ok := program.FnDef.BlockItems[0].(*ASTReturnStmt)
+			returnStmt, ok := program.FnDef.Block.BlockItems[0].(*ASTReturnStmt)
 			if !ok {
 				t.Fatalf("Expected return statement for %s", tt.name)
 			}

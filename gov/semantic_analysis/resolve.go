@@ -47,12 +47,12 @@ func (r *Resolver) ResolveFnDef(fndef parser.FNDef) (parser.FNDef, error) {
 	r.variableMap = make(map[string]string)
 	defer func() { r.variableMap = oldMap }()
 
-	for i, item := range fndef.BlockItems {
+	for i, item := range fndef.Block.BlockItems {
 		blockitem, err := r.ResolveBlockItem(item)
 		if err != nil {
 			return parser.FNDef{}, err
 		}
-		fndef.BlockItems[i] = blockitem
+		fndef.Block.BlockItems[i] = blockitem
 	}
 	return fndef, nil
 }

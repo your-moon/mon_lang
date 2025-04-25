@@ -41,7 +41,7 @@ func (a *ASTProgram) TokenLiteral() string {
 type FNDef struct {
 	Token      lexer.Token
 	ReturnType lexer.TokenType
-	BlockItems []BlockItem
+	BlockItems []ASTBlock
 }
 
 func (a *ASTProgram) PrintAST(depth int) string {

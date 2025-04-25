@@ -6,6 +6,13 @@ import (
 
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
+type ASTBlock struct {
+	BlockItem []BlockItem
+}
+
+type ASTCompountStmt struct {
+	Block ASTBlock
+}
 
 type ASTIfStmt struct {
 	Cond ASTExpression

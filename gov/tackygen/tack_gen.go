@@ -29,7 +29,7 @@ func (c *TackyGen) makeTemp() Var {
 
 func (c *TackyGen) makeLabel(prefix string) Var {
 	temp := fmt.Sprintf("%s.%d", prefix, c.LabelCount)
-	c.TempCount += 1
+	c.LabelCount += 1
 	return Var{Name: temp}
 
 }
@@ -237,6 +237,23 @@ func (c *TackyGen) EmitOrExpr(expr *parser.ASTBinary) TackyVal {
 
 func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
 	switch expr := node.(type) {
+	case *parser.ASTConditional:
+		endLabel := c.makeLabel("conditional_end")
+		elseLabel := c.makeLabel("conditional_else")
+		dst := c.makeTemp()
+
+		condEval := c.EmitExpr(expr.Cond)
+		c.Irs = append(c.Irs, JumpIfZero{Val: condEval, Ident: elseLabel.Name})
+
+		evalThen := c.EmitExpr(expr.Then)
+		c.Irs = append(c.Irs, Copy{Src: evalThen, Dst: dst})
+		c.Irs = append(c.Irs, Jump{Target: endLabel.Name})
+		c.Irs = append(c.Irs, Label{Ident: elseLabel.Name})
+
+		evalElse := c.EmitExpr(expr.Else)
+		c.Irs = append(c.Irs, Copy{Src: evalElse, Dst: dst})
+		c.Irs = append(c.Irs, Label{Ident: endLabel.Name})
+		return dst
 	case *parser.ASTVar:
 		return Var{Name: expr.Ident}
 	case *parser.ASTAssignment:

@@ -63,7 +63,6 @@ func (a *AsmGen) GenInstr(instr AsmInstruction) {
 		} else if ast.Op == Sub {
 			a.Write(fmt.Sprintf("    subl %s, %s", a.GenOperand(ast.Src), a.GenOperand(ast.Dst)))
 		}
-
 	case Cdq:
 		a.Write("    cdq")
 	case Idiv:

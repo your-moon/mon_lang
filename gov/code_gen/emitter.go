@@ -88,7 +88,7 @@ func (a *AsmASTGen) GenASTInstr(instrs []tackygen.Instruction) {
 			a.EmitInstr(mov)
 		case tackygen.JumpIfZero:
 			cmp := Cmp{
-				Src:  Imm{Value: 0},
+				Src: Imm{Value: 0},
 				Dst: a.GenASTVal(ast.Val),
 			}
 			jmpcc := JmpCC{
@@ -99,7 +99,7 @@ func (a *AsmASTGen) GenASTInstr(instrs []tackygen.Instruction) {
 			a.EmitInstr(jmpcc)
 		case tackygen.JumpIfNotZero:
 			cmp := Cmp{
-				Src:  Imm{Value: 0},
+				Src: Imm{Value: 0},
 				Dst: a.GenASTVal(ast.Val),
 			}
 			jmpcc := JmpCC{
@@ -123,7 +123,7 @@ func (a *AsmASTGen) GenASTInstr(instrs []tackygen.Instruction) {
 		case tackygen.Unary:
 			if ast.Op == tackygen.Not {
 				cmp := Cmp{
-					Src:  Imm{Value: 0},
+					Src: Imm{Value: 0},
 					Dst: a.GenASTVal(ast.Src),
 				}
 				mov := AsmMov{
@@ -180,7 +180,7 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
 	//is relational op
 	if instr.Op == tackygen.GreaterThan || instr.Op == tackygen.GreaterThanEqual || instr.Op == tackygen.LessThan || instr.Op == tackygen.LessThanEqual || instr.Op == tackygen.Equal || instr.Op == tackygen.NotEqual {
 		cmp := Cmp{
-			Src:  a.GenASTVal(instr.Src1),
+			Src: a.GenASTVal(instr.Src1),
 			Dst: a.GenASTVal(instr.Src2),
 		}
 		mov := AsmMov{

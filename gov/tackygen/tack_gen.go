@@ -62,6 +62,34 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 
 func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 	switch ast := node.(type) {
+	case *parser.ASTIfStmt:
+		// no else clause
+		if ast.Else == nil {
+			endLabel := c.makeLabel("if_end")
+			//instruction of cond
+			// c = result of cond
+			evalCond := c.EmitExpr(ast.Cond)
+
+			// jumpifzero(c, end)
+			jmpifzero := JumpIfZero{Val: evalCond, Ident: endLabel.Name}
+
+			// instructions of body
+			c.EmitTackyStmt(ast.Then)
+			// label(end)
+			c.Irs = append(c.Irs, []Instruction{jmpifzero, Label{Ident: endLabel.Name}}...)
+
+		} else {
+			elseLabel := c.makeLabel("else")
+			endLabel := c.makeLabel("")
+			evalCond := c.EmitExpr(ast.Cond)
+			jmpifzero := JumpIfZero{Val: evalCond, Ident: elseLabel.Name}
+			c.Irs = append(c.Irs, []Instruction{jmpifzero}...)
+			c.EmitTackyStmt(ast.Then)
+			c.Irs = append(c.Irs, []Instruction{Label{Ident: elseLabel.Name}}...)
+			c.EmitTackyStmt(ast.Else)
+			c.Irs = append(c.Irs, []Instruction{Label{Ident: endLabel.Name}}...)
+		}
+
 	case *parser.ASTReturnStmt:
 		if ast.ReturnValue != nil {
 			val := c.EmitExpr(ast.ReturnValue)

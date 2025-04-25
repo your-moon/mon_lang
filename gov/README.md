@@ -15,31 +15,28 @@ Lexer -> Parser -> Compiler -> Gen -> Link
 ```sh
 ===EBNF===
 <program> ::= <function>
-<function> ::= "функц" <identifier> "(" [ <parameter-list> ] ")" "->" <type> "{" { <block-item> } "}"
-<parameter-list> ::= <parameter> { "," <parameter> }
-<parameter> ::= <identifier> ":" <type>
-<type> ::= "тоо" | "тэмдэгт"
+<function> ::= "функц" <identifier> "(" ")" "->" "тоо" "{" { <block-item> } "}"
+<block> ::= "{" <block-item>* "}"
 <block-item> ::= <statement> | <declaration>
-<declaration> ::= "зарла" <identifier> [ ":" <type> ] [ "=" <exp> ] ";"
+<declaration> ::= "зарла" <identifier> [ ":" "тоо" ] [ "=" <exp> ] ";"
 <statement> ::=   "буц" <exp> ";"
                 | "хэрэв" <exp> "бол" <block> [ "үгүй бол" <block> ]
                 | "давтах" <identifier> "=" <exp> "-с" <exp> "хүртэл" <block>
                 | <exp> ";"
                 | ";"
-<block> ::= "{" { <block-item> } "}"
 <exp> ::= <factor> 
         | <exp> <binop> <exp> 
         | <exp> "?" <exp> ":" <exp>
-        | <identifier> "[" <exp> "]"
+        | <identifier> "=" <exp>
 <factor> ::= <int> 
            | <string>
            | <identifier> 
            | <unop> <factor> 
            | "(" <exp> ")"
 <unop> ::= "-" | "~" | "!"
-<binop> ::= "-" | "+" | "*" | "/" | "%" 
+<binop> ::= "-" | "+" | "*" | "/" 
           | "болон" | "эсвэл"
-          | "==" | "!=" | "<" | "<=" | ">" | ">=" | "="
+          | "==" | "!=" | "<" | "<=" | ">" | ">="
 <identifier> ::= ? An identifier token ?
 <int> ::= ? A constant token ?
 <string> ::= ? A string literal token ?

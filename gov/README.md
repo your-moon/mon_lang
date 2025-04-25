@@ -15,7 +15,7 @@ Lexer -> Parser -> Compiler -> Gen -> Link
 ```sh
 ===EBNF===
 <program> ::= <function>
-<function> ::= "функц" <identifier> "(" ")" "->" "тоо" "{" { <block-item> } "}"
+<function> ::= "функц" <identifier> "(" ")" "->" "тоо" { <block-item> }
 <block> ::= "{" <block-item>* "}"
 <block-item> ::= <statement> | <declaration>
 <declaration> ::= "зарла" <identifier> [ ":" "тоо" ] [ "=" <exp> ] ";"
@@ -24,17 +24,17 @@ Lexer -> Parser -> Compiler -> Gen -> Link
                 | "давтах" <identifier> "=" <exp> "-с" <exp> "хүртэл" <block>
                 | <exp> ";"
                 | ";"
-<exp> ::= <factor> 
-        | <exp> <binop> <exp> 
+<exp> ::= <factor>
+        | <exp> <binop> <exp>
         | <exp> "?" <exp> ":" <exp>
         | <identifier> "=" <exp>
-<factor> ::= <int> 
+<factor> ::= <int>
            | <string>
-           | <identifier> 
-           | <unop> <factor> 
+           | <identifier>
+           | <unop> <factor>
            | "(" <exp> ")"
 <unop> ::= "-" | "~" | "!"
-<binop> ::= "-" | "+" | "*" | "/" 
+<binop> ::= "-" | "+" | "*" | "/"
           | "болон" | "эсвэл"
           | "==" | "!=" | "<" | "<=" | ">" | ">="
 <identifier> ::= ? An identifier token ?
@@ -52,10 +52,10 @@ parameter = Parameter(identifier name, type type)
 type = Number | String
 block_item = S(statement) | D(declaration)
 declaration = Declaration(identifier name, type? type, exp? init)
-statement = Return(exp) 
+statement = Return(exp)
          | If(exp, block, block?)
          | For(identifier, exp, exp, block)
-         | Expression(exp) 
+         | Expression(exp)
          | Null
 block = Block(block_item* items)
 exp = Constant(int)
@@ -67,7 +67,7 @@ exp = Constant(int)
     | Assignment(exp, exp)
     | Ternary(exp, exp, exp)
 unary_operator = Complement | Negate | Not
-binary_operator = Add | Subtract | Multiply | Divide | Remainder 
+binary_operator = Add | Subtract | Multiply | Divide | Remainder
                 | And | Or
                 | Equal | NotEqual | LessThan | LessOrEqual
                 | GreaterThan | GreaterOrEqual

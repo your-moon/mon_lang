@@ -182,7 +182,10 @@ func (p *Parser) parseExpressionStmt() *ExpressionStmt {
 	return ast
 }
 
+// <function> ::= "функц" <identifier> "(" ")" "->" "тоо" "{" { <block-item> } "}"
 func (p *Parser) parseFN() *FNDef {
+	//current is FN token
+	//peek is IDENT that fn name
 	if base.Debug {
 		fmt.Printf("Current token after функц: %v\n", p.current)
 		fmt.Printf("Peek token: %v\n", p.peekToken)
@@ -243,6 +246,7 @@ func (p *Parser) parseCompoundStmt() *ASTCompoundStmt {
 func (p *Parser) parseBlockItems() []BlockItem {
 	var items []BlockItem
 
+	// block duustal davtna
 	for !p.peekIs(lexer.CLOSE_BRACE) {
 		if stmt := p.parseBlockItem(); stmt != nil {
 			items = append(items, stmt)

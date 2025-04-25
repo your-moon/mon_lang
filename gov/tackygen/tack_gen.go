@@ -69,14 +69,14 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 			//instruction of cond
 			// c = result of cond
 			evalCond := c.EmitExpr(ast.Cond)
-
 			// jumpifzero(c, end)
 			jmpifzero := JumpIfZero{Val: evalCond, Ident: endLabel.Name}
+			c.Irs = append(c.Irs, jmpifzero)
 
 			// instructions of body
 			c.EmitTackyStmt(ast.Then)
 			// label(end)
-			c.Irs = append(c.Irs, []Instruction{jmpifzero, Label{Ident: endLabel.Name}}...)
+			c.Irs = append(c.Irs, Label{Ident: endLabel.Name})
 
 		} else {
 			elseLabel := c.makeLabel("else")

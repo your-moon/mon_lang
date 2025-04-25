@@ -357,15 +357,14 @@ func (p *Parser) IsInfixOp() bool {
 		p.PeekToken.Type == lexer.GREATERTHAN || p.PeekToken.Type == lexer.GREATERTHANEQUAL ||
 		p.PeekToken.Type == lexer.EQUALTO || p.PeekToken.Type == lexer.NOTEQUAL ||
 		p.PeekToken.Type == lexer.LOGICAND || p.PeekToken.Type == lexer.LOGICOR || p.PeekToken.Type == lexer.ASSIGN ||
-		p.PeekToken.Type == lexer.QUESTIONMARK || p.PeekToken.Type == lexer.COLON
-
+		p.PeekToken.Type == lexer.QUESTIONMARK
 }
 
 const (
 	_           int = iota
 	Lowest          // 0
 	Assign          // = (1)
-	Conditional     // ? (3)
+	Conditional     // ? : (3)
 	LogicOr         // || (5)
 	LogicAnd        // && (10)
 	Equals          // == != (30)
@@ -403,11 +402,10 @@ func (p *Parser) ParseExpr(minPrec int) ASTExpression {
 
 		p.NextToken() // consume the operator
 		op, _ := p.ParseBinOp(p.Current.Type)
-		nextPrec := p.currPrecedence()
 
 		if op == ASTBinOp(A_ASSIGN) {
 			p.NextToken()
-			right := p.ParseExpr(nextPrec)
+			right := p.ParseExpr(Assign)
 			leftIdent, ok := left.(*ASTVar)
 			if !ok {
 				panic("left side of assign must be var")
@@ -420,19 +418,23 @@ func (p *Parser) ParseExpr(minPrec int) ASTExpression {
 			p.NextToken()
 			middle := p.ParseExpr(Lowest)
 
-			if !p.expect(lexer.COLON) {
-				panic("expected colon after middle expression in ternary")
+			if p.PeekToken.Type != lexer.COLON {
+				p.appendError("expected colon after middle expression in ternary")
+				return nil
 			}
-			p.NextToken()
-			right := p.ParseExpr(nextPrec)
+			p.NextToken() // consume colon
+			p.NextToken() // move to next token after colon
+
+			right := p.ParseExpr(Lowest)
 			left = &ASTConditional{
 				Cond: left,
 				Then: middle,
 				Else: right,
 			}
 		} else {
-			p.NextToken()                  // consume the right operand
-			right := p.ParseExpr(nextPrec) // Use nextPrec for proper precedence
+			nextPrec := p.currPrecedence()
+			p.NextToken()
+			right := p.ParseExpr(nextPrec)
 			left = &ASTBinary{
 				Left:  left,
 				Right: right,

@@ -9,7 +9,7 @@
       "program": "main.go",
       "args": [
         "gen",
-        "test/conditional.mn",
+        "test/precedence/ternary.mn",
         "--debug"
       ]
     }

@@ -15,20 +15,34 @@ Lexer -> Parser -> Compiler -> Gen -> Link
 ```sh
 ===EBNF===
 <program> ::= <function>
-<function> ::= "функц" <identifier> "(" "" ")" "->" "тоо" "{" { <block-item> } "}"
+<function> ::= "функц" <identifier> "(" [ <parameter-list> ] ")" "->" <type> "{" { <block-item> } "}"
+<parameter-list> ::= <parameter> { "," <parameter> }
+<parameter> ::= <identifier> ":" <type>
+<type> ::= "тоо" | "тэмдэгт"
 <block-item> ::= <statement> | <declaration>
-<declaration> ::= "зарла" <identifier> [ ":" "тоo" ] "=" <exp> ";"
+<declaration> ::= "зарла" <identifier> [ ":" <type> ] [ "=" <exp> ] ";"
 <statement> ::=   "буц" <exp> ";"
-                | "хэрэв" <exp> "бол" <statement> [ "үгүй бол" <statement> ] ";"
-                | <exp> ";" | ";"
-
-<exp> ::= <factor> | <exp> <binop> <exp> | <exp> "?" <exp> ":" <exp>
-<factor> ::= <int> | <identifier> | <unop> <factor> | "(" <exp> ")"
+                | "хэрэв" <exp> "бол" <block> [ "үгүй бол" <block> ]
+                | "давтах" <identifier> "=" <exp> "-с" <exp> "хүртэл" <block>
+                | <exp> ";"
+                | ";"
+<block> ::= "{" { <block-item> } "}"
+<exp> ::= <factor> 
+        | <exp> <binop> <exp> 
+        | <exp> "?" <exp> ":" <exp>
+        | <identifier> "[" <exp> "]"
+<factor> ::= <int> 
+           | <string>
+           | <identifier> 
+           | <unop> <factor> 
+           | "(" <exp> ")"
 <unop> ::= "-" | "~" | "!"
-<binop> ::= "-" | "+" | "*" | "/" | "%" | "&&" | "||"
- | "==" | "!=" | "<" | "<=" | ">" | ">=" | "="
+<binop> ::= "-" | "+" | "*" | "/" | "%" 
+          | "болон" | "эсвэл"
+          | "==" | "!=" | "<" | "<=" | ">" | ">=" | "="
 <identifier> ::= ? An identifier token ?
 <int> ::= ? A constant token ?
+<string> ::= ? A string literal token ?
 
 ```
 
@@ -36,19 +50,30 @@ Lexer -> Parser -> Compiler -> Gen -> Link
 ===AST===
 
 program = Program(function_definition)
-function_definition = Function(identifier name, block_item* body)
+function_definition = Function(identifier name, parameter* params, type return_type, block_item* body)
+parameter = Parameter(identifier name, type type)
+type = Number | String
 block_item = S(statement) | D(declaration)
-declaration = Declaration(identifier name, exp? init)
-statement = Return(exp) | Expression(exp) | Null
+declaration = Declaration(identifier name, type? type, exp? init)
+statement = Return(exp) 
+         | If(exp, block, block?)
+         | For(identifier, exp, exp, block)
+         | Expression(exp) 
+         | Null
+block = Block(block_item* items)
 exp = Constant(int)
- | Var(identifier)
- | Unary(unary_operator, exp)
- | Binary(binary_operator, exp, exp)
- | Assignment(exp, exp)
+    | String(string)
+    | Var(identifier)
+    | ArrayAccess(identifier, exp)
+    | Unary(unary_operator, exp)
+    | Binary(binary_operator, exp, exp)
+    | Assignment(exp, exp)
+    | Ternary(exp, exp, exp)
 unary_operator = Complement | Negate | Not
-binary_operator = Add | Subtract | Multiply | Divide | Remainder | And | Or
- | Equal | NotEqual | LessThan | LessOrEqual
- | GreaterThan | GreaterOrEqual
+binary_operator = Add | Subtract | Multiply | Divide | Remainder 
+                | And | Or
+                | Equal | NotEqual | LessThan | LessOrEqual
+                | GreaterThan | GreaterOrEqual
 
 
 ```

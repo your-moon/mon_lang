@@ -180,8 +180,8 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) {
 	//is relational op
 	if instr.Op == tackygen.GreaterThan || instr.Op == tackygen.GreaterThanEqual || instr.Op == tackygen.LessThan || instr.Op == tackygen.LessThanEqual || instr.Op == tackygen.Equal || instr.Op == tackygen.NotEqual {
 		cmp := Cmp{
-			Src: a.GenASTVal(instr.Src1),
-			Dst: a.GenASTVal(instr.Src2),
+			Src: a.GenASTVal(instr.Src2),
+			Dst: a.GenASTVal(instr.Src1),
 		}
 		mov := AsmMov{
 			Src: Imm{Value: 0},

@@ -201,16 +201,16 @@ func (c *TackyGen) EmitOrExpr(expr *parser.ASTBinary) TackyVal {
 	endLabel := c.makeLabel("or_end")
 	dst := c.makeTemp()
 
-	v1 := c.EmitExpr(expr.Left)
+	left := c.EmitExpr(expr.Left)
 	c.Irs = append(c.Irs, JumpIfNotZero{
-		Val:   v1,
+		Val:   left,
 		Ident: trueLabel.Name,
 	})
-	v2 := c.EmitExpr(expr.Right)
+	right := c.EmitExpr(expr.Right)
 
 	c.Irs = append(c.Irs, []Instruction{
 		JumpIfNotZero{
-			Val:   v2,
+			Val:   right,
 			Ident: trueLabel.Name,
 		},
 		Copy{

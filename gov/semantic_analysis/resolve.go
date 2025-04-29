@@ -14,14 +14,24 @@ const (
 	ErrUnknownExpression  = "үл мэдэгдэх илэрхийллийн төрөл: '%T'"
 )
 
+type VarEntry struct {
+	UniqueName       string
+	fromCurrentScope bool
+}
+type VariableMap struct {
+	variableMap map[string]VarEntry
+}
+
 type Resolver struct {
-	variableMap map[string]string
+	variableMap VariableMap
 	tempCounter int
 }
 
 func New() Resolver {
 	return Resolver{
-		variableMap: make(map[string]string),
+		variableMap: VariableMap{
+			variableMap: make(map[string]VarEntry),
+		},
 		tempCounter: 0,
 	}
 }
@@ -42,19 +52,25 @@ func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, erro
 }
 
 func (r *Resolver) ResolveFnDef(fndef parser.FNDef) (parser.FNDef, error) {
-	// Create a new scope for the function
-	oldMap := r.variableMap
-	r.variableMap = make(map[string]string)
-	defer func() { r.variableMap = oldMap }()
 
-	for i, item := range fndef.Block.BlockItems {
+	block, err := r.ResolveBlock(fndef.Block)
+	if err != nil {
+		return parser.FNDef{}, err
+	}
+	fndef.Block = block
+
+	return fndef, nil
+}
+
+func (r *Resolver) ResolveBlock(program parser.ASTBlock) (parser.ASTBlock, error) {
+	for i, item := range program.BlockItems {
 		blockitem, err := r.ResolveBlockItem(item)
 		if err != nil {
-			return parser.FNDef{}, err
+			return parser.ASTBlock{}, err
 		}
-		fndef.Block.BlockItems[i] = blockitem
+		program.BlockItems[i] = blockitem
 	}
-	return fndef, nil
+	return program, nil
 }
 
 func (r *Resolver) ResolveBlockItem(program parser.BlockItem) (parser.BlockItem, error) {
@@ -78,6 +94,15 @@ func (r *Resolver) ResolveBlockItem(program parser.BlockItem) (parser.BlockItem,
 
 func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 	switch nodetype := program.(type) {
+	case *parser.ASTCompoundStmt:
+		// create a new variable map that inherit the varMap
+		r.scopeSwitch()
+		stmt, err := r.ResolveBlock(nodetype.Block)
+		if err != nil {
+			return nil, err
+		}
+		nodetype.Block = stmt
+		return nodetype, nil
 	case *parser.ASTReturnStmt:
 		retval, err := r.ResolveExpr(nodetype.ReturnValue)
 		if err != nil {
@@ -117,24 +142,56 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 	return program, nil
 }
 
+func (r *Resolver) scopeSwitch() {
+	newMap := make(map[string]VarEntry)
+
+	for k, v := range r.variableMap.variableMap {
+		entry := v
+		entry.fromCurrentScope = false
+		newMap[k] = entry
+	}
+
+	r.variableMap.variableMap = newMap
+}
+
+func (r *Resolver) endScope() {
+	newMap := make(map[string]VarEntry)
+
+	for k, v := range r.variableMap.variableMap {
+		entry := v
+		entry.fromCurrentScope = false
+		newMap[k] = entry
+	}
+
+	r.variableMap.variableMap = newMap
+}
+
 func (r *Resolver) ResolveDecl(program *parser.Decl) (*parser.Decl, error) {
-	// Check for duplicate declaration
-	if _, exists := r.variableMap[program.Ident]; exists {
+	// variable that in current scope and redeclared
+	if _, exists := r.variableMap.variableMap[program.Ident]; exists && r.variableMap.variableMap[program.Ident].fromCurrentScope {
 		return nil, fmt.Errorf(ErrDuplicateVariable, program.Ident)
 	}
 
-	uniqueName := r.makeNamedTemporary(program.Ident)
-	r.variableMap[program.Ident] = uniqueName
-
-	if program.Expr != nil {
-		resolved, err := r.ResolveExpr(program.Expr)
-		if err != nil {
-			return nil, err
+	// variable that in outer scope or not defined in var map that generate unique name and add to map
+	if !r.variableMap.variableMap[program.Ident].fromCurrentScope {
+		uniqueName := r.makeNamedTemporary(program.Ident)
+		r.variableMap.variableMap[program.Ident] = VarEntry{
+			UniqueName:       uniqueName,
+			fromCurrentScope: true,
 		}
-		program.Expr = resolved
+
+		if program.Expr != nil {
+			resolved, err := r.ResolveExpr(program.Expr)
+			if err != nil {
+				return nil, err
+			}
+			program.Expr = resolved
+		}
+
+		program.Ident = uniqueName
+
 	}
 
-	program.Ident = uniqueName
 	return program, nil
 }
 
@@ -187,12 +244,12 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 		}, nil
 
 	case *parser.ASTVar:
-		uniqueName, exists := r.variableMap[nodetype.Ident]
+		uniqueName, exists := r.variableMap.variableMap[nodetype.Ident]
 		if !exists {
 			return nil, fmt.Errorf(ErrUndeclaredVariable, nodetype.Ident)
 		}
 
-		return &parser.ASTVar{Ident: uniqueName}, nil
+		return &parser.ASTVar{Ident: uniqueName.UniqueName}, nil
 
 	case *parser.ASTUnary:
 		resolvedInner, err := r.ResolveExpr(nodetype.Inner)

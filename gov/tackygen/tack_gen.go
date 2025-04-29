@@ -60,8 +60,26 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	return program
 }
 
+func (c *TackyGen) EmitTackyBlock(node parser.ASTBlock) {
+	for _, stmt := range node.BlockItems {
+		switch ast := stmt.(type) {
+		case *parser.Decl:
+			if ast.Expr != nil {
+				c.EmitExpr(&parser.ASTAssignment{
+					Left:  &parser.ASTVar{Ident: ast.Ident},
+					Right: ast.Expr,
+				})
+			}
+		case parser.ASTStmt:
+			c.EmitTackyStmt(ast)
+		}
+	}
+}
+
 func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 	switch ast := node.(type) {
+	case *parser.ASTCompoundStmt:
+		c.EmitTackyBlock(ast.Block)
 	case *parser.ASTIfStmt:
 		// no else clause
 		if ast.Else == nil {

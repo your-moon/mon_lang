@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/your-moon/mn_compiler_go_version/base"
 	"github.com/your-moon/mn_compiler_go_version/errors"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
@@ -20,7 +19,7 @@ type Parser struct {
 func NewParser(source []int32) *Parser {
 	p := &Parser{
 		source:  source,
-		scanner: lexer.NewScanner(source, base.Debug),
+		scanner: lexer.NewScanner(source),
 	}
 	p.nextToken()
 	p.nextToken()

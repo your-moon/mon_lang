@@ -192,13 +192,19 @@ func (c *CLI) printDetailedHelp() {
 
 // Helper functions for each command
 func (c *CLI) runLexer(args []string) error {
-	fmt.Println("DEBUG", c.debug)
 	runeString := readFile(args[0])
-	scanner := lexer.NewScanner(runeString, c.debug)
+	scanner := lexer.NewScanner(runeString)
 	for {
 		token, err := scanner.Scan()
 		if err != nil {
-			return fmt.Errorf("lexing error: %v", err)
+			return fmt.Errorf("лексер алдаа: %v", err)
+		}
+		if c.debug {
+			if token.Value != nil {
+				fmt.Printf("[debug] Токен: %s, Утга: %s\n", token.Type, *token.Value)
+			} else {
+				fmt.Printf("[debug] Токен: %s\n", token.Type)
+			}
 		}
 		if token.Type == lexer.EOF {
 			break

@@ -22,6 +22,8 @@ Lexer -> Parser -> Compiler -> Gen -> Link
 <statement> ::=   "буц" <exp> ";"
                 | "хэрэв" <exp> "бол" <block> [ "үгүй бол" <block> ]
                 | "давтах" <identifier> "=" <exp> "-с" <exp> "хүртэл" <block>
+                | "зогс" | "үргэлжлүүл"
+                | "давтах" <identifier> "=" <exp> "-с" <exp> "хүртэл" <block>
                 | <exp> ";"
                 | ";"
 <exp> ::= <factor>

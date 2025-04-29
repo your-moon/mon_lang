@@ -22,6 +22,12 @@ const (
 	IS           TokenType = "IS"
 	IFNOT        TokenType = "IFNOT" //үгүй
 
+	LOOP        TokenType = "LOOP"
+	UNTIL        TokenType = "UNTIL"
+
+	BREAK TokenType = "BREAK"
+	CONTINUE TokenType = "CONTINUE"
+
 	LOGICAND TokenType = "LOGICAND" // &&
 	LOGICOR  TokenType = "LOGICOR"  // ||
 	NOT      TokenType = "NOT"      // !

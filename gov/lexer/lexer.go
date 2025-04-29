@@ -5,7 +5,6 @@ import (
 )
 
 type Scanner struct {
-	Debug  bool
 	Source []int32
 
 	// asdf
@@ -24,14 +23,13 @@ type Scanner struct {
 	Column uint
 }
 
-func NewScanner(source []int32, debug bool) Scanner {
+func NewScanner(source []int32) Scanner {
 	return Scanner{
 		Line:    1,
 		Cursor:  0,
 		Start:   0,
 		Current: source[0],
 		Source:  source,
-		Debug:   debug,
 	}
 }
 
@@ -102,6 +100,22 @@ func (s *Scanner) BuildToken(ttype TokenType) Token {
 
 func (s *Scanner) ToKeyword() (Token, bool) {
 	str := string(s.Source[s.Start:s.Cursor])
+	if str == string(KeywordContinue) {
+		return s.BuildToken(CONTINUE), true
+	}
+
+	if str == string(KeywordBreak) {
+		return s.BuildToken(BREAK), true
+	}
+
+	if str == string(KeywordUntil) {
+		return s.BuildToken(UNTIL), true
+	}
+
+	if str == string(KeywordLoop) {
+		return s.BuildToken(LOOP), true
+	}
+
 	if str == string(KeywordNot) {
 		return s.BuildToken(IFNOT), true
 	}
@@ -201,9 +215,6 @@ func (s *Scanner) Skip() {
 	}
 }
 func (s *Scanner) Scan() (Token, error) {
-	if s.Debug {
-		fmt.Println("[debug] token: ", s.Current)
-	}
 
 	s.Skip() //skip whitespace and incr line
 	if s.isAtEnd() {

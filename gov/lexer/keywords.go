@@ -3,8 +3,11 @@ package lexer
 type Keyword string
 
 const (
+	KeywordBreak   Keyword = "зогс"
+	KeywordContinue   Keyword = "үргэлжлүүл"
 	KeywordLoop   Keyword = "давтах"
-	KeywordHurtel Keyword = "хүртэл"
+	KeywordUntil Keyword = "хүртэл"
+
 	KeywordReturn Keyword = "буц"
 	KeywordFn     Keyword = "функц"
 	KeywordDecl   Keyword = "зарла"

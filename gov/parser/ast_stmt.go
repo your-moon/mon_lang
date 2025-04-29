@@ -24,6 +24,7 @@ type ASTLoop struct {
 
 type ASTWhile struct {
 	Token lexer.Token
+	Cond  ASTExpression
 	Body  ASTStmt
 }
 

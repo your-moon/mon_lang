@@ -22,8 +22,8 @@ Lexer -> Parser -> Compiler -> Gen -> Link
 <declaration> ::= "зарла" <identifier> [ ":" "тоо" ] [ "=" <exp> ] ";"
 <statement> ::=   "буц" <exp> ";"
                 | "хэрэв" <exp> "бол" <block> [ "үгүй бол" <block> ]
-                | "давт" <identifier> "=" <exp> "-с" <exp> "хүртэл" <block>
-                | "давтах" <block>
+                | "давт" <identifier> "=" <exp> ".." <exp> "хүртэл" <block>
+                | "давтах" [ <exp> ] "хүртэл" <block>
                 | "зогс" | "үргэлжлүүл"
                 | <exp> ";"
                 | ";"

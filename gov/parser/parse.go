@@ -275,6 +275,16 @@ func (p *Parser) parseWhile() *ASTWhile {
 
 	p.nextToken() // consume 'давтах'
 
+	if p.peekIs(lexer.OPEN_BRACE) {
+		ast.Body = p.parseStmt()
+		if ast.Body == nil {
+			return nil
+		}
+		return ast
+	}
+
+	ast.Cond = p.parseExpr(Lowest)
+
 	ast.Body = p.parseStmt()
 	if ast.Body == nil {
 		return nil
@@ -572,16 +582,24 @@ func (p *Parser) parseIntLit() ASTExpression {
 	return &ASTConstant{Token: next, Value: intVal}
 }
 
-func (p *Parser) currPrecedence() int {
+func (p *Parser) peekPrecedence() int {
 	if prec, ok := precedences[p.peekToken.Type]; ok {
 		return prec
 	}
 	return Lowest
 }
 
-func (p *Parser) peekPrecedence() int {
-	if prec, ok := precedences[p.peekToken.Type]; ok {
-		return prec
+func (p *Parser) parseOptionalExpr() ASTExpression {
+	currentToken := p.current
+	peekToken := p.peekToken
+
+	expr := p.parseExpr(Lowest)
+
+	if expr == nil {
+		p.current = currentToken
+		p.peekToken = peekToken
+		return nil
 	}
-	return Lowest
+
+	return expr
 }

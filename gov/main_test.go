@@ -10,7 +10,7 @@ import (
 )
 
 func TestLex(t *testing.T) {
-	dir := "./test/spacetab/"
+	dir := "./test/"
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("Error reading directory: %v", err)

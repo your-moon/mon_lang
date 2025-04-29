@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/your-moon/mn_compiler_go_version/base"
@@ -81,11 +82,45 @@ func (c *CLI) registerCommands() {
 
 // Run executes the CLI with the given arguments
 func (c *CLI) Run(args []string) error {
-	// Parse flags
-	fs := flag.NewFlagSet("compiler", flag.ExitOnError)
+	// Skip program name
+	args = args[1:]
+
+	// Check if we have at least a command
+	if len(args) < 1 {
+		c.printUsage()
+		return fmt.Errorf("missing command")
+	}
+
+	// Extract command
+	command := args[0]
+	args = args[1:]
+
+	// Parse flags for the specific command
+	fs := flag.NewFlagSet(command, flag.ExitOnError)
 	fs.BoolVar(&c.debug, "debug", false, "enable debug mode")
 	fs.BoolVar(&c.help, "help", false, "show detailed help information")
-	fs.Parse(args[1:]) // Skip program name
+
+	// Find the position of the first flag
+	fileArg := ""
+	flagArgs := args
+	for i, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			flagArgs = args[i:]
+			if i > 0 {
+				fileArg = args[0]
+			}
+			break
+		}
+		if i == len(args)-1 {
+			fileArg = args[0]
+			flagArgs = args[1:]
+		}
+	}
+
+	// Parse the flags
+	if err := fs.Parse(flagArgs); err != nil {
+		return fmt.Errorf("error parsing flags: %v", err)
+	}
 
 	// Set debug mode
 	base.Debug = c.debug
@@ -96,18 +131,15 @@ func (c *CLI) Run(args []string) error {
 		return nil
 	}
 
-	// Get command and arguments
-	if len(fs.Args()) < 2 {
+	// Check if we have a file path
+	if fileArg == "" {
 		c.printUsage()
-		return fmt.Errorf("missing command or file argument")
+		return fmt.Errorf("missing file argument")
 	}
-
-	command := fs.Arg(0)
-	filePath := fs.Arg(1)
 
 	// Execute command
 	if cmd, ok := c.commands[command]; ok {
-		return cmd.Execute([]string{filePath})
+		return cmd.Execute([]string{fileArg})
 	}
 
 	c.printUsage()
@@ -160,8 +192,9 @@ func (c *CLI) printDetailedHelp() {
 
 // Helper functions for each command
 func (c *CLI) runLexer(args []string) error {
+	fmt.Println("DEBUG", c.debug)
 	runeString := readFile(args[0])
-	scanner := lexer.NewScanner(runeString)
+	scanner := lexer.NewScanner(runeString, c.debug)
 	for {
 		token, err := scanner.Scan()
 		if err != nil {

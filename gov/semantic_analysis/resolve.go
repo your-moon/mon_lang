@@ -1,9 +1,7 @@
 package semanticanalysis
 
 import (
-	"bytes"
 	"fmt"
-	"strings"
 
 	compilererrors "github.com/your-moon/mn_compiler_go_version/errors"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
@@ -16,53 +14,6 @@ const (
 	ErrUndeclaredVariable = "хувьсагч '%s'-г зарлаагүй байна"
 	ErrUnknownExpression  = "үл мэдэгдэх илэрхийллийн төрөл: '%T'"
 )
-
-type SemanticError struct {
-	Message string
-	Line    int
-	Span    lexer.Span
-	Source  []int32
-}
-
-func (e *SemanticError) Error() string {
-	var buf bytes.Buffer
-
-	lineStart, lineEnd := e.findLineBoundaries()
-	lineContent := string(e.Source[lineStart:lineEnd])
-	pointer := e.createErrorPointer(lineStart)
-
-	fmt.Fprintf(&buf, "%d-р мөрөнд алдаа гарлаа:\n", e.Line)
-	fmt.Fprintf(&buf, "%s\n", lineContent)
-	fmt.Fprintf(&buf, "%s\n", pointer)
-	fmt.Fprintf(&buf, "Алдааны мессеж: %s\n", e.Message)
-
-	return buf.String()
-}
-
-func (e *SemanticError) findLineBoundaries() (start, end int) {
-	start = 0
-	end = 0
-	for i := 0; i < len(e.Source); i++ {
-		if e.Source[i] == '\n' {
-			if i < e.Span.Start {
-				start = i + 1
-			}
-			if i >= e.Span.End {
-				end = i
-				break
-			}
-		}
-	}
-	if end == 0 {
-		end = len(e.Source)
-	}
-	return start, end
-}
-
-func (e *SemanticError) createErrorPointer(lineStart int) string {
-	return strings.Repeat(" ", e.Span.Start-lineStart) +
-		strings.Repeat("^", e.Span.End-e.Span.Start)
-}
 
 type VarEntry struct {
 	UniqueName       string
@@ -218,16 +169,7 @@ func (r *Resolver) endScope() {
 }
 
 func (r *Resolver) createSemanticError(message string, line int, span lexer.Span) error {
-	semanticErr := &SemanticError{
-		Message: message,
-		Line:    line,
-		Span:    span,
-		Source:  r.source,
-	}
-
-	_ = compilererrors.New(message, line, span, r.source, "Semantic Analysis")
-
-	return semanticErr
+	return compilererrors.New(message, line, span, r.source, "Семантик шинжилгээ")
 }
 
 func (r *Resolver) ResolveDecl(program *parser.Decl) (*parser.Decl, error) {

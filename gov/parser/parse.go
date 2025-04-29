@@ -1,68 +1,19 @@
 package parser
 
 import (
-	"bytes"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/your-moon/mn_compiler_go_version/errors"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
-
-type ParseError struct {
-	Message string
-	Line    int
-	Span    lexer.Span
-	Source  []int32
-}
-
-func (e *ParseError) Error() string {
-	var buf bytes.Buffer
-
-	lineStart, lineEnd := e.findLineBoundaries()
-	lineContent := string(e.Source[lineStart:lineEnd])
-	pointer := e.createErrorPointer(lineStart)
-
-	fmt.Fprintf(&buf, "%d-р мөрөнд алдаа гарлаа:\n", e.Line)
-	fmt.Fprintf(&buf, "%s\n", lineContent)
-	fmt.Fprintf(&buf, "%s\n", pointer)
-	fmt.Fprintf(&buf, "Алдааны мессеж: %s\n", e.Message)
-
-	return buf.String()
-}
-
-func (e *ParseError) findLineBoundaries() (start, end int) {
-	start = 0
-	end = 0
-	for i := 0; i < len(e.Source); i++ {
-		if e.Source[i] == '\n' {
-			if i < e.Span.Start {
-				start = i + 1
-			}
-			if i >= e.Span.End {
-				end = i
-				break
-			}
-		}
-	}
-	if end == 0 {
-		end = len(e.Source)
-	}
-	return start, end
-}
-
-func (e *ParseError) createErrorPointer(lineStart int) string {
-	return strings.Repeat(" ", e.Span.Start-lineStart) +
-		strings.Repeat("^", e.Span.End-e.Span.Start)
-}
 
 type Parser struct {
 	source      []int32
 	current     lexer.Token
 	peekToken   lexer.Token
 	scanner     lexer.Scanner
-	parseErrors []ParseError
+	parseErrors []error
 }
 
 func NewParser(source []int32) *Parser {
@@ -75,7 +26,7 @@ func NewParser(source []int32) *Parser {
 	return p
 }
 
-func (p *Parser) Errors() []ParseError {
+func (p *Parser) Errors() []error {
 	return p.parseErrors
 }
 
@@ -110,27 +61,14 @@ func (p *Parser) peekIs(expected lexer.TokenType) bool {
 }
 
 func (p *Parser) appendError(message string) {
-	p.parseErrors = append(p.parseErrors, ParseError{
-		Message: message,
-		Line:    p.current.Line,
-		Span:    p.current.Span,
-		Source:  p.source,
-	})
-
-	_ = errors.New(message, p.current.Line, p.current.Span, p.source, "Parser")
+	err := errors.New(message, p.current.Line, p.current.Span, p.source, "Parser")
+	p.parseErrors = append(p.parseErrors, err)
 }
 
 func (p *Parser) peekError(t lexer.TokenType) {
 	message := formatExpectedNextToken(t)
-
-	p.parseErrors = append(p.parseErrors, ParseError{
-		Message: message,
-		Line:    p.current.Line,
-		Span:    p.current.Span,
-		Source:  p.source,
-	})
-
-	_ = errors.New(message, p.current.Line, p.current.Span, p.source, "Parser")
+	err := errors.New(message, p.current.Line, p.current.Span, p.source, "Parser")
+	p.parseErrors = append(p.parseErrors, err)
 }
 
 func (p *Parser) ParseProgram() (*ASTProgram, error) {
@@ -147,7 +85,7 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 	if len(p.parseErrors) > 0 {
 		err := p.parseErrors[0]
 		p.parseErrors = nil
-		return nil, &err
+		return nil, err
 	}
 
 	return program, nil

@@ -10,7 +10,6 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
 
-// ParseError is kept for backward compatibility
 type ParseError struct {
 	Message string
 	Line    int
@@ -111,7 +110,6 @@ func (p *Parser) peekIs(expected lexer.TokenType) bool {
 }
 
 func (p *Parser) appendError(message string) {
-	// Create a ParseError for backward compatibility
 	p.parseErrors = append(p.parseErrors, ParseError{
 		Message: message,
 		Line:    p.current.Line,
@@ -119,16 +117,12 @@ func (p *Parser) appendError(message string) {
 		Source:  p.source,
 	})
 
-	// Also create a CompilerError for the new error reporting system
-	// This is just for demonstration - in a real implementation, you would
-	// use the CompilerError directly instead of ParseError
 	_ = errors.New(message, p.current.Line, p.current.Span, p.source, "Parser")
 }
 
 func (p *Parser) peekError(t lexer.TokenType) {
 	message := formatExpectedNextToken(t)
 
-	// Create a ParseError for backward compatibility
 	p.parseErrors = append(p.parseErrors, ParseError{
 		Message: message,
 		Line:    p.current.Line,
@@ -136,9 +130,6 @@ func (p *Parser) peekError(t lexer.TokenType) {
 		Source:  p.source,
 	})
 
-	// Also create a CompilerError for the new error reporting system
-	// This is just for demonstration - in a real implementation, you would
-	// use the CompilerError directly instead of ParseError
 	_ = errors.New(message, p.current.Line, p.current.Span, p.source, "Parser")
 }
 
@@ -155,7 +146,7 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 
 	if len(p.parseErrors) > 0 {
 		err := p.parseErrors[0]
-		p.parseErrors = nil // Clear errors to prevent double printing
+		p.parseErrors = nil
 		return nil, &err
 	}
 
@@ -203,7 +194,6 @@ func (p *Parser) parseFN() *FNDef {
 	fnName := p.peekToken
 	p.nextToken()
 
-	// Parse function signature
 	if !p.expect(lexer.OPEN_PAREN) ||
 		!p.expect(lexer.CLOSE_PAREN) ||
 		!p.expect(lexer.RIGHT_ARROW) ||
@@ -211,7 +201,6 @@ func (p *Parser) parseFN() *FNDef {
 		return nil
 	}
 
-	// Parse function body
 	block := p.parseBlock()
 	if block == nil {
 		return nil
@@ -270,7 +259,6 @@ func (p *Parser) parseDecl() *Decl {
 
 	p.nextToken() // consume 'зарла'
 
-	// Store the DECL token
 	ast.Token = p.current
 
 	if p.peekToken.Value == nil {

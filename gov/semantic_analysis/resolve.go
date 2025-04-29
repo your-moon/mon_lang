@@ -17,7 +17,6 @@ const (
 	ErrUnknownExpression  = "үл мэдэгдэх илэрхийллийн төрөл: '%T'"
 )
 
-// SemanticError is kept for backward compatibility
 type SemanticError struct {
 	Message string
 	Line    int
@@ -148,7 +147,6 @@ func (r *Resolver) ResolveBlockItem(program parser.BlockItem) (parser.BlockItem,
 func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 	switch nodetype := program.(type) {
 	case *parser.ASTCompoundStmt:
-		// create a new variable map that inherit the varMap
 		r.scopeSwitch()
 		stmt, err := r.ResolveBlock(nodetype.Block)
 		if err != nil {
@@ -219,9 +217,7 @@ func (r *Resolver) endScope() {
 	r.variableMap.variableMap = newMap
 }
 
-// createSemanticError creates both a SemanticError and a CompilerError for the given parameters
 func (r *Resolver) createSemanticError(message string, line int, span lexer.Span) error {
-	// Create a SemanticError for backward compatibility
 	semanticErr := &SemanticError{
 		Message: message,
 		Line:    line,
@@ -229,7 +225,6 @@ func (r *Resolver) createSemanticError(message string, line int, span lexer.Span
 		Source:  r.source,
 	}
 
-	// Also create a CompilerError for the new error reporting system
 	_ = compilererrors.New(message, line, span, r.source, "Semantic Analysis")
 
 	return semanticErr
@@ -238,7 +233,6 @@ func (r *Resolver) createSemanticError(message string, line int, span lexer.Span
 func (r *Resolver) ResolveDecl(program *parser.Decl) (*parser.Decl, error) {
 	// variable that in current scope and redeclared
 	if _, exists := r.variableMap.variableMap[program.Ident]; exists && r.variableMap.variableMap[program.Ident].fromCurrentScope {
-		// Use token information from the parser
 		return nil, r.createSemanticError(
 			fmt.Sprintf(compilererrors.ErrDuplicateVariable, program.Ident),
 			program.Token.Line,
@@ -370,11 +364,9 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 		// 	return nodetype, nil
 	}
 
-	// For unknown expression types, we don't have token information
-	// This is a fallback case that should rarely occur
 	return nil, r.createSemanticError(
 		fmt.Sprintf(compilererrors.ErrUnknownExpression, program),
-		1,                            // Default line
-		lexer.Span{Start: 0, End: 0}, // Default span
+		1,
+		lexer.Span{Start: 0, End: 0},
 	)
 }

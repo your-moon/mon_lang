@@ -274,20 +274,27 @@ func (p *Parser) parseWhile() *ASTWhile {
 	}
 
 	p.nextToken() // consume 'давтах'
-
+	// if dont have cond
 	if p.peekIs(lexer.OPEN_BRACE) {
 		ast.Body = p.parseStmt()
 		if ast.Body == nil {
 			return nil
 		}
-		return ast
-	}
+	} else {
+		ast.Cond = p.parseExpr(Lowest)
+		if ast.Cond == nil {
+			return nil
+		}
 
-	ast.Cond = p.parseExpr(Lowest)
+		if !p.expect(lexer.IS) {
+			p.appendError(ErrMissingIs)
+			return nil
+		}
 
-	ast.Body = p.parseStmt()
-	if ast.Body == nil {
-		return nil
+		ast.Body = p.parseStmt()
+		if ast.Body == nil {
+			return nil
+		}
 	}
 
 	return ast
@@ -590,19 +597,11 @@ func (p *Parser) peekPrecedence() int {
 }
 
 func (p *Parser) parseOptionalExpr() ASTExpression {
-	// Check if the next token could be the start of an expression
-	if !p.canStartExpression() {
-		return nil
-	}
-
-	// Save the current state in case we need to backtrack
 	currentToken := p.current
 	peekToken := p.peekToken
 
-	// Try to parse an expression
 	expr := p.parseExpr(Lowest)
 
-	// If parsing failed, restore the state and return nil
 	if expr == nil {
 		p.current = currentToken
 		p.peekToken = peekToken
@@ -612,13 +611,20 @@ func (p *Parser) parseOptionalExpr() ASTExpression {
 	return expr
 }
 
-// canStartExpression checks if the next token could be the start of an expression
-func (p *Parser) canStartExpression() bool {
-	nextType := p.peekToken.Type
-	return nextType == lexer.IDENT ||
-		nextType == lexer.NUMBER ||
-		nextType == lexer.MINUS ||
-		nextType == lexer.TILDE ||
-		nextType == lexer.NOT ||
-		nextType == lexer.OPEN_PAREN
+func (p *Parser) parseOptionalExprWithDelimiter(delimiter lexer.TokenType) ASTExpression {
+	if p.peekIs(delimiter) {
+		p.nextToken() // consume the delimiter
+		return nil
+	}
+
+	expr := p.parseExpr(Lowest)
+	if expr == nil {
+		return nil
+	}
+
+	if !p.expect(delimiter) {
+		return nil
+	}
+
+	return expr
 }

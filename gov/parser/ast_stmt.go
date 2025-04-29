@@ -37,8 +37,10 @@ func (a *ASTWhile) TokenLiteral() string { return "WHILE" }
 func (a *ASTWhile) PrintAST(depth int) string {
 	var out bytes.Buffer
 	out.WriteString(fmt.Sprintf("%sWhile:\n", indent(depth)))
-	out.WriteString(fmt.Sprintf("%s├─ Cond:\n", indent(depth)))
-	out.WriteString(a.Cond.PrintAST(depth+1) + "\n")
+	if a.Cond != nil {
+		out.WriteString(fmt.Sprintf("%s├─ Cond:\n", indent(depth)))
+		out.WriteString(a.Cond.PrintAST(depth+1) + "\n")
+	}
 	out.WriteString(fmt.Sprintf("%s└─ Body:\n", indent(depth)))
 	out.WriteString(a.Body.PrintAST(depth + 1))
 	return out.String()

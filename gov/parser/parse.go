@@ -6,10 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/your-moon/mn_compiler_go_version/base"
+	"github.com/your-moon/mn_compiler_go_version/errors"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
 
+// ParseError is kept for backward compatibility
 type ParseError struct {
 	Message string
 	Line    int
@@ -110,21 +111,35 @@ func (p *Parser) peekIs(expected lexer.TokenType) bool {
 }
 
 func (p *Parser) appendError(message string) {
+	// Create a ParseError for backward compatibility
 	p.parseErrors = append(p.parseErrors, ParseError{
 		Message: message,
 		Line:    p.current.Line,
 		Span:    p.current.Span,
 		Source:  p.source,
 	})
+
+	// Also create a CompilerError for the new error reporting system
+	// This is just for demonstration - in a real implementation, you would
+	// use the CompilerError directly instead of ParseError
+	_ = errors.New(message, p.current.Line, p.current.Span, p.source, "Parser")
 }
 
 func (p *Parser) peekError(t lexer.TokenType) {
+	message := formatExpectedNextToken(t)
+
+	// Create a ParseError for backward compatibility
 	p.parseErrors = append(p.parseErrors, ParseError{
-		Message: formatExpectedNextToken(t),
+		Message: message,
 		Line:    p.current.Line,
 		Span:    p.current.Span,
 		Source:  p.source,
 	})
+
+	// Also create a CompilerError for the new error reporting system
+	// This is just for demonstration - in a real implementation, you would
+	// use the CompilerError directly instead of ParseError
+	_ = errors.New(message, p.current.Line, p.current.Span, p.source, "Parser")
 }
 
 func (p *Parser) ParseProgram() (*ASTProgram, error) {
@@ -184,12 +199,6 @@ func (p *Parser) parseExpressionStmt() *ExpressionStmt {
 
 // <function> ::= "функц" <identifier> "(" ")" "->" "тоо" "{" { <block-item> } "}"
 func (p *Parser) parseFN() *FNDef {
-	//current is FN token
-	//peek is IDENT that fn name
-	if base.Debug {
-		fmt.Printf("Current token after функц: %v\n", p.current)
-		fmt.Printf("Peek token: %v\n", p.peekToken)
-	}
 
 	fnName := p.peekToken
 	p.nextToken()
@@ -260,6 +269,9 @@ func (p *Parser) parseDecl() *Decl {
 	ast := &Decl{}
 
 	p.nextToken() // consume 'зарла'
+
+	// Store the DECL token
+	ast.Token = p.current
 
 	if p.peekToken.Value == nil {
 		p.appendError(ErrMissingIdentifier)
@@ -419,6 +431,7 @@ func (p *Parser) parseExpr(minPrec int) ASTExpression {
 				panic("left side of assign must be var")
 			}
 			left = &ASTAssignment{
+				Token: p.current,
 				Left:  leftIdent,
 				Right: right,
 			}
@@ -433,9 +446,10 @@ func (p *Parser) parseExpr(minPrec int) ASTExpression {
 
 			right := p.parseExpr(Lowest)
 			left = &ASTConditional{
-				Cond: left,
-				Then: middle,
-				Else: right,
+				Token: p.current,
+				Cond:  left,
+				Then:  middle,
+				Else:  right,
 			}
 		} else {
 			// baruun tal ni urgelj iluu operator-iin precedence-tei baina
@@ -444,6 +458,7 @@ func (p *Parser) parseExpr(minPrec int) ASTExpression {
 				return nil
 			}
 			left = &ASTBinary{
+				Token: p.current,
 				Left:  left,
 				Right: right,
 				Op:    op,
@@ -526,6 +541,7 @@ func (p *Parser) parseUnary(op lexer.TokenType) *ASTUnary {
 	p.nextToken() // consume the operator
 	inner := p.parseExpr(Prefix)
 	return &ASTUnary{
+		Token: p.current,
 		Op:    op,
 		Inner: inner,
 	}
@@ -541,7 +557,10 @@ func (p *Parser) parseGrouping() ASTExpression {
 func (p *Parser) parseIdent() ASTExpression {
 	next := p.peekToken
 	p.nextToken()
-	return &ASTVar{Ident: *next.Value}
+	return &ASTVar{
+		Token: next,
+		Ident: *next.Value,
+	}
 }
 
 func (p *Parser) parseIntLit() ASTExpression {

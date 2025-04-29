@@ -1,9 +1,12 @@
 package semanticanalysis
 
 import (
-	"errors"
+	"bytes"
 	"fmt"
+	"strings"
 
+	compilererrors "github.com/your-moon/mn_compiler_go_version/errors"
+	"github.com/your-moon/mn_compiler_go_version/lexer"
 	"github.com/your-moon/mn_compiler_go_version/parser"
 )
 
@@ -13,6 +16,54 @@ const (
 	ErrUndeclaredVariable = "хувьсагч '%s'-г зарлаагүй байна"
 	ErrUnknownExpression  = "үл мэдэгдэх илэрхийллийн төрөл: '%T'"
 )
+
+// SemanticError is kept for backward compatibility
+type SemanticError struct {
+	Message string
+	Line    int
+	Span    lexer.Span
+	Source  []int32
+}
+
+func (e *SemanticError) Error() string {
+	var buf bytes.Buffer
+
+	lineStart, lineEnd := e.findLineBoundaries()
+	lineContent := string(e.Source[lineStart:lineEnd])
+	pointer := e.createErrorPointer(lineStart)
+
+	fmt.Fprintf(&buf, "%d-р мөрөнд алдаа гарлаа:\n", e.Line)
+	fmt.Fprintf(&buf, "%s\n", lineContent)
+	fmt.Fprintf(&buf, "%s\n", pointer)
+	fmt.Fprintf(&buf, "Алдааны мессеж: %s\n", e.Message)
+
+	return buf.String()
+}
+
+func (e *SemanticError) findLineBoundaries() (start, end int) {
+	start = 0
+	end = 0
+	for i := 0; i < len(e.Source); i++ {
+		if e.Source[i] == '\n' {
+			if i < e.Span.Start {
+				start = i + 1
+			}
+			if i >= e.Span.End {
+				end = i
+				break
+			}
+		}
+	}
+	if end == 0 {
+		end = len(e.Source)
+	}
+	return start, end
+}
+
+func (e *SemanticError) createErrorPointer(lineStart int) string {
+	return strings.Repeat(" ", e.Span.Start-lineStart) +
+		strings.Repeat("^", e.Span.End-e.Span.Start)
+}
 
 type VarEntry struct {
 	UniqueName       string
@@ -25,14 +76,16 @@ type VariableMap struct {
 type Resolver struct {
 	variableMap VariableMap
 	tempCounter int
+	source      []int32
 }
 
-func New() Resolver {
+func New(source []int32) Resolver {
 	return Resolver{
 		variableMap: VariableMap{
 			variableMap: make(map[string]VarEntry),
 		},
 		tempCounter: 0,
+		source:      source,
 	}
 }
 
@@ -89,7 +142,7 @@ func (r *Resolver) ResolveBlockItem(program parser.BlockItem) (parser.BlockItem,
 		return decl, nil
 	}
 
-	return nil, errors.New("unreachable point")
+	return nil, fmt.Errorf("unreachable point")
 }
 
 func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
@@ -166,10 +219,31 @@ func (r *Resolver) endScope() {
 	r.variableMap.variableMap = newMap
 }
 
+// createSemanticError creates both a SemanticError and a CompilerError for the given parameters
+func (r *Resolver) createSemanticError(message string, line int, span lexer.Span) error {
+	// Create a SemanticError for backward compatibility
+	semanticErr := &SemanticError{
+		Message: message,
+		Line:    line,
+		Span:    span,
+		Source:  r.source,
+	}
+
+	// Also create a CompilerError for the new error reporting system
+	_ = compilererrors.New(message, line, span, r.source, "Semantic Analysis")
+
+	return semanticErr
+}
+
 func (r *Resolver) ResolveDecl(program *parser.Decl) (*parser.Decl, error) {
 	// variable that in current scope and redeclared
 	if _, exists := r.variableMap.variableMap[program.Ident]; exists && r.variableMap.variableMap[program.Ident].fromCurrentScope {
-		return nil, fmt.Errorf(ErrDuplicateVariable, program.Ident)
+		// Use token information from the parser
+		return nil, r.createSemanticError(
+			fmt.Sprintf(compilererrors.ErrDuplicateVariable, program.Ident),
+			program.Token.Line,
+			program.Token.Span,
+		)
 	}
 
 	// variable that in outer scope or not defined in var map that generate unique name and add to map
@@ -225,7 +299,11 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 	case *parser.ASTAssignment:
 		left, ok := nodetype.Left.(*parser.ASTVar)
 		if !ok {
-			return nil, fmt.Errorf(ErrInvalidAssignment, nodetype.Left.TokenLiteral())
+			return nil, r.createSemanticError(
+				fmt.Sprintf(compilererrors.ErrInvalidAssignment, nodetype.Left.TokenLiteral()),
+				nodetype.Token.Line,
+				nodetype.Token.Span,
+			)
 		}
 
 		resolvedLeft, err := r.ResolveExpr(left)
@@ -246,10 +324,17 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 	case *parser.ASTVar:
 		uniqueName, exists := r.variableMap.variableMap[nodetype.Ident]
 		if !exists {
-			return nil, fmt.Errorf(ErrUndeclaredVariable, nodetype.Ident)
+			return nil, r.createSemanticError(
+				fmt.Sprintf(compilererrors.ErrUndeclaredVariable, nodetype.Ident),
+				nodetype.Token.Line,
+				nodetype.Token.Span,
+			)
 		}
 
-		return &parser.ASTVar{Ident: uniqueName.UniqueName}, nil
+		return &parser.ASTVar{
+			Token: nodetype.Token,
+			Ident: uniqueName.UniqueName,
+		}, nil
 
 	case *parser.ASTUnary:
 		resolvedInner, err := r.ResolveExpr(nodetype.Inner)
@@ -285,5 +370,11 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 		// 	return nodetype, nil
 	}
 
-	return nil, fmt.Errorf(ErrUnknownExpression, program)
+	// For unknown expression types, we don't have token information
+	// This is a fallback case that should rarely occur
+	return nil, r.createSemanticError(
+		fmt.Sprintf(compilererrors.ErrUnknownExpression, program),
+		1,                            // Default line
+		lexer.Span{Start: 0, End: 0}, // Default span
+	)
 }

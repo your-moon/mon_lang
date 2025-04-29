@@ -1,8 +1,13 @@
 package parser
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/your-moon/mn_compiler_go_version/lexer"
+)
 
 type Decl struct {
+	Token lexer.Token
 	Ident string
 	Expr  ASTExpression
 }

@@ -62,9 +62,10 @@ func (op ASTBinOp) String() string {
 }
 
 type ASTConditional struct {
-	Cond ASTExpression
-	Then ASTExpression
-	Else ASTExpression
+	Token lexer.Token
+	Cond  ASTExpression
+	Then  ASTExpression
+	Else  ASTExpression
 }
 
 func (a *ASTConditional) expressionNode()      {}
@@ -130,6 +131,7 @@ func (a *ASTPrefixExpression) PrintAST(depth int) string {
 }
 
 type ASTBinary struct {
+	Token lexer.Token
 	Right ASTExpression
 	Left  ASTExpression
 	Op    ASTBinOp
@@ -147,6 +149,7 @@ func (a ASTBinary) PrintAST(depth int) string {
 }
 
 type ASTAssignment struct {
+	Token lexer.Token
 	Left  ASTExpression
 	Right ASTExpression
 }
@@ -162,6 +165,7 @@ func (a *ASTAssignment) PrintAST(depth int) string {
 }
 
 type ASTVar struct {
+	Token lexer.Token
 	Ident string
 }
 
@@ -172,6 +176,7 @@ func (a ASTVar) PrintAST(depth int) string {
 }
 
 type ASTUnary struct {
+	Token lexer.Token
 	Inner ASTExpression
 	Op    lexer.TokenType
 }

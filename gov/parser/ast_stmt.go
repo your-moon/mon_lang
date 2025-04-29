@@ -11,8 +11,12 @@ type ASTBlock struct {
 	BlockItems []BlockItem
 }
 
-type ASTBreakStmt struct{}
-type ASTContinueStmt struct{}
+type ASTBreakStmt struct{
+	Token lexer.Token
+}
+type ASTContinueStmt struct{
+	Token lexer.Token
+}
 
 type ASTLoop struct {
 	Token lexer.Token

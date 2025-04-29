@@ -103,9 +103,15 @@ func (p *Parser) parseBlockItem() BlockItem {
 func (p *Parser) parseStmt() ASTStmt {
 	switch p.peekToken.Type {
 	case lexer.BREAK:
-		panic("unimplemented")
+		ast := &ASTBreakStmt{
+			Token: p.peekToken,
+		}
+		return ast
 	case lexer.CONTINUE:
-		panic("unimplemented")
+		ast := &ASTContinueStmt{
+			Token: p.peekToken,
+		}
+		return ast
 	case lexer.WHILE:
 		return p.parseWhile()
 	case lexer.LOOP:

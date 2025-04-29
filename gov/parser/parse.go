@@ -102,6 +102,14 @@ func (p *Parser) parseBlockItem() BlockItem {
 
 func (p *Parser) parseStmt() ASTStmt {
 	switch p.peekToken.Type {
+	case lexer.BREAK:
+		panic("unimplemented")
+	case lexer.CONTINUE:
+		panic("unimplemented")
+	case lexer.WHILE:
+		return p.parseWhile()
+	case lexer.LOOP:
+		return p.parseLoop()
 	case lexer.RETURN:
 		return p.parseReturn()
 	case lexer.IF:
@@ -255,6 +263,74 @@ func (p *Parser) parseIf() *ASTIfStmt {
 			return nil
 		}
 		ast.Else = elseBlock
+	}
+
+	return ast
+}
+
+func (p *Parser) parseWhile() *ASTWhile {
+	ast := &ASTWhile{
+		Token: p.peekToken,
+	}
+
+	p.nextToken() // consume 'давтах'
+
+	ast.Body = p.parseStmt()
+	if ast.Body == nil {
+		return nil
+	}
+
+	return ast
+}
+
+func (p *Parser) parseLoop() *ASTLoop {
+	ast := &ASTLoop{
+		Token: p.peekToken,
+	}
+
+	p.nextToken() // consume 'давт'
+
+	// Parse loop variable
+	if !p.peekIs(lexer.IDENT) {
+		p.appendError("expected identifier after 'давт'")
+		return nil
+	}
+	ast.Var = p.parseIdent().(*ASTVar)
+
+	// Parse assignment
+	if !p.expect(lexer.ASSIGN) {
+		p.appendError("expected '=' after loop variable")
+		return nil
+	}
+
+	// Parse start value
+	ast.Start = p.parseExpr(Lowest)
+	if ast.Start == nil {
+		return nil
+	}
+
+	// Parse 'from' keyword
+	if !p.expect(lexer.DOTDOT) {
+		p.appendError("expected '..' after start value")
+		return nil
+	}
+
+	// Parse end value
+	ast.End = p.parseExpr(Lowest)
+	if ast.End == nil {
+		return nil
+	}
+
+	// Parse 'to' keyword
+	if !p.expect(lexer.UNTIL) {
+		p.appendError("expected 'хүртэл' after end value")
+		return nil
+	}
+
+	// Parse loop body
+	ast.Body = p.parseStmt()
+	if ast.Body == nil {
+		return nil
 	}
 
 	return ast

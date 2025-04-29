@@ -30,6 +30,11 @@ type ASTStmt interface {
 	statementNode()
 }
 
+type ASTLoopInit interface {
+	ASTNode
+	loopinit()
+}
+
 type ASTProgram struct {
 	FnDef FNDef
 }
@@ -41,7 +46,7 @@ func (a *ASTProgram) TokenLiteral() string {
 type FNDef struct {
 	Token      lexer.Token
 	ReturnType lexer.TokenType
-	Block ASTBlock
+	Block      ASTBlock
 }
 
 func (a *ASTProgram) PrintAST(depth int) string {

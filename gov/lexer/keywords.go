@@ -8,6 +8,7 @@ const (
 	KeywordLoop     Keyword = "давт"
 	KeywordUntil    Keyword = "хүртэл"
 	KeywordWhile    Keyword = "давтах"
+	KeywordFrom     Keyword = "-с"
 
 	KeywordReturn Keyword = "буц"
 	KeywordFn     Keyword = "функц"

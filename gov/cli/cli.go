@@ -15,33 +15,28 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/tackygen"
 )
 
-// Command represents a CLI command
 type Command struct {
 	Name        string
 	Description string
 	Execute     func(args []string) error
 }
 
-// CLI represents the command-line interface
 type CLI struct {
 	commands map[string]Command
 	debug    bool
 	help     bool
 }
 
-// New creates a new CLI instance
 func New() *CLI {
 	cli := &CLI{
 		commands: make(map[string]Command),
 	}
 
-	// Register commands
 	cli.registerCommands()
 
 	return cli
 }
 
-// registerCommands registers all available commands
 func (c *CLI) registerCommands() {
 	c.commands["lex"] = Command{
 		Name:        "lex",
@@ -80,27 +75,21 @@ func (c *CLI) registerCommands() {
 	}
 }
 
-// Run executes the CLI with the given arguments
 func (c *CLI) Run(args []string) error {
-	// Skip program name
 	args = args[1:]
 
-	// Check if we have at least a command
 	if len(args) < 1 {
 		c.printUsage()
-		return fmt.Errorf("missing command")
+		return fmt.Errorf("команд олдсонгүй")
 	}
 
-	// Extract command
 	command := args[0]
 	args = args[1:]
 
-	// Parse flags for the specific command
 	fs := flag.NewFlagSet(command, flag.ExitOnError)
-	fs.BoolVar(&c.debug, "debug", false, "enable debug mode")
-	fs.BoolVar(&c.help, "help", false, "show detailed help information")
+	fs.BoolVar(&c.debug, "debug", false, "debug mode асаах")
+	fs.BoolVar(&c.help, "help", false, "команд туслах харуулах")
 
-	// Find the position of the first flag
 	fileArg := ""
 	flagArgs := args
 	for i, arg := range args {
@@ -117,36 +106,30 @@ func (c *CLI) Run(args []string) error {
 		}
 	}
 
-	// Parse the flags
 	if err := fs.Parse(flagArgs); err != nil {
-		return fmt.Errorf("error parsing flags: %v", err)
+		return fmt.Errorf("флаг парс хийхэд алдаа гарлаа: %v", err)
 	}
 
-	// Set debug mode
 	base.Debug = c.debug
 
-	// Check if help flag is set
 	if c.help {
 		c.printDetailedHelp()
 		return nil
 	}
 
-	// Check if we have a file path
 	if fileArg == "" {
 		c.printUsage()
-		return fmt.Errorf("missing file argument")
+		return fmt.Errorf("файл-ийн ардаас аргумент оруулж өгнө үү.")
 	}
 
-	// Execute command
 	if cmd, ok := c.commands[command]; ok {
 		return cmd.Execute([]string{fileArg})
 	}
 
 	c.printUsage()
-	return fmt.Errorf("unknown command: %s", command)
+	return fmt.Errorf("зөв команд оруулна уу: %s", command)
 }
 
-// printUsage prints the usage information
 func (c *CLI) printUsage() {
 	fmt.Println("Хэрэглээ: compiler <команд> <файл> [сонголтууд]")
 	fmt.Println("\nКомандууд:")
@@ -158,7 +141,6 @@ func (c *CLI) printUsage() {
 	fmt.Println("  --help     Дэлгэрэнгүй тусламж харуулах")
 }
 
-// printDetailedHelp prints detailed help information
 func (c *CLI) printDetailedHelp() {
 	fmt.Println("Монгол хэлний компилятор - Дэлгэрэнгүй тусламж")
 	fmt.Println("=============================================")
@@ -190,7 +172,6 @@ func (c *CLI) printDetailedHelp() {
 	fmt.Println("  compiler gen input.mn")
 }
 
-// Helper functions for each command
 func (c *CLI) runLexer(args []string) error {
 	runeString := readFile(args[0])
 	scanner := lexer.NewScanner(runeString)
@@ -360,7 +341,6 @@ func (c *CLI) runGen(args []string) error {
 	return nil
 }
 
-// Helper functions
 func readFile(filePath string) []int32 {
 	data, err := os.ReadFile(filePath)
 	if err != nil {

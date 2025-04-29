@@ -17,16 +17,21 @@ const (
 	NOTEQUAL         TokenType = "NOTEQUAL"         // !=
 	EQUALTO          TokenType = "EQUALTO"          // ==
 
+	DOT    TokenType = "DOT"    // .
+	DOTDOT TokenType = "DOTDOT" // ..
+
 	QUESTIONMARK TokenType = "QUESTIONMARK" // ?
 	IF           TokenType = "IF"
 	IS           TokenType = "IS"
 	IFNOT        TokenType = "IFNOT" //үгүй
 
 	WHILE TokenType = "WHILE"
-	LOOP        TokenType = "LOOP"
-	UNTIL        TokenType = "UNTIL"
+	LOOP  TokenType = "LOOP"
+	UNTIL TokenType = "UNTIL"
+	FROM  TokenType = "FROM" // -с
+	TO    TokenType = "TO"   // хүртэл
 
-	BREAK TokenType = "BREAK"
+	BREAK    TokenType = "BREAK"
 	CONTINUE TokenType = "CONTINUE"
 
 	LOGICAND TokenType = "LOGICAND" // &&

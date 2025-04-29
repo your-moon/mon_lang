@@ -15,14 +15,16 @@ type ASTBreakStmt struct{}
 type ASTContinueStmt struct{}
 
 type ASTLoop struct {
-	Init ASTExpression
-	Cond ASTExpression
-	Body ASTStmt
+	Token lexer.Token
+	Var   *ASTVar
+	Start ASTExpression
+	End   ASTExpression
+	Body  ASTStmt
 }
 
 type ASTWhile struct {
-	Cond ASTExpression
-	Body ASTStmt
+	Token lexer.Token
+	Body  ASTStmt
 }
 
 type ASTCompoundStmt struct {
@@ -34,8 +36,6 @@ func (a *ASTWhile) TokenLiteral() string { return "WHILE" }
 func (a *ASTWhile) PrintAST(depth int) string {
 	var out bytes.Buffer
 	out.WriteString(fmt.Sprintf("%sWhile:\n", indent(depth)))
-	out.WriteString(fmt.Sprintf("%s├─ Condition:\n", indent(depth)))
-	out.WriteString(a.Cond.PrintAST(depth+1) + "\n")
 	out.WriteString(fmt.Sprintf("%s└─ Body:\n", indent(depth)))
 	out.WriteString(a.Body.PrintAST(depth + 1))
 	return out.String()
@@ -46,12 +46,14 @@ func (a *ASTLoop) TokenLiteral() string { return "LOOP" }
 func (a *ASTLoop) PrintAST(depth int) string {
 	var out bytes.Buffer
 	out.WriteString(fmt.Sprintf("%sLoop:\n", indent(depth)))
-	if a.Init != nil {
-		out.WriteString(fmt.Sprintf("%s├─ Init:\n", indent(depth)))
-		out.WriteString(a.Init.PrintAST(depth+1) + "\n")
+	if a.Var != nil {
+		out.WriteString(fmt.Sprintf("%s├─ Var:\n", indent(depth)))
+		out.WriteString(a.Var.PrintAST(depth+1) + "\n")
 	}
-	out.WriteString(fmt.Sprintf("%s├─ Condition:\n", indent(depth)))
-	out.WriteString(a.Cond.PrintAST(depth+1) + "\n")
+	out.WriteString(fmt.Sprintf("%s├─ Start:\n", indent(depth)))
+	out.WriteString(a.Start.PrintAST(depth+1) + "\n")
+	out.WriteString(fmt.Sprintf("%s├─ End:\n", indent(depth)))
+	out.WriteString(a.End.PrintAST(depth+1) + "\n")
 	out.WriteString(fmt.Sprintf("%s└─ Body:\n", indent(depth)))
 	out.WriteString(a.Body.PrintAST(depth + 1))
 	return out.String()

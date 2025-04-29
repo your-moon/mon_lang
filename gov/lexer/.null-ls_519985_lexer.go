@@ -318,9 +318,9 @@ func (s *Scanner) Scan() (Token, error) {
 	case '.':
 		if s.Peek() == '.' {
 			s.Next()
-			return s.BuildToken(DOTDOT), nil
+			return s.BuildToken(LESSTHANEQUAL), nil
 		}
-		return s.BuildToken(DOT), nil
+		return s.BuildToken(LESSTHAN), nil
 	}
 
 	return Token{}, fmt.Errorf(

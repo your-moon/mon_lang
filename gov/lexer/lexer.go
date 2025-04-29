@@ -111,6 +111,9 @@ func (s *Scanner) ToKeyword() (Token, bool) {
 	if str == string(KeywordUntil) {
 		return s.BuildToken(UNTIL), true
 	}
+	if str == string(KeywordWhile) {
+		return s.BuildToken(WHILE), true
+	}
 
 	if str == string(KeywordLoop) {
 		return s.BuildToken(LOOP), true

@@ -11,20 +11,62 @@ type ASTBlock struct {
 	BlockItems []BlockItem
 }
 
-func (a *ASTBlock) statementNode()       {}
-func (a *ASTBlock) TokenLiteral() string { return "BLOCK" }
-func (a *ASTBlock) PrintAST(depth int) string {
-	var out bytes.Buffer
+type ASTBreakStmt struct{}
+type ASTContinueStmt struct{}
 
-	for _, b := range a.BlockItems {
-		out.WriteString(b.PrintAST(depth+1) + "\n")
-	}
+type ASTLoop struct {
+	Init ASTExpression
+	Cond ASTExpression
+	Body ASTStmt
+}
 
-	return out.String()
+type ASTWhile struct {
+	Cond ASTExpression
+	Body ASTStmt
 }
 
 type ASTCompoundStmt struct {
 	Block ASTBlock
+}
+
+func (a *ASTWhile) statementNode()       {}
+func (a *ASTWhile) TokenLiteral() string { return "WHILE" }
+func (a *ASTWhile) PrintAST(depth int) string {
+	var out bytes.Buffer
+	out.WriteString(fmt.Sprintf("%sWhile:\n", indent(depth)))
+	out.WriteString(fmt.Sprintf("%s├─ Condition:\n", indent(depth)))
+	out.WriteString(a.Cond.PrintAST(depth+1) + "\n")
+	out.WriteString(fmt.Sprintf("%s└─ Body:\n", indent(depth)))
+	out.WriteString(a.Body.PrintAST(depth + 1))
+	return out.String()
+}
+
+func (a *ASTLoop) statementNode()       {}
+func (a *ASTLoop) TokenLiteral() string { return "LOOP" }
+func (a *ASTLoop) PrintAST(depth int) string {
+	var out bytes.Buffer
+	out.WriteString(fmt.Sprintf("%sLoop:\n", indent(depth)))
+	if a.Init != nil {
+		out.WriteString(fmt.Sprintf("%s├─ Init:\n", indent(depth)))
+		out.WriteString(a.Init.PrintAST(depth+1) + "\n")
+	}
+	out.WriteString(fmt.Sprintf("%s├─ Condition:\n", indent(depth)))
+	out.WriteString(a.Cond.PrintAST(depth+1) + "\n")
+	out.WriteString(fmt.Sprintf("%s└─ Body:\n", indent(depth)))
+	out.WriteString(a.Body.PrintAST(depth + 1))
+	return out.String()
+}
+
+func (a *ASTContinueStmt) statementNode()       {}
+func (a *ASTContinueStmt) TokenLiteral() string { return "CONTINUE" }
+func (a *ASTContinueStmt) PrintAST(depth int) string {
+	return fmt.Sprintf("%sContinue", indent(depth))
+}
+
+func (a *ASTBreakStmt) statementNode()       {}
+func (a *ASTBreakStmt) TokenLiteral() string { return "BREAK" }
+func (a *ASTBreakStmt) PrintAST(depth int) string {
+	return fmt.Sprintf("%sBreak", indent(depth))
 }
 
 func (a *ASTCompoundStmt) statementNode()       {}
@@ -46,6 +88,24 @@ type ASTIfStmt struct {
 	Else ASTStmt
 }
 
+type ASTNullStmt struct {
+	Token lexer.Token
+}
+
+type ExpressionStmt struct {
+	Expression ASTExpression
+}
+
+type ASTReturnStmt struct {
+	Token       lexer.Token
+	ReturnValue ASTExpression
+}
+
+type ASTPrintStmt struct {
+	Token lexer.Token
+	Value ASTExpression
+}
+
 func (a *ASTIfStmt) statementNode()       {}
 func (a *ASTIfStmt) TokenLiteral() string { return "IF" }
 func (a *ASTIfStmt) PrintAST(depth int) string {
@@ -64,28 +124,22 @@ func (a *ASTIfStmt) PrintAST(depth int) string {
 	return out.String()
 }
 
-type ASTNullStmt struct {
-	Token lexer.Token
-}
-
 func (a *ASTNullStmt) statementNode()       {}
 func (a *ASTNullStmt) TokenLiteral() string { return string(a.Token.Type) }
 func (a *ASTNullStmt) PrintAST(depth int) string {
 	return fmt.Sprintf("%s// empty statement", indent(depth))
 }
 
-type ExpressionStmt struct {
-	Expression ASTExpression
-}
+func (a *ASTBlock) statementNode()       {}
+func (a *ASTBlock) TokenLiteral() string { return "BLOCK" }
+func (a *ASTBlock) PrintAST(depth int) string {
+	var out bytes.Buffer
 
-type ASTReturnStmt struct {
-	Token       lexer.Token
-	ReturnValue ASTExpression
-}
+	for _, b := range a.BlockItems {
+		out.WriteString(b.PrintAST(depth+1) + "\n")
+	}
 
-type ASTPrintStmt struct {
-	Token lexer.Token
-	Value ASTExpression
+	return out.String()
 }
 
 func (a *ExpressionStmt) statementNode()       {}

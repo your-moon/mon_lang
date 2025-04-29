@@ -22,6 +22,7 @@ const (
 	IS           TokenType = "IS"
 	IFNOT        TokenType = "IFNOT" //үгүй
 
+	WHILE TokenType = "WHILE"
 	LOOP        TokenType = "LOOP"
 	UNTIL        TokenType = "UNTIL"
 

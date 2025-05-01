@@ -20,12 +20,12 @@ type ASTContinueStmt struct {
 	Id    string
 }
 
-type ASTRange struct {
-	Token     lexer.Token
-	Var       ASTExpression
-	RangeExpr ASTExpression
-	Body      ASTStmt
-	Id        string
+type ASTLoop struct {
+	Token lexer.Token
+	Var   ASTExpression
+	Expr  ASTExpression
+	Body  ASTStmt
+	Id    string
 }
 
 type ASTWhile struct {
@@ -53,9 +53,9 @@ func (a *ASTWhile) PrintAST(depth int) string {
 	return out.String()
 }
 
-func (a *ASTRange) statementNode()       {}
-func (a *ASTRange) TokenLiteral() string { return "LOOP" }
-func (a *ASTRange) PrintAST(depth int) string {
+func (a *ASTLoop) statementNode()       {}
+func (a *ASTLoop) TokenLiteral() string { return "LOOP" }
+func (a *ASTLoop) PrintAST(depth int) string {
 	var out bytes.Buffer
 	out.WriteString(fmt.Sprintf("%sLoop:\n", indent(depth)))
 	if a.Var != nil {
@@ -63,7 +63,7 @@ func (a *ASTRange) PrintAST(depth int) string {
 		out.WriteString(a.Var.PrintAST(depth+1) + "\n")
 	}
 	out.WriteString(fmt.Sprintf("%s├─ Start:\n", indent(depth)))
-	out.WriteString(a.RangeExpr.PrintAST(depth+1) + "\n")
+	out.WriteString(a.Expr.PrintAST(depth+1) + "\n")
 	out.WriteString(fmt.Sprintf("%s└─ Body:\n", indent(depth)))
 	out.WriteString(a.Body.PrintAST(depth + 1))
 	return out.String()

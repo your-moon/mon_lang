@@ -100,12 +100,42 @@ func (r *Resolver) ResolveBlockItem(program parser.BlockItem) (parser.BlockItem,
 
 func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 	switch nodetype := program.(type) {
-	case *parser.ASTRange:
-		rangeExpr, err := r.ResolveExpr(nodetype.RangeExpr)
+	case *parser.ASTLoop:
+		// Resolve the loop expression
+		expr, err := r.ResolveExpr(nodetype.Expr)
 		if err != nil {
 			return nodetype, err
 		}
-		nodetype.RangeExpr = rangeExpr.(*parser.ASTRangeExpr)
+		nodetype.Expr = expr
+
+		// Check if loop variable exists and is of type ASTVar
+		if nodetype.Var != nil {
+			varExpr, ok := nodetype.Var.(*parser.ASTVar)
+			if !ok {
+				return nil, r.createSemanticError(
+					"loop variable must be an identifier",
+					nodetype.Token.Line,
+					nodetype.Token.Span,
+				)
+			}
+
+			// Add loop variable to the variable map
+			uniqueName := r.makeNamedTemporary(varExpr.Ident)
+			r.variableMap.variableMap[varExpr.Ident] = VarEntry{
+				UniqueName:       uniqueName,
+				fromCurrentScope: true,
+			}
+			varExpr.Ident = uniqueName
+			nodetype.Var = varExpr
+		}
+
+		// Resolve the loop body
+		body, err := r.ResolveStmt(nodetype.Body)
+		if err != nil {
+			return nodetype, err
+		}
+		nodetype.Body = body
+
 		return nodetype, nil
 	case *parser.ASTCompoundStmt:
 		r.scopeSwitch()

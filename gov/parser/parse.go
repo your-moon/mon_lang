@@ -291,8 +291,8 @@ func (p *Parser) parseWhile() *ASTWhile {
 	return ast
 }
 
-func (p *Parser) parseLoop() *ASTRange {
-	ast := &ASTRange{
+func (p *Parser) parseLoop() *ASTLoop {
+	ast := &ASTLoop{
 		Token: p.peekToken,
 	}
 
@@ -312,7 +312,7 @@ func (p *Parser) parseLoop() *ASTRange {
 	}
 
 	// Parse start value
-	ast.RangeExpr = p.parseExpr(Lowest)
+	ast.Expr = p.parseExpr(Lowest)
 
 	// Parse 'to' keyword
 	if !p.expect(lexer.UNTIL) {

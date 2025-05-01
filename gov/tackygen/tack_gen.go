@@ -80,53 +80,74 @@ func (c *TackyGen) EmitTackyBlock(node parser.ASTBlock) {
 
 func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 	switch ast := node.(type) {
-	case *parser.ASTRange:
+	case *parser.ASTLoop:
 		startLabel := c.makeLabel("loop_start")
 		endLabel := c.makeLabel("loop_end")
 		ast.Id = endLabel.Name
 
 		// Initialize loop variable with start value
-		rangeStart := c.EmitExpr(ast.RangeExpr.(*parser.ASTRangeExpr).Start)
-		loopVar, ok := ast.Var.(*parser.ASTVar)
-		if !ok {
-			panic("Expected ASTVar for loop variable")
+		rangeExpr, ok := ast.Expr.(*parser.ASTRangeExpr)
+		if ok {
+			// Handle range expression (for i in start..end)
+			rangeStart := c.EmitExpr(rangeExpr.Start)
+			loopVar, ok := ast.Var.(*parser.ASTVar)
+			if !ok {
+				panic("Expected ASTVar for loop variable")
+			}
+			c.Irs = append(c.Irs, Copy{
+				Src: rangeStart,
+				Dst: Var{Name: loopVar.Ident},
+			})
+
+			// Loop start label
+			c.Irs = append(c.Irs, Label{Ident: startLabel.Name})
+
+			// Check condition: if i > end goto end
+			endVal := c.EmitExpr(rangeExpr.End)
+			loopVarVal := c.EmitExpr(ast.Var)
+			temp := c.makeTemp()
+			c.Irs = append(c.Irs, Binary{
+				Op:   LessThanEqual,
+				Src1: loopVarVal,
+				Src2: endVal,
+				Dst:  temp,
+			})
+			c.Irs = append(c.Irs, JumpIfZero{
+				Val:   temp,
+				Ident: endLabel.Name,
+			})
+
+			// Execute loop body
+			c.EmitTackyStmt(ast.Body)
+
+			// Increment loop variable
+			c.Irs = append(c.Irs, Binary{
+				Op:   Add,
+				Src1: Var{Name: loopVar.Ident},
+				Src2: Constant{Value: 1},
+				Dst:  Var{Name: loopVar.Ident},
+			})
+
+			// Jump back to start
+			c.Irs = append(c.Irs, Jump{Target: startLabel.Name})
+		} else {
+			// Handle regular loop condition
+			// Loop start label
+			c.Irs = append(c.Irs, Label{Ident: startLabel.Name})
+
+			// Evaluate condition
+			condVal := c.EmitExpr(ast.Expr)
+			c.Irs = append(c.Irs, JumpIfZero{
+				Val:   condVal,
+				Ident: endLabel.Name,
+			})
+
+			// Execute loop body
+			c.EmitTackyStmt(ast.Body)
+
+			// Jump back to start
+			c.Irs = append(c.Irs, Jump{Target: startLabel.Name})
 		}
-		c.Irs = append(c.Irs, Copy{
-			Src: rangeStart,
-			Dst: Var{Name: loopVar.Ident},
-		})
-
-		// Loop start label
-		c.Irs = append(c.Irs, Label{Ident: startLabel.Name})
-
-		// Check condition: if i > end goto end
-		endVal := c.EmitExpr(ast.RangeExpr.(*parser.ASTRangeExpr).End)
-		loopVarVal := c.EmitExpr(ast.Var)
-		temp := c.makeTemp()
-		c.Irs = append(c.Irs, Binary{
-			Op:   LessThanEqual,
-			Src1: loopVarVal,
-			Src2: endVal,
-			Dst:  temp,
-		})
-		c.Irs = append(c.Irs, JumpIfZero{
-			Val:   temp,
-			Ident: endLabel.Name,
-		})
-
-		// Execute loop body
-		c.EmitTackyStmt(ast.Body)
-
-		// Increment loop variable
-		c.Irs = append(c.Irs, Binary{
-			Op:   Add,
-			Src1: Var{Name: loopVar.Ident},
-			Src2: Constant{Value: 1},
-			Dst:  Var{Name: loopVar.Ident},
-		})
-
-		// Jump back to start
-		c.Irs = append(c.Irs, Jump{Target: startLabel.Name})
 
 		// End label
 		c.Irs = append(c.Irs, Label{Ident: endLabel.Name})

@@ -106,11 +106,15 @@ func (p *Parser) parseStmt() ASTStmt {
 		ast := &ASTBreakStmt{
 			Token: p.peekToken,
 		}
+		p.nextToken()
+		p.expect(lexer.SEMICOLON)
 		return ast
 	case lexer.CONTINUE:
 		ast := &ASTContinueStmt{
 			Token: p.peekToken,
 		}
+		p.nextToken()
+		p.expect(lexer.SEMICOLON)
 		return ast
 	case lexer.WHILE:
 		return p.parseWhile()
@@ -306,8 +310,8 @@ func (p *Parser) parseWhile() *ASTWhile {
 	return ast
 }
 
-func (p *Parser) parseLoop() *ASTLoop {
-	ast := &ASTLoop{
+func (p *Parser) parseLoop() *ASTRange {
+	ast := &ASTRange{
 		Token: p.peekToken,
 	}
 
@@ -321,8 +325,8 @@ func (p *Parser) parseLoop() *ASTLoop {
 	ast.Var = p.parseIdent().(*ASTVar)
 
 	// Parse assignment
-	if !p.expect(lexer.ASSIGN) {
-		p.appendError("expected '=' after loop variable")
+	if !p.expect(lexer.IS) {
+		p.appendError("expected 'бол' after loop variable")
 		return nil
 	}
 

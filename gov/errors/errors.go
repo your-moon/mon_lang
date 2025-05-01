@@ -73,6 +73,8 @@ func (e *CompilerError) createErrorPointer(lineStart int) string {
 
 // Common error messages
 const (
+	//
+
 	// Parser errors
 	ErrExpectedNextToken = "дараагийн тэмдэгт '%s' байх ёстой, та бичиглэлээ шалгана уу"
 	ErrMissingIdentifier = "хувьсагчийн нэр заавал заагдах ёстой"
@@ -89,6 +91,7 @@ const (
 	ErrMissingIntType    = "'тоо' төрөл шаардлагатай"
 
 	// Semantic analysis errors
+	ErrNotValidExpression = "буруу илэрхийлэл байна"
 	ErrDuplicateVariable  = "хувьсагч '%s' нь давхардсан байна"
 	ErrInvalidAssignment  = "хувьсагчид утга оноох үед зүүн талд хувьсагч байх ёстой, олдсон: '%s'"
 	ErrUndeclaredVariable = "хувьсагч '%s'-г зарлаагүй байна"

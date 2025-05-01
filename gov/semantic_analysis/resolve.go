@@ -6,6 +6,7 @@ import (
 	compilererrors "github.com/your-moon/mn_compiler_go_version/errors"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 	"github.com/your-moon/mn_compiler_go_version/parser"
+	"github.com/your-moon/mn_compiler_go_version/unique"
 )
 
 const (
@@ -27,15 +28,17 @@ type Resolver struct {
 	variableMap VariableMap
 	tempCounter int
 	source      []int32
+	uniqueGen   unique.UniqueGen
 }
 
-func New(source []int32) Resolver {
+func New(source []int32, uniqueGen unique.UniqueGen) Resolver {
 	return Resolver{
 		variableMap: VariableMap{
 			variableMap: make(map[string]VarEntry),
 		},
 		tempCounter: 0,
 		source:      source,
+		uniqueGen:   uniqueGen,
 	}
 }
 
@@ -97,6 +100,24 @@ func (r *Resolver) ResolveBlockItem(program parser.BlockItem) (parser.BlockItem,
 
 func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 	switch nodetype := program.(type) {
+	case *parser.ASTRange:
+		evalAssign, err := r.ResolveExpr(nodetype.Var)
+		if err != nil {
+			return nodetype, err
+		}
+		nodetype.Var = evalAssign
+		start, err := r.ResolveExpr(nodetype.Start)
+		if err != nil {
+			return nodetype, err
+		}
+		nodetype.Start = start
+		end, err := r.ResolveExpr(nodetype.Start)
+		if err != nil {
+			return nodetype, err
+		}
+
+		nodetype.End = end
+		return nodetype, nil
 	case *parser.ASTCompoundStmt:
 		r.scopeSwitch()
 		stmt, err := r.ResolveBlock(nodetype.Block)
@@ -156,17 +177,18 @@ func (r *Resolver) scopeSwitch() {
 	r.variableMap.variableMap = newMap
 }
 
-func (r *Resolver) endScope() {
-	newMap := make(map[string]VarEntry)
-
-	for k, v := range r.variableMap.variableMap {
-		entry := v
-		entry.fromCurrentScope = false
-		newMap[k] = entry
-	}
-
-	r.variableMap.variableMap = newMap
-}
+// Preserved for potential future use
+// func (r *Resolver) endScope() {
+// 	newMap := make(map[string]VarEntry)
+//
+// 	for k, v := range r.variableMap.variableMap {
+// 		entry := v
+// 		entry.fromCurrentScope = false
+// 		newMap[k] = entry
+// 	}
+//
+// 	r.variableMap.variableMap = newMap
+// }
 
 func (r *Resolver) createSemanticError(message string, line int, span lexer.Span) error {
 	return compilererrors.New(message, line, span, r.source, "Семантик шинжилгээ")

@@ -5,18 +5,21 @@ import (
 
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 	"github.com/your-moon/mn_compiler_go_version/parser"
+	"github.com/your-moon/mn_compiler_go_version/unique"
 )
 
 type TackyGen struct {
 	Irs        []Instruction
 	TempCount  uint64
 	LabelCount uint64
+	UniqueGen  unique.UniqueGen
 }
 
-func NewTackyGen() TackyGen {
+func NewTackyGen(uniquegen unique.UniqueGen) TackyGen {
 	return TackyGen{
 		TempCount:  0,
 		LabelCount: 0,
+		UniqueGen:  uniquegen,
 	}
 }
 
@@ -78,6 +81,15 @@ func (c *TackyGen) EmitTackyBlock(node parser.ASTBlock) {
 
 func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 	switch ast := node.(type) {
+	case *parser.ASTBreakStmt:
+		c.Irs = append(c.Irs, Jump{Target: ast.Id})
+	case *parser.ASTContinueStmt:
+		c.Irs = append(c.Irs, Jump{Target: ast.Id})
+	case *parser.ASTRange:
+		// startLabel := c.UniqueGen.MakeLabel("for_start")
+		// contLabel := c.UniqueGen.MakeLabel("for_cont")
+		// BrLabel := c.UniqueGen.MakeLabel("for_break")
+
 	case *parser.ASTCompoundStmt:
 		c.EmitTackyBlock(ast.Block)
 	case *parser.ASTIfStmt:

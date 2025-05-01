@@ -13,6 +13,7 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/parser"
 	semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
 	"github.com/your-moon/mn_compiler_go_version/tackygen"
+	"github.com/your-moon/mn_compiler_go_version/unique"
 )
 
 type Command struct {
@@ -215,17 +216,11 @@ func (c *CLI) runParser(args []string) error {
 		fmt.Println("AST:", node.PrintAST(0))
 	}
 
-	resolver := semanticanalysis.New(runeString)
-
-	_, err = resolver.Resolve(node)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
 func (c *CLI) runValidate(args []string) error {
+	uniqueGen := unique.NewUniqueGen()
 	runeString := readFile(args[0])
 	if err := c.runLexer(args); err != nil {
 		return err
@@ -246,9 +241,14 @@ func (c *CLI) runValidate(args []string) error {
 		fmt.Println("AST:", node.PrintAST(0))
 	}
 
-	resolver := semanticanalysis.New(runeString)
+	resolver := semanticanalysis.New(runeString, uniqueGen)
 
-	_, err = resolver.Resolve(node)
+	resolvedAst, err := resolver.Resolve(node)
+	if err != nil {
+		return err
+	}
+	loopPass := semanticanalysis.NewLoopPass(runeString, uniqueGen)
+	resolvedAst, err = loopPass.LabelLoops(resolvedAst)
 	if err != nil {
 		return err
 	}
@@ -257,6 +257,7 @@ func (c *CLI) runValidate(args []string) error {
 }
 
 func (c *CLI) runTacky(args []string) error {
+	uniqueGen := unique.NewUniqueGen()
 	runeString := readFile(args[0])
 	parsed := parser.NewParser(runeString)
 	node, err := parsed.ParseProgram()
@@ -268,7 +269,7 @@ func (c *CLI) runTacky(args []string) error {
 		fmt.Println("AST:", node.PrintAST(0))
 	}
 
-	resolver := semanticanalysis.New(runeString)
+	resolver := semanticanalysis.New(runeString, uniqueGen)
 
 	_, err = resolver.Resolve(node)
 	if err != nil {
@@ -276,7 +277,7 @@ func (c *CLI) runTacky(args []string) error {
 	}
 
 	fmt.Println("\n---- TACKY IR ҮҮСГЭЖ БАЙНА ----:")
-	compilerx := tackygen.NewTackyGen()
+	compilerx := tackygen.NewTackyGen(uniqueGen)
 	tackyprogram := compilerx.EmitTacky(node)
 
 	fmt.Println("---- TACKY IR ЖАГСААЛТ ----:")
@@ -287,6 +288,7 @@ func (c *CLI) runTacky(args []string) error {
 }
 
 func (c *CLI) runCompiler(args []string) error {
+	uniqueGen := unique.NewUniqueGen()
 	runeString := readFile(args[0])
 	parsed := parser.NewParser(runeString)
 	node, err := parsed.ParseProgram()
@@ -295,10 +297,10 @@ func (c *CLI) runCompiler(args []string) error {
 	}
 
 	fmt.Println("\n---- КОМПАЙЛЖ БАЙНА ----:")
-	compilerx := tackygen.NewTackyGen()
+	compilerx := tackygen.NewTackyGen(uniqueGen)
 	tackyprogram := compilerx.EmitTacky(node)
 
-	resolver := semanticanalysis.New(runeString)
+	resolver := semanticanalysis.New(runeString, uniqueGen)
 
 	_, err = resolver.Resolve(node)
 	if err != nil {
@@ -314,6 +316,7 @@ func (c *CLI) runCompiler(args []string) error {
 }
 
 func (c *CLI) runGen(args []string) error {
+	uniqueGen := unique.NewUniqueGen()
 	runeString := readFile(args[0])
 	parsed := parser.NewParser(runeString)
 	node, err := parsed.ParseProgram()
@@ -321,7 +324,7 @@ func (c *CLI) runGen(args []string) error {
 		return fmt.Errorf("парсингийн алдаа: %v", err)
 	}
 
-	compilerx := tackygen.NewTackyGen()
+	compilerx := tackygen.NewTackyGen(uniqueGen)
 	tackyprogram := compilerx.EmitTacky(node)
 
 	fmt.Println("\n---- ASSEMBLY ҮҮСГЭЖ БАЙНА ----:")

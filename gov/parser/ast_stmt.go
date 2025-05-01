@@ -11,25 +11,29 @@ type ASTBlock struct {
 	BlockItems []BlockItem
 }
 
-type ASTBreakStmt struct{
+type ASTBreakStmt struct {
 	Token lexer.Token
+	Id    string
 }
-type ASTContinueStmt struct{
+type ASTContinueStmt struct {
 	Token lexer.Token
+	Id    string
 }
 
-type ASTLoop struct {
+type ASTRange struct {
 	Token lexer.Token
-	Var   *ASTVar
+	Var   ASTExpression
 	Start ASTExpression
 	End   ASTExpression
 	Body  ASTStmt
+	Id    string
 }
 
 type ASTWhile struct {
 	Token lexer.Token
 	Cond  ASTExpression
 	Body  ASTStmt
+	Id    string
 }
 
 type ASTCompoundStmt struct {
@@ -50,9 +54,9 @@ func (a *ASTWhile) PrintAST(depth int) string {
 	return out.String()
 }
 
-func (a *ASTLoop) statementNode()       {}
-func (a *ASTLoop) TokenLiteral() string { return "LOOP" }
-func (a *ASTLoop) PrintAST(depth int) string {
+func (a *ASTRange) statementNode()       {}
+func (a *ASTRange) TokenLiteral() string { return "LOOP" }
+func (a *ASTRange) PrintAST(depth int) string {
 	var out bytes.Buffer
 	out.WriteString(fmt.Sprintf("%sLoop:\n", indent(depth)))
 	if a.Var != nil {

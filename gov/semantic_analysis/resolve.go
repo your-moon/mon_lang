@@ -101,17 +101,12 @@ func (r *Resolver) ResolveBlockItem(program parser.BlockItem) (parser.BlockItem,
 func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 	switch nodetype := program.(type) {
 	case *parser.ASTRange:
-		evalAssign, err := r.ResolveExpr(nodetype.Var)
-		if err != nil {
-			return nodetype, err
-		}
-		nodetype.Var = evalAssign
 		start, err := r.ResolveExpr(nodetype.Start)
 		if err != nil {
 			return nodetype, err
 		}
 		nodetype.Start = start
-		end, err := r.ResolveExpr(nodetype.Start)
+		end, err := r.ResolveExpr(nodetype.End)
 		if err != nil {
 			return nodetype, err
 		}

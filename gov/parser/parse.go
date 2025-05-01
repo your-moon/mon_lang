@@ -57,13 +57,13 @@ func (p *Parser) peekIs(expected lexer.TokenType) bool {
 }
 
 func (p *Parser) appendError(message string) {
-	err := errors.New(message, p.current.Line, p.current.Span, p.source, "Parser")
+	err := errors.New(message, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
 	p.parseErrors = append(p.parseErrors, err)
 }
 
 func (p *Parser) peekError(t lexer.TokenType) {
 	message := formatExpectedNextToken(t)
-	err := errors.New(message, p.current.Line, p.current.Span, p.source, "Parser")
+	err := errors.New(message, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
 	p.parseErrors = append(p.parseErrors, err)
 }
 
@@ -247,7 +247,7 @@ func (p *Parser) parseParams() ([]Param, error) {
 		ident := p.peekToken.Value
 		if !p.expect(lexer.IDENT) {
 			p.appendError(ErrMissingIdentifier)
-			return nil, errors.New(ErrMissingIdentifier, p.current.Line, p.current.Span, p.source, "Parser")
+			return nil, errors.New(ErrMissingIdentifier, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
 		}
 
 		params = append(params, Param{
@@ -267,7 +267,7 @@ func (p *Parser) parseParams() ([]Param, error) {
 
 func (p *Parser) parseType() (lexer.TokenType, error) {
 	if !p.expect(lexer.INT_TYPE) {
-		return lexer.ERROR, errors.New(ErrMissingIntType, p.current.Line, p.current.Span, p.source, "Parser")
+		return lexer.ERROR, errors.New(ErrMissingIntType, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
 	}
 
 	return lexer.INT_TYPE, nil
@@ -369,14 +369,14 @@ func (p *Parser) parseLoop() *ASTLoop {
 
 	// Parse loop variable
 	if !p.peekIs(lexer.IDENT) {
-		p.appendError("expected identifier after 'давт'")
+		p.appendError("давт түлхүүр үгний араас заавал хувьсагч байна")
 		return nil
 	}
 	ast.Var = p.parseIdent().(*ASTVar)
 
 	// Parse assignment
 	if !p.expect(lexer.IS) {
-		p.appendError("expected 'бол' after loop variable")
+		p.appendError("хувьсагчийн араас заавал 'бол' үг байна")
 		return nil
 	}
 
@@ -385,7 +385,7 @@ func (p *Parser) parseLoop() *ASTLoop {
 
 	// Parse 'to' keyword
 	if !p.expect(lexer.UNTIL) {
-		p.appendError("expected 'хүртэл' after end value")
+		p.appendError("'хүртэл' түлхүүр үгийг оруулж өгнө үү")
 		return nil
 	}
 

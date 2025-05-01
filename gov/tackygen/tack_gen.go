@@ -54,7 +54,6 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 		}
 	}
 
-	c.Irs = append(c.Irs, Return{Value: Constant{Value: 0}})
 	program.FnDef = TackyFn{
 		Name:         node.FnDef.TokenLiteral(),
 		Instructions: c.Irs,
@@ -81,48 +80,60 @@ func (c *TackyGen) EmitTackyBlock(node parser.ASTBlock) {
 
 func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 	switch ast := node.(type) {
+	case *parser.ASTRange:
+		startLabel := c.makeLabel("loop_start")
+		endLabel := c.makeLabel("loop_end")
+		ast.Id = endLabel.Name
+
+		// Initialize loop variable with start value
+		rangeStart := c.EmitExpr(ast.RangeExpr.(*parser.ASTRangeExpr).Start)
+		loopVar, ok := ast.Var.(*parser.ASTVar)
+		if !ok {
+			panic("Expected ASTVar for loop variable")
+		}
+		c.Irs = append(c.Irs, Copy{
+			Src: rangeStart,
+			Dst: Var{Name: loopVar.Ident},
+		})
+
+		// Loop start label
+		c.Irs = append(c.Irs, Label{Ident: startLabel.Name})
+
+		// Check condition: if i > end goto end
+		endVal := c.EmitExpr(ast.RangeExpr.(*parser.ASTRangeExpr).End)
+		loopVarVal := c.EmitExpr(ast.Var)
+		temp := c.makeTemp()
+		c.Irs = append(c.Irs, Binary{
+			Op:   LessThanEqual,
+			Src1: loopVarVal,
+			Src2: endVal,
+			Dst:  temp,
+		})
+		c.Irs = append(c.Irs, JumpIfZero{
+			Val:   temp,
+			Ident: endLabel.Name,
+		})
+
+		// Execute loop body
+		c.EmitTackyStmt(ast.Body)
+
+		// Increment loop variable
+		c.Irs = append(c.Irs, Binary{
+			Op:   Add,
+			Src1: Var{Name: loopVar.Ident},
+			Src2: Constant{Value: 1},
+			Dst:  Var{Name: loopVar.Ident},
+		})
+
+		// Jump back to start
+		c.Irs = append(c.Irs, Jump{Target: startLabel.Name})
+
+		// End label
+		c.Irs = append(c.Irs, Label{Ident: endLabel.Name})
 	case *parser.ASTBreakStmt:
 		c.Irs = append(c.Irs, Jump{Target: ast.Id})
 	case *parser.ASTContinueStmt:
 		c.Irs = append(c.Irs, Jump{Target: ast.Id})
-	case *parser.ASTRange:
-		startLabel := c.makeLabel("range_start")
-		contLabel := c.makeLabel("range_cont")
-		breakLabel := c.makeLabel("range_break")
-
-		startVal := c.EmitExpr(ast.Start)
-		c.Irs = append(c.Irs, Copy{Src: startVal, Dst: Var{Name: ast.Var.(*parser.ASTVar).Ident}})
-
-		c.Irs = append(c.Irs, Label{Ident: startLabel.Name})
-
-		endVal := c.EmitExpr(ast.End)
-		loopVar := Var{Name: ast.Var.(*parser.ASTVar).Ident}
-		cmp := Binary{
-			Op:   LessThanEqual,
-			Src1: loopVar,
-			Src2: endVal,
-			Dst:  c.makeTemp(),
-		}
-		c.Irs = append(c.Irs, cmp)
-
-		c.Irs = append(c.Irs, JumpIfZero{Val: cmp.Dst, Ident: breakLabel.Name})
-
-		c.EmitTackyStmt(ast.Body)
-
-		c.Irs = append(c.Irs, Label{Ident: contLabel.Name})
-
-		inc := Binary{
-			Op:   Add,
-			Src1: loopVar,
-			Src2: Constant{Value: 1},
-			Dst:  loopVar,
-		}
-		c.Irs = append(c.Irs, inc)
-
-		c.Irs = append(c.Irs, Jump{Target: startLabel.Name})
-
-		c.Irs = append(c.Irs, Label{Ident: breakLabel.Name})
-
 	case *parser.ASTCompoundStmt:
 		c.EmitTackyBlock(ast.Block)
 	case *parser.ASTIfStmt:
@@ -300,6 +311,24 @@ func (c *TackyGen) EmitOrExpr(expr *parser.ASTBinary) TackyVal {
 
 func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
 	switch expr := node.(type) {
+	case *parser.ASTRangeExpr:
+		start := c.EmitExpr(expr.Start)
+		end := c.EmitExpr(expr.End)
+		dst := c.makeTemp()
+		c.Irs = append(c.Irs, Binary{
+			Op:   Sub,
+			Src1: end,
+			Src2: start,
+			Dst:  dst,
+		})
+		c.Irs = append(c.Irs, Binary{
+			Op:   Add,
+			Src1: dst,
+			Src2: Constant{Value: 1},
+			Dst:  dst,
+		})
+		return dst
+
 	case *parser.ASTConditional:
 		endLabel := c.makeLabel("conditional_end")
 		elseLabel := c.makeLabel("conditional_else")

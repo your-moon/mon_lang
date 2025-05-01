@@ -101,17 +101,11 @@ func (r *Resolver) ResolveBlockItem(program parser.BlockItem) (parser.BlockItem,
 func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 	switch nodetype := program.(type) {
 	case *parser.ASTRange:
-		start, err := r.ResolveExpr(nodetype.Start)
+		rangeExpr, err := r.ResolveExpr(nodetype.RangeExpr)
 		if err != nil {
 			return nodetype, err
 		}
-		nodetype.Start = start
-		end, err := r.ResolveExpr(nodetype.End)
-		if err != nil {
-			return nodetype, err
-		}
-
-		nodetype.End = end
+		nodetype.RangeExpr = rangeExpr.(*parser.ASTRangeExpr)
 		return nodetype, nil
 	case *parser.ASTCompoundStmt:
 		r.scopeSwitch()
@@ -228,6 +222,20 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 	}
 
 	switch nodetype := program.(type) {
+	case *parser.ASTRangeExpr:
+		start, err := r.ResolveExpr(nodetype.Start)
+		if err != nil {
+			return nodetype, err
+		}
+
+		nodetype.Start = start
+
+		end, err := r.ResolveExpr(nodetype.End)
+		if err != nil {
+			return nodetype, err
+		}
+		nodetype.End = end
+		return nodetype, nil
 	case *parser.ASTConditional:
 		cond, err := r.ResolveExpr(nodetype.Cond)
 		if err != nil {

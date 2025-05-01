@@ -21,12 +21,11 @@ type ASTContinueStmt struct {
 }
 
 type ASTRange struct {
-	Token lexer.Token
-	Var   ASTExpression
-	Start ASTExpression
-	End   ASTExpression
-	Body  ASTStmt
-	Id    string
+	Token     lexer.Token
+	Var       ASTExpression
+	RangeExpr ASTExpression
+	Body      ASTStmt
+	Id        string
 }
 
 type ASTWhile struct {
@@ -64,9 +63,7 @@ func (a *ASTRange) PrintAST(depth int) string {
 		out.WriteString(a.Var.PrintAST(depth+1) + "\n")
 	}
 	out.WriteString(fmt.Sprintf("%s├─ Start:\n", indent(depth)))
-	out.WriteString(a.Start.PrintAST(depth+1) + "\n")
-	out.WriteString(fmt.Sprintf("%s├─ End:\n", indent(depth)))
-	out.WriteString(a.End.PrintAST(depth+1) + "\n")
+	out.WriteString(a.RangeExpr.PrintAST(depth+1) + "\n")
 	out.WriteString(fmt.Sprintf("%s└─ Body:\n", indent(depth)))
 	out.WriteString(a.Body.PrintAST(depth + 1))
 	return out.String()

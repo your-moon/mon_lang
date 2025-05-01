@@ -22,13 +22,15 @@ Lexer -> Parser -> Compiler -> Gen -> Link
 <declaration> ::= "зарла" <identifier> [ ":" "тоо" ] [ "=" <exp> ] ";"
 <statement> ::=   "буц" <exp> ";"
                 | "хэрэв" <exp> "бол" <block> [ "үгүй бол" <block> ]
-                | "давт" <identifier> "=" <exp> ".." <exp> "хүртэл" <block>
+                | "давт" <identifier> "бол" <range-exp> "хүртэл" <block>
+                | "давт" <identifier> "бол" <exp> "дуустал" <block>
                 | "давтах" [ <exp> ] "хүртэл" <block>
                 | "зогс" | "үргэлжлүүл"
                 | <exp> ";"
                 | ";"
 <exp> ::= <factor>
         | <exp> <binop> <exp>
+        | <exp> ".." <exp>
         | <exp> "?" <exp> ":" <exp>
         | <identifier> "=" <exp>
 <factor> ::= <int>

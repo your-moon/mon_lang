@@ -312,22 +312,7 @@ func (p *Parser) parseLoop() *ASTRange {
 	}
 
 	// Parse start value
-	ast.Start = p.parseExpr(Lowest)
-	if ast.Start == nil {
-		return nil
-	}
-
-	// Parse 'from' keyword
-	if !p.expect(lexer.DOTDOT) {
-		p.appendError("expected '..' after start value")
-		return nil
-	}
-
-	// Parse end value
-	ast.End = p.parseExpr(Lowest)
-	if ast.End == nil {
-		return nil
-	}
+	ast.RangeExpr = p.parseExpr(Lowest)
 
 	// Parse 'to' keyword
 	if !p.expect(lexer.UNTIL) {
@@ -382,7 +367,7 @@ func (p *Parser) isInfixOp() bool {
 		p.peekToken.Type == lexer.GREATERTHAN || p.peekToken.Type == lexer.GREATERTHANEQUAL ||
 		p.peekToken.Type == lexer.EQUALTO || p.peekToken.Type == lexer.NOTEQUAL ||
 		p.peekToken.Type == lexer.LOGICAND || p.peekToken.Type == lexer.LOGICOR || p.peekToken.Type == lexer.ASSIGN ||
-		p.peekToken.Type == lexer.QUESTIONMARK
+		p.peekToken.Type == lexer.QUESTIONMARK || p.peekToken.Type == lexer.DOTDOT
 }
 
 const (
@@ -429,9 +414,19 @@ func (p *Parser) parseExpr(minPrec int) ASTExpression {
 			break
 		}
 
-		op, _ := p.parseBinOp(p.peekToken.Type)
+		op, _ := p.parseInfixOp(p.peekToken.Type)
 		p.nextToken() // consume operator
 
+		if op == ASTBinOp(A_DOTDOT) {
+			right := p.parseExpr(Assign)
+			left = &ASTRangeExpr{
+				Token: p.current,
+				Start: left,
+				End:   right,
+			}
+			// range baival zaaval tsaash yvahgui
+			return left
+		}
 		if op == ASTBinOp(A_ASSIGN) {
 			right := p.parseExpr(Assign)
 			leftIdent, ok := left.(*ASTVar)
@@ -510,8 +505,10 @@ func (p *Parser) ParseBinOp() ASTBinOp {
 	}
 }
 
-func (p *Parser) parseBinOp(op lexer.TokenType) (ASTBinOp, error) {
+func (p *Parser) parseInfixOp(op lexer.TokenType) (ASTBinOp, error) {
 	switch op {
+	case lexer.DOTDOT:
+		return ASTBinOp(A_DOTDOT), nil
 	case lexer.QUESTIONMARK:
 		return ASTBinOp(A_QUESTIONMARK), nil
 	case lexer.MINUS:

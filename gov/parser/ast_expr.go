@@ -13,6 +13,7 @@ const (
 	A_PLUS int = iota
 	A_MINUS
 	A_QUESTIONMARK
+	A_DOTDOT
 	A_DIV
 	A_MUL
 
@@ -161,6 +162,24 @@ func (a *ASTAssignment) PrintAST(depth int) string {
 	out.WriteString(fmt.Sprintf("%s = %s",
 		a.Left.PrintAST(depth),
 		a.Right.PrintAST(depth)))
+	return out.String()
+}
+
+type ASTRangeExpr struct {
+	Token lexer.Token
+	Start ASTExpression
+	End   ASTExpression
+}
+
+func (a *ASTRangeExpr) expressionNode()      {}
+func (a *ASTRangeExpr) TokenLiteral() string { return "RANGE" }
+func (a *ASTRangeExpr) PrintAST(depth int) string {
+	var out bytes.Buffer
+	out.WriteString(fmt.Sprintf("%sRange Expression:\n", indent(depth)))
+	out.WriteString(fmt.Sprintf("%s├─ Start:\n", indent(depth)))
+	out.WriteString(a.Start.PrintAST(depth+1) + "\n")
+	out.WriteString(fmt.Sprintf("%s└─ End:\n", indent(depth)))
+	out.WriteString(a.End.PrintAST(depth + 1))
 	return out.String()
 }
 

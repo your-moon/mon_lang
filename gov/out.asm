@@ -1,5 +1,5 @@
-.globl _main
-_main:
+.globl main
+main:
     pushq %rbp
     movq %rsp, %rbp
     subq $16, %rsp
@@ -9,7 +9,7 @@ _main:
 .Lrange_start.0:
     cmpl $5, -8(%rbp)
     movl $0, -12(%rbp)
-    sete -12(%rbp)
+    setle -12(%rbp)
     cmpl $0, -12(%rbp)
     je .Lrange_break.2
     movl -4(%rbp), %r10d

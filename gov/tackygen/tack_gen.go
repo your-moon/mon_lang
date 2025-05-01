@@ -98,7 +98,7 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 		endVal := c.EmitExpr(ast.End)
 		loopVar := Var{Name: ast.Var.(*parser.ASTVar).Ident}
 		cmp := Binary{
-			Op:   LessThan,
+			Op:   LessThanEqual,
 			Src1: loopVar,
 			Src2: endVal,
 			Dst:  c.makeTemp(),

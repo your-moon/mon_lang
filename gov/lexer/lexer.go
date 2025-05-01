@@ -315,6 +315,8 @@ func (s *Scanner) Scan() (Token, error) {
 			return s.BuildToken(LESSTHANEQUAL), nil
 		}
 		return s.BuildToken(LESSTHAN), nil
+	case ',':
+		return s.BuildToken(COMMA), nil
 	case '.':
 		if s.Peek() == '.' {
 			s.Next()

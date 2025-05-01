@@ -1,5 +1,5 @@
-.globl үндсэн
-үндсэн:
+.globl _main
+_main:
     pushq %rbp
     movq %rsp, %rbp
     subq $20, %rsp

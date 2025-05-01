@@ -17,6 +17,7 @@ const (
 	NOTEQUAL         TokenType = "NOTEQUAL"         // !=
 	EQUALTO          TokenType = "EQUALTO"          // ==
 
+	COMMA  TokenType = "COMMA"  // ,
 	DOT    TokenType = "DOT"    // .
 	DOTDOT TokenType = "DOTDOT" // ..
 

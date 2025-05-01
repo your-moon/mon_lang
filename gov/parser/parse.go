@@ -52,10 +52,6 @@ func (p *Parser) expect(expected lexer.TokenType) bool {
 	return false
 }
 
-func (p *Parser) currIs(expected lexer.TokenType) bool {
-	return p.current.Type == expected
-}
-
 func (p *Parser) peekIs(expected lexer.TokenType) bool {
 	return p.peekToken.Type == expected
 }
@@ -202,9 +198,8 @@ func (p *Parser) parseBlockItems() []BlockItem {
 
 	// block duustal davtna
 	for !p.peekIs(lexer.CLOSE_BRACE) {
-		if stmt := p.parseBlockItem(); stmt != nil {
-			items = append(items, stmt)
-		}
+		stmt := p.parseBlockItem()
+		items = append(items, stmt)
 	}
 
 	return items
@@ -256,10 +251,6 @@ func (p *Parser) parseIf() *ASTIfStmt {
 	}
 
 	block := p.parseStmt()
-	if block == nil {
-		return nil
-	}
-
 	ast.Cond = cond
 	ast.Then = block
 
@@ -268,11 +259,7 @@ func (p *Parser) parseIf() *ASTIfStmt {
 			p.appendError(ErrMissingIs)
 			return nil
 		}
-		elseBlock := p.parseStmt()
-		if elseBlock == nil {
-			return nil
-		}
-		ast.Else = elseBlock
+		ast.Else = p.parseStmt()
 	}
 
 	return ast
@@ -287,9 +274,6 @@ func (p *Parser) parseWhile() *ASTWhile {
 	// if dont have cond
 	if p.peekIs(lexer.OPEN_BRACE) {
 		ast.Body = p.parseStmt()
-		if ast.Body == nil {
-			return nil
-		}
 	} else {
 		ast.Cond = p.parseExpr(Lowest)
 		if ast.Cond == nil {
@@ -302,9 +286,6 @@ func (p *Parser) parseWhile() *ASTWhile {
 		}
 
 		ast.Body = p.parseStmt()
-		if ast.Body == nil {
-			return nil
-		}
 	}
 
 	return ast
@@ -355,10 +336,8 @@ func (p *Parser) parseLoop() *ASTRange {
 	}
 
 	// Parse loop body
-	ast.Body = p.parseStmt()
-	if ast.Body == nil {
-		return nil
-	}
+	block := p.parseStmt()
+	ast.Body = block
 
 	return ast
 }

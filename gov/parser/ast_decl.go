@@ -29,5 +29,3 @@ func (d *Decl) PrintAST(depth int) string {
 func (d *Decl) TokenLiteral() string {
 	return d.Ident
 }
-
-func (d Decl) delc() {}

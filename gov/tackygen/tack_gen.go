@@ -90,14 +90,11 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 		contLabel := c.makeLabel("range_cont")
 		breakLabel := c.makeLabel("range_break")
 
-		// Initialize loop variable with start value
 		startVal := c.EmitExpr(ast.Start)
 		c.Irs = append(c.Irs, Copy{Src: startVal, Dst: Var{Name: ast.Var.(*parser.ASTVar).Ident}})
 
-		// Start of loop
 		c.Irs = append(c.Irs, Label{Ident: startLabel.Name})
 
-		// Compare loop variable with end value
 		endVal := c.EmitExpr(ast.End)
 		loopVar := Var{Name: ast.Var.(*parser.ASTVar).Ident}
 		cmp := Binary{
@@ -108,16 +105,12 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 		}
 		c.Irs = append(c.Irs, cmp)
 
-		// Jump to break if condition is false
 		c.Irs = append(c.Irs, JumpIfZero{Val: cmp.Dst, Ident: breakLabel.Name})
 
-		// Execute loop body
 		c.EmitTackyStmt(ast.Body)
 
-		// Continue label
 		c.Irs = append(c.Irs, Label{Ident: contLabel.Name})
 
-		// Increment loop variable
 		inc := Binary{
 			Op:   Add,
 			Src1: loopVar,
@@ -126,10 +119,8 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 		}
 		c.Irs = append(c.Irs, inc)
 
-		// Jump back to start
 		c.Irs = append(c.Irs, Jump{Target: startLabel.Name})
 
-		// Break label
 		c.Irs = append(c.Irs, Label{Ident: breakLabel.Name})
 
 	case *parser.ASTCompoundStmt:
@@ -183,7 +174,7 @@ func ToUnaryTackyOp(op lexer.TokenType) (UnaryOperator, error) {
 		return Not, nil
 	}
 
-	return Unknown, fmt.Errorf("Cannot convert token to tackyop")
+	return Unknown, fmt.Errorf("annot convert token to tackyop")
 }
 
 func ToTackyOp(op parser.ASTBinOp) (TackyBinaryOp, error) {
@@ -226,7 +217,7 @@ func ToTackyOp(op parser.ASTBinOp) (TackyBinaryOp, error) {
 		return GreaterThanEqual, nil
 	}
 
-	return Add, fmt.Errorf("Cannot convert token to tackyop")
+	return Add, fmt.Errorf("cannot convert token to tackyop")
 }
 
 func (c *TackyGen) EmitAndExpr(expr *parser.ASTBinary) TackyVal {
@@ -390,7 +381,7 @@ func (c *TackyGen) Emit(op Instruction) {
 }
 
 func (c *TackyGen) PrettyPrint(program TackyProgram) {
-	fmt.Printf("\n// Function: %s\n", program.FnDef.Name)
+	fmt.Println("\n// Function:", program.FnDef.Name)
 	fmt.Println("// Three-address code:")
 	fmt.Println()
 	for _, instr := range program.FnDef.Instructions {

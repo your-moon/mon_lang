@@ -172,7 +172,9 @@ type ASTVar struct {
 func (a ASTVar) expressionNode()      {}
 func (a ASTVar) TokenLiteral() string { return "VAR" }
 func (a ASTVar) PrintAST(depth int) string {
-	return a.Ident
+	var out bytes.Buffer
+	out.WriteString(fmt.Sprintf("%s%s", indent(depth), a.Ident))
+	return out.String()
 }
 
 type ASTUnary struct {

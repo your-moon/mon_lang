@@ -273,7 +273,8 @@ func (p *Parser) parseWhile() *ASTWhile {
 	p.nextToken() // consume 'давтах'
 	// if dont have cond
 	if p.peekIs(lexer.OPEN_BRACE) {
-		ast.Body = p.parseStmt()
+		block := p.parseBlock()
+		ast.Body = *block
 	} else {
 		ast.Cond = p.parseExpr(Lowest)
 		if ast.Cond == nil {
@@ -285,7 +286,7 @@ func (p *Parser) parseWhile() *ASTWhile {
 			return nil
 		}
 
-		ast.Body = p.parseStmt()
+		ast.Body = *p.parseBlock()
 	}
 
 	return ast

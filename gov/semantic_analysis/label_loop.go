@@ -20,10 +20,10 @@ type LoopPass struct {
 	currentId string
 }
 
-func NewLoopPass(source []int32, uniqueGen unique.UniqueGen) LoopPass {
+func NewLoopPass(source []int32) LoopPass {
 	return LoopPass{
 		source:    source,
-		uniqueGen: uniqueGen,
+		uniqueGen: unique.NewUniqueGen(),
 	}
 }
 
@@ -90,7 +90,7 @@ func (r *LoopPass) LabelStmt(currentLabel string, program parser.ASTStmt) (parse
 		nodetype.Id = currentLabel
 		return nodetype, nil
 	case *parser.ASTLoop:
-		newID := r.uniqueGen.MakeLabel("range")
+		newID := r.uniqueGen.MakeLabel("loop")
 		block, err := r.LabelBlock(newID, nodetype.Body)
 		if err != nil {
 			return nil, err
@@ -101,7 +101,7 @@ func (r *LoopPass) LabelStmt(currentLabel string, program parser.ASTStmt) (parse
 	case *parser.ASTWhile:
 		newID := r.uniqueGen.MakeLabel("while")
 		nodetype.Id = newID
-		body, err := r.LabelStmt(newID, nodetype.Body)
+		body, err := r.LabelBlock(newID, nodetype.Body)
 		if err != nil {
 			return nil, err
 		}

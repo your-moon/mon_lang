@@ -247,7 +247,7 @@ func (c *CLI) runValidate(args []string) error {
 	if err != nil {
 		return err
 	}
-	loopPass := semanticanalysis.NewLoopPass(runeString, uniqueGen)
+	loopPass := semanticanalysis.NewLoopPass(runeString)
 	resolvedAst, err = loopPass.LabelLoops(resolvedAst)
 	if err != nil {
 		return err
@@ -271,14 +271,20 @@ func (c *CLI) runTacky(args []string) error {
 
 	resolver := semanticanalysis.New(runeString, uniqueGen)
 
-	_, err = resolver.Resolve(node)
+	resolvedAst, err := resolver.Resolve(node)
+	if err != nil {
+		return err
+	}
+
+	loopPass := semanticanalysis.NewLoopPass(runeString)
+	resolvedAst, err = loopPass.LabelLoops(resolvedAst)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("\n---- TACKY IR ҮҮСГЭЖ БАЙНА ----:")
 	compilerx := tackygen.NewTackyGen(uniqueGen)
-	tackyprogram := compilerx.EmitTacky(node)
+	tackyprogram := compilerx.EmitTacky(resolvedAst)
 
 	fmt.Println("---- TACKY IR ЖАГСААЛТ ----:")
 	for _, ir := range tackyprogram.FnDef.Instructions {

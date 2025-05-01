@@ -8,7 +8,7 @@
       "mode": "auto",
       "program": "main.go",
       "args": [
-        "parse",
+        "tacky",
         "test/range.mn",
         "--debug"
       ]

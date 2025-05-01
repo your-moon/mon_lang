@@ -100,15 +100,29 @@ func (r *Resolver) ResolveBlockItem(program parser.BlockItem) (parser.BlockItem,
 
 func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 	switch nodetype := program.(type) {
+	case *parser.ASTWhile:
+		if nodetype.Cond != nil {
+			cond, err := r.ResolveExpr(nodetype.Cond)
+			if err != nil {
+				return nodetype, err
+			}
+			nodetype.Cond = cond
+
+		}
+
+		body, err := r.ResolveBlock(nodetype.Body)
+		if err != nil {
+			return nodetype, err
+		}
+		nodetype.Body = body
+		return nodetype, nil
 	case *parser.ASTLoop:
-		// Resolve the loop expression
 		expr, err := r.ResolveExpr(nodetype.Expr)
 		if err != nil {
 			return nodetype, err
 		}
 		nodetype.Expr = expr
 
-		// Check if loop variable exists and is of type ASTVar
 		if nodetype.Var != nil {
 			varExpr, ok := nodetype.Var.(*parser.ASTVar)
 			if !ok {
@@ -119,7 +133,6 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 				)
 			}
 
-			// Add loop variable to the variable map
 			uniqueName := r.makeNamedTemporary(varExpr.Ident)
 			r.variableMap.variableMap[varExpr.Ident] = VarEntry{
 				UniqueName:       uniqueName,
@@ -129,7 +142,6 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 			nodetype.Var = varExpr
 		}
 
-		// Resolve the loop body
 		body, err := r.ResolveBlock(nodetype.Body)
 		if err != nil {
 			return nodetype, err
@@ -214,7 +226,6 @@ func (r *Resolver) createSemanticError(message string, line int, span lexer.Span
 }
 
 func (r *Resolver) ResolveDecl(program *parser.Decl) (*parser.Decl, error) {
-	// variable that in current scope and redeclared
 	if _, exists := r.variableMap.variableMap[program.Ident]; exists && r.variableMap.variableMap[program.Ident].fromCurrentScope {
 		return nil, r.createSemanticError(
 			fmt.Sprintf(compilererrors.ErrDuplicateVariable, program.Ident),

@@ -31,7 +31,7 @@ type ASTLoop struct {
 type ASTWhile struct {
 	Token lexer.Token
 	Cond  ASTExpression
-	Body  ASTStmt
+	Body  ASTBlock
 	Id    string
 }
 

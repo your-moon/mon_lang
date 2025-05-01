@@ -30,6 +30,20 @@ func (c *TackyGen) makeTemp() Var {
 
 }
 
+func (c *TackyGen) continueLabel(id string) Var {
+	temp := fmt.Sprintf("continue.%s", id)
+	c.LabelCount += 1
+	return Var{Name: temp}
+
+}
+
+func (c *TackyGen) breakLabel(id string) Var {
+	temp := fmt.Sprintf("break.%s", id)
+	c.LabelCount += 1
+	return Var{Name: temp}
+
+}
+
 func (c *TackyGen) makeLabel(prefix string) Var {
 	temp := fmt.Sprintf("%s.%d", prefix, c.LabelCount)
 	c.LabelCount += 1
@@ -81,9 +95,10 @@ func (c *TackyGen) EmitTackyBlock(node parser.ASTBlock) {
 func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 	switch ast := node.(type) {
 	case *parser.ASTLoop:
-		startLabel := c.makeLabel("loop_start")
-		endLabel := c.makeLabel("loop_end")
-		ast.Id = endLabel.Name
+		startLabel := c.makeLabel("loop")
+		continueLabel := c.continueLabel(ast.Id)
+		breakLabel := c.breakLabel(ast.Id)
+		ast.Id = breakLabel.Name
 
 		rangeExpr, ok := ast.Expr.(*parser.ASTRangeExpr)
 		if ok {
@@ -110,10 +125,12 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 			})
 			c.Irs = append(c.Irs, JumpIfZero{
 				Val:   temp,
-				Ident: endLabel.Name,
+				Ident: breakLabel.Name,
 			})
 
 			c.EmitTackyBlock(ast.Body)
+
+			c.Irs = append(c.Irs, Label{Ident: continueLabel.Name})
 
 			c.Irs = append(c.Irs, Binary{
 				Op:   Add,
@@ -122,33 +139,28 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 				Dst:  Var{Name: loopVar.Ident},
 			})
 
-			// Jump back to start
 			c.Irs = append(c.Irs, Jump{Target: startLabel.Name})
 		} else {
-			// Handle regular loop condition
-			// Loop start label
 			c.Irs = append(c.Irs, Label{Ident: startLabel.Name})
 
-			// Evaluate condition
 			condVal := c.EmitExpr(ast.Expr)
 			c.Irs = append(c.Irs, JumpIfZero{
 				Val:   condVal,
-				Ident: endLabel.Name,
+				Ident: breakLabel.Name,
 			})
 
-			// Execute loop body
 			c.EmitTackyBlock(ast.Body)
 
-			// Jump back to start
+			c.Irs = append(c.Irs, Label{Ident: continueLabel.Name})
 			c.Irs = append(c.Irs, Jump{Target: startLabel.Name})
 		}
 
 		// End label
-		c.Irs = append(c.Irs, Label{Ident: endLabel.Name})
+		c.Irs = append(c.Irs, Label{Ident: breakLabel.Name})
 	case *parser.ASTBreakStmt:
-		c.Irs = append(c.Irs, Jump{Target: ast.Id})
+		c.Irs = append(c.Irs, Jump{Target: c.breakLabel(ast.Id).Name})
 	case *parser.ASTContinueStmt:
-		c.Irs = append(c.Irs, Jump{Target: ast.Id})
+		c.Irs = append(c.Irs, Jump{Target: c.continueLabel(ast.Id).Name})
 	case *parser.ASTCompoundStmt:
 		c.EmitTackyBlock(ast.Block)
 	case *parser.ASTIfStmt:

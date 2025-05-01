@@ -514,7 +514,7 @@ func (p *Parser) parseExpr(minPrec int) ASTExpression {
 			middle := p.parseExpr(Lowest)
 
 			if p.peekToken.Type != lexer.COLON {
-				p.appendError("expected colon after middle expression in ternary")
+				p.appendError("'?' түлхүүрийн араас заавал ':' түлхүүр байна")
 				return nil
 			}
 			p.nextToken() // consume colon

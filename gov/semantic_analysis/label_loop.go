@@ -28,27 +28,34 @@ func NewLoopPass(source []int32) LoopPass {
 }
 
 func (r *LoopPass) LabelLoops(program *parser.ASTProgram) (*parser.ASTProgram, error) {
-	fndef, err := r.LabelFnDef(program.FnDef)
-	if err != nil {
-		return nil, err
+	for i, fndecl := range program.Decls {
+		switch decl := fndecl.(type) {
+		case *parser.FnDecl:
+			fndef, err := r.LabelFnDecl(decl)
+			if err != nil {
+				return nil, err
+			}
+			program.Decls[i] = fndef
+		}
+
 	}
 
-	program.FnDef = fndef
 	return program, nil
 }
 
-func (r *LoopPass) LabelFnDef(fndef parser.FNDef) (parser.FNDef, error) {
-
-	block, err := r.LabelBlock("", fndef.Block)
-	if err != nil {
-		return parser.FNDef{}, err
+func (r *LoopPass) LabelFnDecl(fndecl *parser.FnDecl) (*parser.FnDecl, error) {
+	if fndecl.Block != nil {
+		block, err := r.LabelBlock("", fndecl.Block)
+		if err != nil {
+			return nil, err
+		}
+		fndecl.Block = block
 	}
-	fndef.Block = block
 
-	return fndef, nil
+	return fndecl, nil
 }
 
-func (r *LoopPass) LabelBlock(curLabel string, program parser.ASTBlock) (parser.ASTBlock, error) {
+func (r *LoopPass) LabelBlock(curLabel string, program *parser.ASTBlock) (*parser.ASTBlock, error) {
 	for _, item := range program.BlockItems {
 		_, err := r.LabelBlockItem(curLabel, item)
 		if err != nil {
@@ -91,24 +98,24 @@ func (r *LoopPass) LabelStmt(currentLabel string, program parser.ASTStmt) (parse
 		return nodetype, nil
 	case *parser.ASTLoop:
 		newID := r.uniqueGen.MakeLabel("loop")
-		block, err := r.LabelBlock(newID, nodetype.Body)
+		block, err := r.LabelBlock(newID, &nodetype.Body)
 		if err != nil {
 			return nil, err
 		}
-		nodetype.Body = block
+		nodetype.Body = *block
 		nodetype.Id = newID
 		return nodetype, nil
 	case *parser.ASTWhile:
 		newID := r.uniqueGen.MakeLabel("while")
 		nodetype.Id = newID
-		body, err := r.LabelBlock(newID, nodetype.Body)
+		body, err := r.LabelBlock(newID, &nodetype.Body)
 		if err != nil {
 			return nil, err
 		}
-		nodetype.Body = body
+		nodetype.Body = *body
 		return nodetype, nil
 	case *parser.ASTCompoundStmt:
-		r.LabelBlock(currentLabel, nodetype.Block)
+		r.LabelBlock(currentLabel, &nodetype.Block)
 		return nodetype, nil
 	case *parser.ASTIfStmt:
 		then, err := r.LabelStmt(currentLabel, nodetype.Then)

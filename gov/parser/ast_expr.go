@@ -31,6 +31,8 @@ const (
 
 func (op ASTBinOp) String() string {
 	switch op {
+	case ASTBinOp(A_DOTDOT):
+		return ".."
 	case ASTBinOp(A_QUESTIONMARK):
 		return "?"
 	case ASTBinOp(A_PLUS):
@@ -60,6 +62,20 @@ func (op ASTBinOp) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+type ASTFnCall struct {
+	Token lexer.Token
+	Ident string
+	Args  []ASTExpression
+}
+
+func (a *ASTFnCall) expressionNode()      {}
+func (a *ASTFnCall) TokenLiteral() string { return "CALL" }
+func (a *ASTFnCall) PrintAST(depth int) string {
+	var out bytes.Buffer
+	out.WriteString(fmt.Sprintf("%s%s", indent(depth), a.Ident))
+	return out.String()
 }
 
 type ASTConditional struct {

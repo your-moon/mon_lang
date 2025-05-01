@@ -58,6 +58,7 @@ const (
 
 	INT_TYPE TokenType = "INT_TYPE"
 	VOID     TokenType = "VOID"
+	ERROR    TokenType = "ERROR"
 )
 
 type Token struct {

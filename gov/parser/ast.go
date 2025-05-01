@@ -3,8 +3,6 @@ package parser
 import (
 	"bytes"
 	"strings"
-
-	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
 
 type BlockItem interface {
@@ -30,28 +28,24 @@ type ASTStmt interface {
 	statementNode()
 }
 
-type ASTLoopInit interface {
+type ASTDecl interface {
 	ASTNode
-	loopinit()
+	declNode()
 }
 
 type ASTProgram struct {
-	FnDef FNDef
+	Decls []ASTDecl
 }
 
 func (a *ASTProgram) TokenLiteral() string {
-	return a.FnDef.TokenLiteral()
-}
-
-type FNDef struct {
-	Token      lexer.Token
-	ReturnType lexer.TokenType
-	Block      ASTBlock
+	return a.Decls[0].TokenLiteral()
 }
 
 func (a *ASTProgram) PrintAST(depth int) string {
 	var out bytes.Buffer
-	out.WriteString(a.FnDef.PrintAST(depth))
+	for _, decl := range a.Decls {
+		out.WriteString(decl.PrintAST(depth))
+	}
 
 	return out.String()
 }

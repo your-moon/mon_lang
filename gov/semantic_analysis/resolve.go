@@ -48,31 +48,36 @@ func (r *Resolver) makeNamedTemporary(name string) string {
 }
 
 func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, error) {
-	fndef, err := r.ResolveFnDef(program.FnDef)
-	if err != nil {
-		return nil, err
+	for i, decl := range program.Decls {
+		switch decl := decl.(type) {
+		case *parser.FnDecl:
+			fndef, err := r.ResolveFnDecl(decl)
+			if err != nil {
+				return nil, err
+			}
+			program.Decls[i] = fndef
+		}
 	}
 
-	program.FnDef = fndef
 	return program, nil
 }
 
-func (r *Resolver) ResolveFnDef(fndef parser.FNDef) (parser.FNDef, error) {
+func (r *Resolver) ResolveFnDecl(fndecl *parser.FnDecl) (*parser.FnDecl, error) {
 
-	block, err := r.ResolveBlock(fndef.Block)
+	block, err := r.ResolveBlock(fndecl.Block)
 	if err != nil {
-		return parser.FNDef{}, err
+		return nil, err
 	}
-	fndef.Block = block
+	fndecl.Block = block
 
-	return fndef, nil
+	return fndecl, nil
 }
 
-func (r *Resolver) ResolveBlock(program parser.ASTBlock) (parser.ASTBlock, error) {
+func (r *Resolver) ResolveBlock(program *parser.ASTBlock) (*parser.ASTBlock, error) {
 	for i, item := range program.BlockItems {
 		blockitem, err := r.ResolveBlockItem(item)
 		if err != nil {
-			return parser.ASTBlock{}, err
+			return nil, err
 		}
 		program.BlockItems[i] = blockitem
 	}
@@ -110,11 +115,11 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 
 		}
 
-		body, err := r.ResolveBlock(nodetype.Body)
+		body, err := r.ResolveBlock(&nodetype.Body)
 		if err != nil {
 			return nodetype, err
 		}
-		nodetype.Body = body
+		nodetype.Body = *body
 		return nodetype, nil
 	case *parser.ASTLoop:
 		expr, err := r.ResolveExpr(nodetype.Expr)
@@ -142,20 +147,20 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 			nodetype.Var = varExpr
 		}
 
-		body, err := r.ResolveBlock(nodetype.Body)
+		body, err := r.ResolveBlock(&nodetype.Body)
 		if err != nil {
 			return nodetype, err
 		}
-		nodetype.Body = body
+		nodetype.Body = *body
 
 		return nodetype, nil
 	case *parser.ASTCompoundStmt:
 		r.scopeSwitch()
-		stmt, err := r.ResolveBlock(nodetype.Block)
+		stmt, err := r.ResolveBlock(&nodetype.Block)
 		if err != nil {
 			return nil, err
 		}
-		nodetype.Block = stmt
+		nodetype.Block = *stmt
 		return nodetype, nil
 	case *parser.ASTReturnStmt:
 		retval, err := r.ResolveExpr(nodetype.ReturnValue)

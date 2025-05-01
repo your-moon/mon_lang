@@ -163,25 +163,6 @@ func (a *ExpressionStmt) PrintAST(depth int) string {
 	return fmt.Sprintf("%s// empty expression", indent(depth))
 }
 
-func (a *FNDef) statementNode() {}
-func (a *FNDef) TokenLiteral() string {
-	return string(*a.Token.Value)
-}
-func (a *FNDef) PrintAST(depth int) string {
-	var out bytes.Buffer
-
-	if a.Token.Value != nil {
-		out.WriteString(fmt.Sprintf("%sfunction %s() -> int {\n", indent(depth), *a.Token.Value))
-	}
-
-	for _, b := range a.Block.BlockItems {
-		out.WriteString(b.PrintAST(depth+1) + "\n")
-	}
-
-	out.WriteString(fmt.Sprintf("%s}\n", indent(depth)))
-	return out.String()
-}
-
 func (a *ASTReturnStmt) statementNode()       {}
 func (a *ASTReturnStmt) TokenLiteral() string { return string(a.Token.Type) }
 func (a *ASTReturnStmt) PrintAST(depth int) string {

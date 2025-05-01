@@ -71,9 +71,17 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 	program := &ASTProgram{}
 
 	for p.current.Type != lexer.EOF {
-		stmt := p.parseFN()
-		if stmt != nil {
-			program.FnDef = *stmt
+		switch p.current.Type {
+		case lexer.FN:
+			stmt := p.parseFnDecl()
+			if stmt != nil {
+				program.Decls = append(program.Decls, stmt)
+			}
+		case lexer.DECL:
+			stmt := p.parseVarDecl()
+			if stmt != nil {
+				program.Decls = append(program.Decls, stmt)
+			}
 		}
 		p.nextToken()
 	}
@@ -90,7 +98,7 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 func (p *Parser) parseBlockItem() BlockItem {
 	switch p.peekToken.Type {
 	case lexer.DECL:
-		return p.parseDecl()
+		return p.parseVarDecl()
 	default:
 		return p.parseStmt()
 	}
@@ -140,30 +148,6 @@ func (p *Parser) parseExpressionStmt() *ExpressionStmt {
 	return ast
 }
 
-// <function> ::= "функц" <identifier> "(" ")" "->" "тоо" "{" { <block-item> } "}"
-func (p *Parser) parseFN() *FNDef {
-
-	fnName := p.peekToken
-	p.nextToken()
-
-	if !p.expect(lexer.OPEN_PAREN) ||
-		!p.expect(lexer.CLOSE_PAREN) ||
-		!p.expect(lexer.RIGHT_ARROW) ||
-		!p.expect(lexer.INT_TYPE) {
-		return nil
-	}
-
-	block := p.parseBlock()
-	if block == nil {
-		return nil
-	}
-
-	return &FNDef{
-		Token: fnName,
-		Block: *block,
-	}
-}
-
 func (p *Parser) parseBlock() *ASTBlock {
 	if !p.expect(lexer.OPEN_BRACE) {
 		p.appendError(ErrMissingBraceOpen)
@@ -205,8 +189,92 @@ func (p *Parser) parseBlockItems() []BlockItem {
 	return items
 }
 
-func (p *Parser) parseDecl() *Decl {
-	ast := &Decl{}
+// <function> ::= "функц" <identifier> "(" [ <params> ] ")" "->" "тоо" "{" { <block-item> } "}"
+func (p *Parser) parseFnDecl() *FnDecl {
+	ast := &FnDecl{}
+
+	if p.peekToken.Value == nil {
+		p.appendError(ErrMissingIdentifier)
+		return nil
+	}
+
+	ast.Ident = *p.peekToken.Value
+	p.nextToken()
+
+	if !p.expect(lexer.OPEN_PAREN) {
+		p.appendError(errors.ErrMissingParenOpen)
+		return nil
+	}
+
+	params, err := p.parseParams()
+	if err != nil {
+		p.appendError(err.Error())
+		return nil
+	}
+	if !p.expect(lexer.CLOSE_PAREN) {
+		p.appendError(errors.ErrMissingParenClose)
+		return nil
+	}
+
+	ast.Params = params
+
+	if !p.expect(lexer.RIGHT_ARROW) {
+		p.appendError(errors.ErrMissingArrow)
+		return nil
+	}
+
+	returnType, err := p.parseType()
+	if err != nil {
+		p.appendError(err.Error())
+		return nil
+	}
+	ast.ReturnType = returnType
+
+	if p.peekIs(lexer.OPEN_BRACE) {
+		block := p.parseBlock()
+		if block != nil {
+			ast.Block = block
+		}
+	}
+
+	return ast
+}
+
+func (p *Parser) parseParams() ([]Param, error) {
+	params := []Param{}
+
+	for !p.peekIs(lexer.CLOSE_PAREN) {
+		ident := p.peekToken.Value
+		if !p.expect(lexer.IDENT) {
+			p.appendError(ErrMissingIdentifier)
+			return nil, errors.New(ErrMissingIdentifier, p.current.Line, p.current.Span, p.source, "Parser")
+		}
+
+		params = append(params, Param{
+			Token: p.peekToken,
+			Ident: *ident,
+			Type:  p.peekToken.Type,
+		})
+		p.nextToken()
+
+		if p.peekIs(lexer.COMMA) {
+			p.nextToken()
+		}
+	}
+
+	return params, nil
+}
+
+func (p *Parser) parseType() (lexer.TokenType, error) {
+	if !p.expect(lexer.INT_TYPE) {
+		return lexer.ERROR, errors.New(ErrMissingIntType, p.current.Line, p.current.Span, p.source, "Parser")
+	}
+
+	return lexer.INT_TYPE, nil
+}
+
+func (p *Parser) parseVarDecl() *VarDecl {
+	ast := &VarDecl{}
 
 	p.nextToken() // consume 'зарла'
 

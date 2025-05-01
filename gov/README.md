@@ -18,8 +18,10 @@ Lexer -> Parser -> Compiler -> Gen -> Link
 <function> ::= "функц" <identifier> "(" ")" "->" "тоо" { <block-item> }
 <block> ::= "{" <block-item>* "}"
 <block-item> ::= <statement> | <declaration>
-<for-init> ::= <declaration> | [ <exp> ] ";"
-<declaration> ::= "зарла" <identifier> [ ":" "тоо" ] [ "=" <exp> ] ";"
+<declaration> ::= <fn-decl> | <var-decl>
+<var-decl> ::= "зарла" <identifier> [ ":" "тоо" ] [ "=" <exp> ] ";"
+<fn-decl> ::= <identifier> "(" [ <param-list> ] ")" [ "->" "тоо" ] ";"
+<param-list> ::= <identifier> "тоо" { "," "тоо" <identifier> }
 <statement> ::=   "буц" <exp> ";"
                 | "хэрэв" <exp> "бол" <block> [ "үгүй бол" <block> ]
                 | "давт" <identifier> "бол" <exp> "хүртэл" <block>
@@ -29,9 +31,16 @@ Lexer -> Parser -> Compiler -> Gen -> Link
                 | ";"
 <exp> ::= <factor>
         | <exp> <binop> <exp>
-        | <exp> ".." <exp>
+        | <range-exp>
+        | <fn-call>
         | <exp> "?" <exp> ":" <exp>
         | <identifier> "=" <exp>
+
+<fn-call> ::= <identifier> "(" [ <argument-list> ] ")"
+<argument-list> ::= <exp> { "," <exp> }
+
+<range-exp> ::= <exp> ".." <exp>
+
 <factor> ::= <int>
            | <string>
            | <identifier>

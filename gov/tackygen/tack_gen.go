@@ -85,10 +85,8 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 		endLabel := c.makeLabel("loop_end")
 		ast.Id = endLabel.Name
 
-		// Initialize loop variable with start value
 		rangeExpr, ok := ast.Expr.(*parser.ASTRangeExpr)
 		if ok {
-			// Handle range expression (for i in start..end)
 			rangeStart := c.EmitExpr(rangeExpr.Start)
 			loopVar, ok := ast.Var.(*parser.ASTVar)
 			if !ok {
@@ -99,10 +97,8 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 				Dst: Var{Name: loopVar.Ident},
 			})
 
-			// Loop start label
 			c.Irs = append(c.Irs, Label{Ident: startLabel.Name})
 
-			// Check condition: if i > end goto end
 			endVal := c.EmitExpr(rangeExpr.End)
 			loopVarVal := c.EmitExpr(ast.Var)
 			temp := c.makeTemp()
@@ -117,10 +113,8 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 				Ident: endLabel.Name,
 			})
 
-			// Execute loop body
-			c.EmitTackyStmt(ast.Body)
+			c.EmitTackyBlock(ast.Body)
 
-			// Increment loop variable
 			c.Irs = append(c.Irs, Binary{
 				Op:   Add,
 				Src1: Var{Name: loopVar.Ident},
@@ -143,7 +137,7 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 			})
 
 			// Execute loop body
-			c.EmitTackyStmt(ast.Body)
+			c.EmitTackyBlock(ast.Body)
 
 			// Jump back to start
 			c.Irs = append(c.Irs, Jump{Target: startLabel.Name})

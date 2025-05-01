@@ -130,7 +130,7 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 		}
 
 		// Resolve the loop body
-		body, err := r.ResolveStmt(nodetype.Body)
+		body, err := r.ResolveBlock(nodetype.Body)
 		if err != nil {
 			return nodetype, err
 		}

@@ -320,9 +320,12 @@ func (p *Parser) parseLoop() *ASTLoop {
 		return nil
 	}
 
-	// Parse loop body
-	block := p.parseStmt()
-	ast.Body = block
+	// Parse loop body as a block
+	block := p.parseBlock()
+	if block == nil {
+		return nil
+	}
+	ast.Body = *block
 
 	return ast
 }

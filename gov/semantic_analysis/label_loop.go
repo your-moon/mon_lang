@@ -91,11 +91,11 @@ func (r *LoopPass) LabelStmt(currentLabel string, program parser.ASTStmt) (parse
 		return nodetype, nil
 	case *parser.ASTLoop:
 		newID := r.uniqueGen.MakeLabel("range")
-		body, err := r.LabelStmt(newID, nodetype.Body)
+		block, err := r.LabelBlock(newID, nodetype.Body)
 		if err != nil {
 			return nil, err
 		}
-		nodetype.Body = body
+		nodetype.Body = block
 		nodetype.Id = newID
 		return nodetype, nil
 	case *parser.ASTWhile:

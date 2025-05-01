@@ -24,7 +24,7 @@ type ASTLoop struct {
 	Token lexer.Token
 	Var   ASTExpression
 	Expr  ASTExpression
-	Body  ASTStmt
+	Body  ASTBlock
 	Id    string
 }
 

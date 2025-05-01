@@ -30,6 +30,8 @@ func (r *ReplacementPassGen) ReplaceOperand(operand AsmOperand) AsmOperand {
 
 func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction) AsmInstruction {
 	switch ast := instr.(type) {
+	case Label:
+		return instr
 	case SetCC:
 		op := r.ReplaceOperand(ast.Op)
 		return SetCC{

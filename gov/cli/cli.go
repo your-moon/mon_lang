@@ -248,7 +248,7 @@ func (c *CLI) runValidate(args []string) error {
 		return err
 	}
 	loopPass := semanticanalysis.NewLoopPass(runeString)
-	resolvedAst, err = loopPass.LabelLoops(resolvedAst)
+	_, err = loopPass.LabelLoops(resolvedAst)
 	if err != nil {
 		return err
 	}
@@ -302,16 +302,21 @@ func (c *CLI) runCompiler(args []string) error {
 		return fmt.Errorf("парсингийн алдаа: %v", err)
 	}
 
-	fmt.Println("\n---- КОМПАЙЛЖ БАЙНА ----:")
-	compilerx := tackygen.NewTackyGen(uniqueGen)
-	tackyprogram := compilerx.EmitTacky(node)
-
 	resolver := semanticanalysis.New(runeString, uniqueGen)
-
-	_, err = resolver.Resolve(node)
+	resolvedAst, err := resolver.Resolve(node)
 	if err != nil {
 		return err
 	}
+
+	loopPass := semanticanalysis.NewLoopPass(runeString)
+	resolvedAst, err = loopPass.LabelLoops(resolvedAst)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("\n---- КОМПАЙЛЖ БАЙНА ----:")
+	compilerx := tackygen.NewTackyGen(uniqueGen)
+	tackyprogram := compilerx.EmitTacky(resolvedAst)
 
 	fmt.Println("---- TACKY ЖАГСААЛТ ----:")
 	for _, ir := range tackyprogram.FnDef.Instructions {
@@ -330,8 +335,20 @@ func (c *CLI) runGen(args []string) error {
 		return fmt.Errorf("парсингийн алдаа: %v", err)
 	}
 
+	resolver := semanticanalysis.New(runeString, uniqueGen)
+	resolvedAst, err := resolver.Resolve(node)
+	if err != nil {
+		return err
+	}
+
+	loopPass := semanticanalysis.NewLoopPass(runeString)
+	resolvedAst, err = loopPass.LabelLoops(resolvedAst)
+	if err != nil {
+		return err
+	}
+
 	compilerx := tackygen.NewTackyGen(uniqueGen)
-	tackyprogram := compilerx.EmitTacky(node)
+	tackyprogram := compilerx.EmitTacky(resolvedAst)
 
 	fmt.Println("\n---- ASSEMBLY ҮҮСГЭЖ БАЙНА ----:")
 	outfile := "out.asm"

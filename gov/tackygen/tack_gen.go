@@ -86,9 +86,51 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 	case *parser.ASTContinueStmt:
 		c.Irs = append(c.Irs, Jump{Target: ast.Id})
 	case *parser.ASTRange:
-		// startLabel := c.UniqueGen.MakeLabel("for_start")
-		// contLabel := c.UniqueGen.MakeLabel("for_cont")
-		// BrLabel := c.UniqueGen.MakeLabel("for_break")
+		startLabel := c.makeLabel("range_start")
+		contLabel := c.makeLabel("range_cont")
+		breakLabel := c.makeLabel("range_break")
+
+		// Initialize loop variable with start value
+		startVal := c.EmitExpr(ast.Start)
+		c.Irs = append(c.Irs, Copy{Src: startVal, Dst: Var{Name: ast.Var.(*parser.ASTVar).Ident}})
+
+		// Start of loop
+		c.Irs = append(c.Irs, Label{Ident: startLabel.Name})
+
+		// Compare loop variable with end value
+		endVal := c.EmitExpr(ast.End)
+		loopVar := Var{Name: ast.Var.(*parser.ASTVar).Ident}
+		cmp := Binary{
+			Op:   LessThan,
+			Src1: loopVar,
+			Src2: endVal,
+			Dst:  c.makeTemp(),
+		}
+		c.Irs = append(c.Irs, cmp)
+
+		// Jump to break if condition is false
+		c.Irs = append(c.Irs, JumpIfZero{Val: cmp.Dst, Ident: breakLabel.Name})
+
+		// Execute loop body
+		c.EmitTackyStmt(ast.Body)
+
+		// Continue label
+		c.Irs = append(c.Irs, Label{Ident: contLabel.Name})
+
+		// Increment loop variable
+		inc := Binary{
+			Op:   Add,
+			Src1: loopVar,
+			Src2: Constant{Value: 1},
+			Dst:  loopVar,
+		}
+		c.Irs = append(c.Irs, inc)
+
+		// Jump back to start
+		c.Irs = append(c.Irs, Jump{Target: startLabel.Name})
+
+		// Break label
+		c.Irs = append(c.Irs, Label{Ident: breakLabel.Name})
 
 	case *parser.ASTCompoundStmt:
 		c.EmitTackyBlock(ast.Block)

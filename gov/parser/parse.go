@@ -191,7 +191,9 @@ func (p *Parser) parseBlockItems() []BlockItem {
 
 // <function> ::= "функц" <identifier> "(" [ <params> ] ")" "->" "тоо" "{" { <block-item> } "}"
 func (p *Parser) parseFnDecl() *FnDecl {
-	ast := &FnDecl{}
+	ast := &FnDecl{
+		Token: p.current,
+	}
 
 	if p.peekToken.Value == nil {
 		p.appendError(ErrMissingIdentifier)

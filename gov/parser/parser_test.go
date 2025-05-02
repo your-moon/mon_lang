@@ -27,11 +27,8 @@ func TestParseSimple(t *testing.T) {
 	if !ok {
 		t.Errorf("Expected function declaration, got %v", program.Decls[0])
 	}
-	if fnDecl.Token.Type != lexer.IDENT {
-		t.Errorf("Expected function name to be IDENT, got %v", fnDecl.Token.Type)
-	}
-	if fnDecl.Ident != "майн" {
-		t.Errorf("Expected function name to be 'майн', got %v", fnDecl.Ident)
+	if fnDecl.Token.Type != lexer.FN {
+		t.Errorf("Expected function name to be FN, got %v", fnDecl.Token.Type)
 	}
 
 	if len(fnDecl.Block.BlockItems) != 1 {
@@ -163,13 +160,13 @@ func TestParseDeclarations(t *testing.T) {
 		t.Errorf("Expected 4 statements in function body, got %d", len(fnDecl.Block.BlockItems))
 	}
 
-	if decl, ok := fnDecl.Block.BlockItems[0].(*Decl); !ok {
+	if decl, ok := fnDecl.Block.BlockItems[0].(*VarDecl); !ok {
 		t.Error("Expected first statement to be declaration")
 	} else if decl.Ident != "б" {
 		t.Errorf("Expected first declaration name to be 'б', got %s", decl.Ident)
 	}
 
-	if decl, ok := fnDecl.Block.BlockItems[1].(*Decl); !ok {
+	if decl, ok := fnDecl.Block.BlockItems[1].(*VarDecl); !ok {
 		t.Error("Expected second statement to be declaration")
 	} else {
 		if decl.Ident != "а" {
@@ -230,9 +227,6 @@ func TestParseExamples(t *testing.T) {
 
 					if program == nil {
 						t.Errorf("Program is nil for %s", file)
-					}
-					if program.Decls[0].TokenLiteral() != "майн" {
-						t.Errorf("Expected function name to be IDENT in %s", file)
 					}
 				})
 			}

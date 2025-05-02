@@ -100,11 +100,15 @@ func (d *VarDecl) TokenLiteral() string {
 	return d.Ident
 }
 func (d *VarDecl) PrintAST(depth int) string {
-	return fmt.Sprintf("%sVariable: %s\n%s└─ Initial Value: %s",
-		indent(depth),
-		d.Ident,
-		indent(depth),
-		d.Expr.PrintAST(depth+1))
+	if d.Expr != nil {
+		return fmt.Sprintf("%sVariable: %s\n%s└─ Initial Value: %s",
+			indent(depth),
+			d.Ident,
+			indent(depth),
+			d.Expr.PrintAST(depth+1))
+	} else {
+		return fmt.Sprintf("%sVariable: %s", indent(depth), d.Ident)
+	}
 }
 
 type Decl struct {

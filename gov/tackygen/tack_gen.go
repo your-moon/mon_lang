@@ -54,7 +54,7 @@ func (c *TackyGen) makeLabel(prefix string) Var {
 func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	program := TackyProgram{}
 
-	for _, stmt := range node.Decls[0].(*parser.FnDecl).Block.BlockItems {
+	for _, stmt := range node.Decls[0].Body.BlockItems {
 		switch ast := stmt.(type) {
 		case *parser.Decl:
 			if ast.Expr != nil {
@@ -66,11 +66,6 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 		case parser.ASTStmt:
 			c.EmitTackyStmt(ast)
 		}
-	}
-
-	program.FnDef = TackyFn{
-		Name:         node.Decls[0].TokenLiteral(),
-		Instructions: c.Irs,
 	}
 
 	return program

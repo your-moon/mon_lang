@@ -20,23 +20,24 @@ type LoopPass struct {
 	currentId string
 }
 
-func NewLoopPass(source []int32) LoopPass {
-	return LoopPass{
+func NewLoopPass(source []int32) *LoopPass {
+	return &LoopPass{
 		source:    source,
 		uniqueGen: unique.NewUniqueGen(),
 	}
 }
 
+func (r *LoopPass) createLoopError(message string, line int, span lexer.Span) *compilererrors.CompilerError {
+	return compilererrors.New(message, line, span, r.source, "Семантик шинжилгээ")
+}
+
 func (r *LoopPass) LabelLoops(program *parser.ASTProgram) (*parser.ASTProgram, error) {
 	for i, fndecl := range program.Decls {
-		switch decl := fndecl.(type) {
-		case *parser.FnDecl:
-			fndef, err := r.LabelFnDecl(decl)
-			if err != nil {
-				return nil, err
-			}
-			program.Decls[i] = fndef
+		fndef, err := r.LabelFnDecl(&fndecl)
+		if err != nil {
+			return program, err
 		}
+		program.Decls[i] = *fndef
 
 	}
 
@@ -44,12 +45,12 @@ func (r *LoopPass) LabelLoops(program *parser.ASTProgram) (*parser.ASTProgram, e
 }
 
 func (r *LoopPass) LabelFnDecl(fndecl *parser.FnDecl) (*parser.FnDecl, error) {
-	if fndecl.Block != nil {
-		block, err := r.LabelBlock("", fndecl.Block)
+	if fndecl.Body != nil {
+		block, err := r.LabelBlock("", fndecl.Body)
 		if err != nil {
 			return nil, err
 		}
-		fndecl.Block = block
+		fndecl.Body = block
 	}
 
 	return fndecl, nil
@@ -73,11 +74,15 @@ func (r *LoopPass) LabelBlockItem(curLabel string, program parser.BlockItem) (pa
 			return program, err
 		}
 		return curLabel, nil
-	case *parser.Decl:
+	case parser.ASTDecl:
 		return nodetype, nil
 	}
 
-	return nil, fmt.Errorf("unreachable point")
+	return nil, r.createLoopError(
+		fmt.Sprintf(compilererrors.ErrUnknownExpression, program),
+		1,
+		lexer.Span{Start: 0, End: 0},
+	)
 }
 
 func (r *LoopPass) LabelStmt(currentLabel string, program parser.ASTStmt) (parser.ASTStmt, error) {
@@ -132,10 +137,6 @@ func (r *LoopPass) LabelStmt(currentLabel string, program parser.ASTStmt) (parse
 	default:
 		return program, nil
 	}
-}
-
-func (r *LoopPass) createLoopError(message string, line int, span lexer.Span) error {
-	return compilererrors.New(message, line, span, r.source, "Семантик шинжилгээ")
 }
 
 func (r *LoopPass) ResolveDecl(program *parser.Decl) (*parser.Decl, error) {

@@ -16,26 +16,27 @@ const (
 	ErrUnknownExpression  = "үл мэдэгдэх илэрхийллийн төрөл: '%T'"
 )
 
+type IdMap map[string]VarEntry
+
 type VarEntry struct {
 	UniqueName       string
 	fromCurrentScope bool
+	hasLinkage       bool
 }
 type VariableMap struct {
-	variableMap map[string]VarEntry
+	idMap map[string]VarEntry
 }
 
 type Resolver struct {
-	variableMap VariableMap
+	// idMap       VariableMap
 	tempCounter int
 	source      []int32
 	uniqueGen   unique.UniqueGen
+	errors      []compilererrors.CompilerError
 }
 
-func New(source []int32, uniqueGen unique.UniqueGen) Resolver {
-	return Resolver{
-		variableMap: VariableMap{
-			variableMap: make(map[string]VarEntry),
-		},
+func NewResolver(source []int32, uniqueGen unique.UniqueGen) *Resolver {
+	return &Resolver{
 		tempCounter: 0,
 		source:      source,
 		uniqueGen:   uniqueGen,
@@ -47,35 +48,108 @@ func (r *Resolver) makeNamedTemporary(name string) string {
 	return fmt.Sprintf("%s_%d", name, r.tempCounter)
 }
 
-func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, error) {
-	for i, decl := range program.Decls {
-		switch decl := decl.(type) {
-		case *parser.FnDecl:
-			fndef, err := r.ResolveFnDecl(decl)
-			if err != nil {
-				return nil, err
-			}
-			program.Decls[i] = fndef
+func (r *Resolver) resolveParams(params []parser.Param, innerMap map[string]VarEntry) (map[string]VarEntry, []parser.Param, error) {
+	resolvedParams := []parser.Param{}
+	for _, param := range params {
+		if _, exists := innerMap[param.Ident]; exists {
+			return nil, nil, r.createSemanticError(
+				fmt.Sprintf(compilererrors.ErrDuplicateVariable, param.Ident),
+				param.Token.Line,
+				param.Token.Span,
+			)
 		}
+
+		uniqueName := r.makeNamedTemporary(param.Ident)
+		innerMap[param.Ident] = VarEntry{
+			UniqueName:       uniqueName,
+			fromCurrentScope: true,
+			hasLinkage:       false,
+		}
+
+		resolvedParams = append(resolvedParams, parser.Param{
+			Token: param.Token,
+			Ident: uniqueName,
+			Type:  param.Type,
+		})
+	}
+
+	return innerMap, resolvedParams, nil
+}
+
+func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, error) {
+	innerMap := make(IdMap)
+	for i, decl := range program.Decls {
+		_, fndecl, err := r.ResolveFnDecl(decl, innerMap)
+		if err != nil {
+			return nil, err
+		}
+		program.Decls[i] = fndecl
 	}
 
 	return program, nil
 }
 
-func (r *Resolver) ResolveFnDecl(fndecl *parser.FnDecl) (*parser.FnDecl, error) {
-
-	block, err := r.ResolveBlock(fndecl.Block)
-	if err != nil {
-		return nil, err
+func (r *Resolver) ResolveFnDecl(fndecl parser.FnDecl, innerMap IdMap) (IdMap, parser.FnDecl, error) {
+	if found, exists := innerMap[fndecl.Ident]; exists {
+		if found.fromCurrentScope && !found.hasLinkage {
+			return nil, parser.FnDecl{}, r.createSemanticError(
+				fmt.Sprintf(compilererrors.ErrDuplicateFnDecl, fndecl.Ident),
+				fndecl.Token.Line,
+				fndecl.Token.Span,
+			)
+		}
 	}
-	fndecl.Block = block
 
-	return fndecl, nil
+	innerMap[fndecl.Ident] = VarEntry{
+		UniqueName:       fndecl.Ident,
+		fromCurrentScope: true,
+		hasLinkage:       true,
+	}
+
+	newMap := r.copyIdMap(innerMap)
+
+	solvedInnerMap, resolvedParams, err := r.resolveParams(fndecl.Params, newMap)
+	if err != nil {
+		return nil, parser.FnDecl{}, err
+	}
+
+	fndecl.Params = resolvedParams
+
+	if fndecl.Body != nil {
+		body, err := r.ResolveBlock(fndecl.Body, solvedInnerMap)
+		if err != nil {
+			return nil, parser.FnDecl{}, err
+		}
+		fndecl.Body = body
+		return solvedInnerMap, fndecl, nil
+	}
+
+	return solvedInnerMap, fndecl, nil
 }
 
-func (r *Resolver) ResolveBlock(program *parser.ASTBlock) (*parser.ASTBlock, error) {
+// resolveLocalVarHelper is used to resolve local variables in a function
+func (r *Resolver) resolveLocalVarHelper(innerMap map[string]VarEntry, varDecl *parser.VarDecl) (map[string]VarEntry, string, error) {
+	if _, exists := innerMap[varDecl.Ident]; exists && innerMap[varDecl.Ident].fromCurrentScope {
+		return nil, "", r.createSemanticError(
+			fmt.Sprintf(compilererrors.ErrDuplicateVariable, varDecl.Ident),
+			varDecl.Token.Line,
+			varDecl.Token.Span,
+		)
+	}
+
+	uniqueName := r.makeNamedTemporary(varDecl.Ident)
+	innerMap[varDecl.Ident] = VarEntry{
+		UniqueName:       uniqueName,
+		fromCurrentScope: true,
+		hasLinkage:       false,
+	}
+
+	return innerMap, uniqueName, nil
+}
+
+func (r *Resolver) ResolveBlock(program *parser.ASTBlock, innerMap IdMap) (*parser.ASTBlock, error) {
 	for i, item := range program.BlockItems {
-		blockitem, err := r.ResolveBlockItem(item)
+		_, blockitem, err := r.ResolveBlockItem(item, innerMap)
 		if err != nil {
 			return nil, err
 		}
@@ -84,49 +158,48 @@ func (r *Resolver) ResolveBlock(program *parser.ASTBlock) (*parser.ASTBlock, err
 	return program, nil
 }
 
-func (r *Resolver) ResolveBlockItem(program parser.BlockItem) (parser.BlockItem, error) {
+func (r *Resolver) ResolveBlockItem(program parser.BlockItem, innerMap IdMap) (IdMap, parser.BlockItem, error) {
 	switch nodetype := program.(type) {
 	case parser.ASTStmt:
-		stmt, err := r.ResolveStmt(nodetype)
+		resolvedStmt, err := r.ResolveStmt(nodetype, innerMap)
 		if err != nil {
-			return stmt, err
+			return nil, nil, err
 		}
-		return stmt, nil
-	case *parser.Decl:
-		decl, err := r.ResolveDecl(nodetype)
+		return innerMap, resolvedStmt, nil
+	case parser.ASTDecl:
+		resolvedInnerMap, decl, err := r.ResolveLocalDecl(nodetype, innerMap)
 		if err != nil {
-			return decl, err
+			return nil, nil, err
 		}
-		return decl, nil
+		return resolvedInnerMap, decl, nil
 	}
 
-	return nil, fmt.Errorf("unreachable point")
+	return innerMap, program, fmt.Errorf("unreachable point")
 }
 
-func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
+func (r *Resolver) ResolveStmt(program parser.ASTStmt, innerMap IdMap) (parser.ASTStmt, error) {
 	switch nodetype := program.(type) {
 	case *parser.ASTWhile:
 		if nodetype.Cond != nil {
-			cond, err := r.ResolveExpr(nodetype.Cond)
+			resolvedCond, err := r.ResolveExpr(nodetype.Cond, innerMap)
 			if err != nil {
-				return nodetype, err
+				return nil, err
 			}
-			nodetype.Cond = cond
-
+			nodetype.Cond = resolvedCond
 		}
 
-		body, err := r.ResolveBlock(&nodetype.Body)
+		body, err := r.ResolveBlock(&nodetype.Body, innerMap)
 		if err != nil {
-			return nodetype, err
+			return nil, err
 		}
 		nodetype.Body = *body
 		return nodetype, nil
 	case *parser.ASTLoop:
-		expr, err := r.ResolveExpr(nodetype.Expr)
+		resolvedExpr, err := r.ResolveExpr(nodetype.Expr, innerMap)
 		if err != nil {
-			return nodetype, err
+			return nil, err
 		}
-		nodetype.Expr = expr
+		nodetype.Expr = resolvedExpr
 
 		if nodetype.Var != nil {
 			varExpr, ok := nodetype.Var.(*parser.ASTVar)
@@ -139,7 +212,7 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 			}
 
 			uniqueName := r.makeNamedTemporary(varExpr.Ident)
-			r.variableMap.variableMap[varExpr.Ident] = VarEntry{
+			innerMap[varExpr.Ident] = VarEntry{
 				UniqueName:       uniqueName,
 				fromCurrentScope: true,
 			}
@@ -147,161 +220,166 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt) (parser.ASTStmt, error) {
 			nodetype.Var = varExpr
 		}
 
-		body, err := r.ResolveBlock(&nodetype.Body)
+		body, err := r.ResolveBlock(&nodetype.Body, innerMap)
 		if err != nil {
-			return nodetype, err
+			return nil, err
 		}
 		nodetype.Body = *body
 
 		return nodetype, nil
 	case *parser.ASTCompoundStmt:
-		r.scopeSwitch()
-		stmt, err := r.ResolveBlock(&nodetype.Block)
+		newMap := r.copyIdMap(innerMap)
+		body, err := r.ResolveBlock(&nodetype.Block, newMap)
 		if err != nil {
 			return nil, err
 		}
-		nodetype.Block = *stmt
+		nodetype.Block = *body
 		return nodetype, nil
 	case *parser.ASTReturnStmt:
-		retval, err := r.ResolveExpr(nodetype.ReturnValue)
+		resolvedReturnValue, err := r.ResolveExpr(nodetype.ReturnValue, innerMap)
 		if err != nil {
-			return nodetype, err
+			return nil, err
 		}
-		nodetype.ReturnValue = retval
+		nodetype.ReturnValue = resolvedReturnValue
 		return nodetype, nil
 	case *parser.ASTIfStmt:
-		cond, err := r.ResolveExpr(nodetype.Cond)
+		resolvedCond, err := r.ResolveExpr(nodetype.Cond, innerMap)
 		if err != nil {
-			return nodetype, err
+			return nil, err
 		}
 
-		nodetype.Cond = cond
+		nodetype.Cond = resolvedCond
 
-		then, err := r.ResolveStmt(nodetype.Then)
+		resolvedThen, err := r.ResolveStmt(nodetype.Then, innerMap)
 		if err != nil {
-			return nodetype, err
+			return nil, err
 		}
 
-		nodetype.Then = then
-		klse, err := r.ResolveStmt(nodetype.Else)
+		nodetype.Then = resolvedThen
+		resolvedElse, err := r.ResolveStmt(nodetype.Else, innerMap)
 		if err != nil {
-			return nodetype, err
+			return nil, err
 		}
 
-		nodetype.Else = klse
+		nodetype.Else = resolvedElse
 		return nodetype, nil
 	case *parser.ExpressionStmt:
-		expr, err := r.ResolveExpr(nodetype.Expression)
+		resolvedExpr, err := r.ResolveExpr(nodetype.Expression, innerMap)
 		if err != nil {
-			return nodetype, err
+			return nil, err
 		}
-		nodetype.Expression = expr
+		nodetype.Expression = resolvedExpr
 		return nodetype, nil
 	}
 	return program, nil
 }
 
-func (r *Resolver) scopeSwitch() {
+func (r *Resolver) copyIdMap(mapToCopy map[string]VarEntry) map[string]VarEntry {
 	newMap := make(map[string]VarEntry)
 
-	for k, v := range r.variableMap.variableMap {
+	for k, v := range mapToCopy {
 		entry := v
 		entry.fromCurrentScope = false
 		newMap[k] = entry
 	}
 
-	r.variableMap.variableMap = newMap
+	return newMap
 }
 
-// Preserved for potential future use
-// func (r *Resolver) endScope() {
-// 	newMap := make(map[string]VarEntry)
-//
-// 	for k, v := range r.variableMap.variableMap {
-// 		entry := v
-// 		entry.fromCurrentScope = false
-// 		newMap[k] = entry
-// 	}
-//
-// 	r.variableMap.variableMap = newMap
-// }
-
-func (r *Resolver) createSemanticError(message string, line int, span lexer.Span) error {
+func (r *Resolver) createSemanticError(message string, line int, span lexer.Span) *compilererrors.CompilerError {
 	return compilererrors.New(message, line, span, r.source, "Семантик шинжилгээ")
 }
 
-func (r *Resolver) ResolveDecl(program *parser.Decl) (*parser.Decl, error) {
-	if _, exists := r.variableMap.variableMap[program.Ident]; exists && r.variableMap.variableMap[program.Ident].fromCurrentScope {
-		return nil, r.createSemanticError(
-			fmt.Sprintf(compilererrors.ErrDuplicateVariable, program.Ident),
-			program.Token.Line,
-			program.Token.Span,
+func (r *Resolver) ResolveLocalDecl(program parser.ASTDecl, innerMap IdMap) (IdMap, parser.ASTDecl, error) {
+	switch decl := program.(type) {
+	case *parser.FnDecl:
+		return nil, nil, r.createSemanticError(
+			fmt.Sprintf(compilererrors.ErrFnDeclCanNotBeInsideFnDecl, decl.Ident),
+			decl.Token.Line,
+			decl.Token.Span,
 		)
+	case *parser.VarDecl:
+		return r.ResolveLocalVarDecl(decl, innerMap)
 	}
 
-	// variable that in outer scope or not defined in var map that generate unique name and add to map
-	if !r.variableMap.variableMap[program.Ident].fromCurrentScope {
-		uniqueName := r.makeNamedTemporary(program.Ident)
-		r.variableMap.variableMap[program.Ident] = VarEntry{
-			UniqueName:       uniqueName,
-			fromCurrentScope: true,
-		}
-
-		if program.Expr != nil {
-			resolved, err := r.ResolveExpr(program.Expr)
-			if err != nil {
-				return nil, err
-			}
-			program.Expr = resolved
-		}
-
-		program.Ident = uniqueName
-
-	}
-
-	return program, nil
+	return innerMap, program, fmt.Errorf("unreachable point")
 }
 
-func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpression, error) {
+func (r *Resolver) ResolveLocalVarDecl(decl *parser.VarDecl, innerMap IdMap) (IdMap, *parser.VarDecl, error) {
+	innerMap, uniqueName, err := r.resolveLocalVarHelper(innerMap, decl)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	decl.Ident = uniqueName
+	if decl.Expr != nil {
+		resolvedExpr, err := r.ResolveExpr(decl.Expr, innerMap)
+		if err != nil {
+			return nil, nil, err
+		}
+		decl.Expr = resolvedExpr
+	}
+
+	return innerMap, decl, nil
+}
+
+func (r *Resolver) ResolveExpr(program parser.ASTExpression, innerMap IdMap) (parser.ASTExpression, error) {
 	if program == nil {
 		return nil, nil
 	}
 
 	switch nodetype := program.(type) {
+	case *parser.ASTFnCall:
+		if _, exists := innerMap[nodetype.Ident]; !exists {
+			return nil, r.createSemanticError(
+				fmt.Sprintf(compilererrors.ErrNotDeclaredFnCall, nodetype.Ident),
+				nodetype.Token.Line,
+				nodetype.Token.Span,
+			)
+		}
+
+		for i, arg := range nodetype.Args {
+			resolvedArg, err := r.ResolveExpr(arg, innerMap)
+			if err != nil {
+				return nil, err
+			}
+			nodetype.Args[i] = resolvedArg
+		}
+		return nodetype, nil
 	case *parser.ASTRangeExpr:
-		start, err := r.ResolveExpr(nodetype.Start)
+		resolvedStart, err := r.ResolveExpr(nodetype.Start, innerMap)
 		if err != nil {
-			return nodetype, err
+			return nil, err
 		}
 
-		nodetype.Start = start
+		nodetype.Start = resolvedStart
 
-		end, err := r.ResolveExpr(nodetype.End)
+		resolvedEnd, err := r.ResolveExpr(nodetype.End, innerMap)
 		if err != nil {
-			return nodetype, err
+			return nil, err
 		}
-		nodetype.End = end
+		nodetype.End = resolvedEnd
 		return nodetype, nil
 	case *parser.ASTConditional:
-		cond, err := r.ResolveExpr(nodetype.Cond)
+		resolvedCond, err := r.ResolveExpr(nodetype.Cond, innerMap)
 		if err != nil {
-			return nodetype, err
+			return nil, err
 		}
 
-		nodetype.Cond = cond
+		nodetype.Cond = resolvedCond
 
-		then, err := r.ResolveExpr(nodetype.Then)
+		resolvedThen, err := r.ResolveExpr(nodetype.Then, innerMap)
 		if err != nil {
-			return nodetype, err
+			return nil, err
 		}
 
-		nodetype.Then = then
-		klse, err := r.ResolveExpr(nodetype.Else)
+		nodetype.Then = resolvedThen
+		resolvedElse, err := r.ResolveExpr(nodetype.Else, innerMap)
 		if err != nil {
-			return nodetype, err
+			return nil, err
 		}
 
-		nodetype.Else = klse
+		nodetype.Else = resolvedElse
 		return nodetype, nil
 	case *parser.ASTAssignment:
 		left, ok := nodetype.Left.(*parser.ASTVar)
@@ -313,12 +391,12 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 			)
 		}
 
-		resolvedLeft, err := r.ResolveExpr(left)
+		resolvedLeft, err := r.ResolveExpr(left, innerMap)
 		if err != nil {
 			return nil, err
 		}
 
-		resolvedRight, err := r.ResolveExpr(nodetype.Right)
+		resolvedRight, err := r.ResolveExpr(nodetype.Right, innerMap)
 		if err != nil {
 			return nil, err
 		}
@@ -329,7 +407,7 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 		}, nil
 
 	case *parser.ASTVar:
-		uniqueName, exists := r.variableMap.variableMap[nodetype.Ident]
+		uniqueName, exists := innerMap[nodetype.Ident]
 		if !exists {
 			return nil, r.createSemanticError(
 				fmt.Sprintf(compilererrors.ErrUndeclaredVariable, nodetype.Ident),
@@ -344,7 +422,7 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 		}, nil
 
 	case *parser.ASTUnary:
-		resolvedInner, err := r.ResolveExpr(nodetype.Inner)
+		resolvedInner, err := r.ResolveExpr(nodetype.Inner, innerMap)
 		if err != nil {
 			return nil, err
 		}
@@ -354,12 +432,12 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 		}, nil
 
 	case *parser.ASTBinary:
-		resolvedLeft, err := r.ResolveExpr(nodetype.Left)
+		resolvedLeft, err := r.ResolveExpr(nodetype.Left, innerMap)
 		if err != nil {
 			return nil, err
 		}
 
-		resolvedRight, err := r.ResolveExpr(nodetype.Right)
+		resolvedRight, err := r.ResolveExpr(nodetype.Right, innerMap)
 		if err != nil {
 			return nil, err
 		}
@@ -379,7 +457,7 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression) (parser.ASTExpressi
 
 	return nil, r.createSemanticError(
 		fmt.Sprintf(compilererrors.ErrUnknownExpression, program),
-		1,
+		0,
 		lexer.Span{Start: 0, End: 0},
 	)
 }

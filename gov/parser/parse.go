@@ -75,12 +75,7 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 		case lexer.FN:
 			stmt := p.parseFnDecl()
 			if stmt != nil {
-				program.Decls = append(program.Decls, stmt)
-			}
-		case lexer.DECL:
-			stmt := p.parseVarDecl()
-			if stmt != nil {
-				program.Decls = append(program.Decls, stmt)
+				program.Decls = append(program.Decls, *stmt)
 			}
 		}
 		p.nextToken()
@@ -99,6 +94,9 @@ func (p *Parser) parseBlockItem() BlockItem {
 	switch p.peekToken.Type {
 	case lexer.DECL:
 		return p.parseVarDecl()
+	case lexer.FN:
+		p.appendError("функц дотор функц үүсгэж болохгүй")
+		return nil
 	default:
 		return p.parseStmt()
 	}
@@ -235,7 +233,7 @@ func (p *Parser) parseFnDecl() *FnDecl {
 	if p.peekIs(lexer.OPEN_BRACE) {
 		block := p.parseBlock()
 		if block != nil {
-			ast.Block = block
+			ast.Body = block
 		}
 	}
 
@@ -633,9 +631,41 @@ func (p *Parser) parseGrouping() ASTExpression {
 	return inner
 }
 
+func (p *Parser) parseFnCall() ASTExpression {
+	cur := p.current
+	p.nextToken() // consume '('
+
+	//parse args
+	args := []ASTExpression{}
+
+	for !p.peekIs(lexer.CLOSE_PAREN) {
+		args = append(args, p.parseExpr(Lowest))
+		if p.peekIs(lexer.COMMA) {
+			p.nextToken()
+		}
+	}
+
+	p.expect(lexer.CLOSE_PAREN)
+
+	if cur.Value == nil {
+		p.appendError(ErrMissingIdentifier)
+		return nil
+	}
+
+	return &ASTFnCall{
+		Token: cur,
+		Ident: *cur.Value,
+		Args:  args,
+	}
+}
 func (p *Parser) parseIdent() ASTExpression {
 	next := p.peekToken
 	p.nextToken()
+
+	if p.peekIs(lexer.OPEN_PAREN) {
+		return p.parseFnCall()
+	}
+
 	return &ASTVar{
 		Token: next,
 		Ident: *next.Value,

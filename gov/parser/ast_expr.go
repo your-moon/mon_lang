@@ -74,7 +74,14 @@ func (a *ASTFnCall) expressionNode()      {}
 func (a *ASTFnCall) TokenLiteral() string { return "CALL" }
 func (a *ASTFnCall) PrintAST(depth int) string {
 	var out bytes.Buffer
-	out.WriteString(fmt.Sprintf("%s%s", indent(depth), a.Ident))
+	out.WriteString(fmt.Sprintf("%s%s(", indent(depth), a.Ident))
+	for i, arg := range a.Args {
+		out.WriteString(arg.PrintAST(depth + 1))
+		if i < len(a.Args)-1 {
+			out.WriteString(", ")
+		}
+	}
+	out.WriteString(fmt.Sprintf(")"))
 	return out.String()
 }
 

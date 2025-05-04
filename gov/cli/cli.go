@@ -241,16 +241,15 @@ func (c *CLI) runValidate(args []string) error {
 		fmt.Println("AST:", node.PrintAST(0))
 	}
 
-	resolver := semanticanalysis.New(runeString, uniqueGen)
+	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen)
 
-	resolvedAst, err := resolver.Resolve(node)
+	resolvedAst, err := resolver.Analyze(node)
 	if err != nil {
-		return err
+		return fmt.Errorf("семантик шинжилгээний алдаа: %v", err)
 	}
-	loopPass := semanticanalysis.NewLoopPass(runeString)
-	_, err = loopPass.LabelLoops(resolvedAst)
-	if err != nil {
-		return err
+
+	if base.Debug && resolvedAst != nil {
+		fmt.Println("AST:", resolvedAst.PrintAST(0))
 	}
 
 	return nil
@@ -269,17 +268,11 @@ func (c *CLI) runTacky(args []string) error {
 		fmt.Println("AST:", node.PrintAST(0))
 	}
 
-	resolver := semanticanalysis.New(runeString, uniqueGen)
+	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen)
 
-	resolvedAst, err := resolver.Resolve(node)
+	resolvedAst, err := resolver.Analyze(node)
 	if err != nil {
-		return err
-	}
-
-	loopPass := semanticanalysis.NewLoopPass(runeString)
-	resolvedAst, err = loopPass.LabelLoops(resolvedAst)
-	if err != nil {
-		return err
+		return fmt.Errorf("семантик шинжилгээний алдаа: %v", err)
 	}
 
 	fmt.Println("\n---- TACKY IR ҮҮСГЭЖ БАЙНА ----:")
@@ -302,16 +295,10 @@ func (c *CLI) runCompiler(args []string) error {
 		return fmt.Errorf("парсингийн алдаа: %v", err)
 	}
 
-	resolver := semanticanalysis.New(runeString, uniqueGen)
-	resolvedAst, err := resolver.Resolve(node)
+	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen)
+	resolvedAst, err := resolver.Analyze(node)
 	if err != nil {
-		return err
-	}
-
-	loopPass := semanticanalysis.NewLoopPass(runeString)
-	resolvedAst, err = loopPass.LabelLoops(resolvedAst)
-	if err != nil {
-		return err
+		return fmt.Errorf("семантик шинжилгээний алдаа: %v", err)
 	}
 
 	fmt.Println("\n---- КОМПАЙЛЖ БАЙНА ----:")
@@ -335,16 +322,10 @@ func (c *CLI) runGen(args []string) error {
 		return fmt.Errorf("парсингийн алдаа: %v", err)
 	}
 
-	resolver := semanticanalysis.New(runeString, uniqueGen)
-	resolvedAst, err := resolver.Resolve(node)
+	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen)
+	resolvedAst, err := resolver.Analyze(node)
 	if err != nil {
-		return err
-	}
-
-	loopPass := semanticanalysis.NewLoopPass(runeString)
-	resolvedAst, err = loopPass.LabelLoops(resolvedAst)
-	if err != nil {
-		return err
+		return fmt.Errorf("семантик шинжилгээний алдаа: %v", err)
 	}
 
 	compilerx := tackygen.NewTackyGen(uniqueGen)

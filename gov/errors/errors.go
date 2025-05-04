@@ -91,10 +91,14 @@ const (
 	ErrMissingIntType    = "'тоо' төрөл шаардлагатай"
 
 	// Semantic analysis errors
-	ErrNotValidExpression = "буруу илэрхийлэл байна"
-	ErrDuplicateVariable  = "хувьсагч '%s' нь давхардсан байна"
-	ErrInvalidAssignment  = "хувьсагчид утга оноох үед зүүн талд хувьсагч байх ёстой, олдсон: '%s'"
-	ErrUndeclaredVariable = "хувьсагч '%s'-г зарлаагүй байна"
+	ErrNotValidExpression         = "буруу илэрхийлэл байна"
+	ErrDuplicateVariable          = "хувьсагч '%s' нь давхардсан байна"
+	ErrDuplicateFnDecl            = "функц '%s' нь давхардсан байна"
+	ErrInvalidAssignment          = "хувьсагчид утга оноох үед зүүн талд хувьсагч байх ёстой, олдсон: '%s'"
+	ErrFnDeclCanNotBeInsideFnDecl = "функц дотор функц үүсгэж болохгүй: '%s'"
+	ErrFnDeclCanNotBeInsideBlock  = "блок дотор функц үүсгэж болохгүй: '%s'"
+	ErrUndeclaredVariable         = "хувьсагч '%s'-г зарлаагүй байна"
+	ErrNotDeclaredFnCall          = "функц '%s'-г зарлаагүй байна"
 )
 
 // FormatError formats an error message with the given arguments

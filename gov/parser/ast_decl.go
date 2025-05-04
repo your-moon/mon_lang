@@ -25,7 +25,7 @@ type FnDecl struct {
 	Ident      string
 	Params     []Param
 	ReturnType lexer.TokenType
-	Block      *ASTBlock
+	Body       *ASTBlock
 }
 
 func (d *FnDecl) declNode() {}
@@ -34,7 +34,7 @@ func (d *FnDecl) TokenLiteral() string {
 }
 
 func (d *FnDecl) PrintAST(depth int) string {
-	if d.Block == nil {
+	if d.Body == nil {
 		paramsStr := ""
 		if len(d.Params) > 0 {
 			paramsStr = "\n" + indent(depth) + "├─ Parameters:"
@@ -86,7 +86,7 @@ func (d *FnDecl) PrintAST(depth int) string {
 		indent(depth),
 		d.ReturnType,
 		indent(depth),
-		d.Block.PrintAST(depth+1))
+		d.Body.PrintAST(depth+1))
 }
 
 type VarDecl struct {

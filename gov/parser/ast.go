@@ -34,7 +34,7 @@ type ASTDecl interface {
 }
 
 type ASTProgram struct {
-	Decls []ASTDecl
+	Decls []FnDecl
 }
 
 func (a *ASTProgram) TokenLiteral() string {

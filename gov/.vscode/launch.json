@@ -8,8 +8,8 @@
       "mode": "auto",
       "program": "main.go",
       "args": [
-        "parse",
-        "test/fn_decl.mn",
+        "validate",
+        "test/validate/redeclared_fn.mn",
         "--debug"
       ]
     }

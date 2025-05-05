@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"unicode/utf8"
 
@@ -14,6 +15,7 @@ import (
 	semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
 	"github.com/your-moon/mn_compiler_go_version/tackygen"
 	"github.com/your-moon/mn_compiler_go_version/unique"
+	"github.com/your-moon/mn_compiler_go_version/util"
 )
 
 type Command struct {
@@ -331,6 +333,7 @@ func (c *CLI) runCompiler(args []string) error {
 }
 
 func (c *CLI) runGen(args []string) error {
+	fmt.Println(runtime.GOOS)
 	uniqueGen := unique.NewUniqueGen()
 	runeString := readFile(args[0])
 	parsed := parser.NewParser(runeString)
@@ -359,7 +362,9 @@ func (c *CLI) runGen(args []string) error {
 	asmastgen := codegen.NewAsmGen()
 	asmast := asmastgen.GenASTAsm(tackyprogram, symbolTable)
 
-	asmgen := codegen.NewGenASM(openFile, codegen.Aarch64)
+	osType := util.GetOsType()
+
+	asmgen := codegen.NewGenASM(openFile, osType)
 	asmgen.GenAsm(asmast)
 	fmt.Printf("Assembly файл %s дотор үүслээ\n", outfile)
 	return nil

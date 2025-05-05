@@ -3,6 +3,8 @@ package codegen
 import (
 	"fmt"
 	"os"
+
+	"github.com/your-moon/mn_compiler_go_version/util"
 )
 
 type OsType string
@@ -24,19 +26,19 @@ func (a Comment) Ir() string {
 
 type AsmGen struct {
 	file   *os.File
-	ostype OsType
+	ostype util.OsType
 }
 
-func NewGenASM(file *os.File, ostype OsType) AsmGen {
+func NewGenASM(file *os.File, osType util.OsType) AsmGen {
 	return AsmGen{
 		file:   file,
-		ostype: ostype,
+		ostype: osType,
 	}
 }
 
 func (a *AsmGen) GenAsm(program AsmProgram) {
 	//if its linux
-	if a.ostype == Linux {
+	if a.ostype == util.Linux {
 		a.Write("    .section ,note.GNU-stack,\"\",@progbits")
 	}
 
@@ -47,7 +49,11 @@ func (a *AsmGen) GenAsm(program AsmProgram) {
 
 func (a *AsmGen) GenFn(fn AsmFnDef) {
 	a.Write(fmt.Sprintf(".globl %s", fn.Ident))
-	a.Write(fmt.Sprintf("%s:", fn.Ident))
+	if a.ostype == util.Linux {
+		a.Write(fmt.Sprintf("%s:", fn.Ident))
+	} else if a.ostype == util.Darwin {
+		a.Write(fmt.Sprintf("_%s:", fn.Ident))
+	}
 	a.Write("    pushq %rbp")
 	a.Write("    movq %rsp, %rbp")
 	for _, instr := range fn.Irs {
@@ -62,7 +68,11 @@ func (a *AsmGen) GenInstr(instr AsmInstruction) {
 	case DeallocateStack:
 		a.Write(fmt.Sprintf("    addq $%d, %%rsp", ast.Value))
 	case Call:
-		a.Write(fmt.Sprintf("    call %s", ast.Ident))
+		if a.ostype == util.Linux {
+			a.Write(fmt.Sprintf("    call %s", ast.Ident))
+		} else if a.ostype == util.Darwin {
+			a.Write(fmt.Sprintf("    call _%s", ast.Ident))
+		}
 	case Label:
 		a.Write(fmt.Sprintf(".L%s:", ast.Ident))
 	case SetCC:
@@ -90,11 +100,11 @@ func (a *AsmGen) GenInstr(instr AsmInstruction) {
 	case Return:
 		a.Write("    movq %rbp, %rsp")
 		a.Write("    popq %rbp")
-		if a.ostype == Linux {
+		if a.ostype == util.Linux {
 			a.Write("    movq %rax, %rdi") // Move return value to %rdi for syscall
 			a.Write("    movq $60, %rax")  // Exit syscall number
 			a.Write("    syscall")         // Make the syscall
-		} else if a.ostype == Aarch64 {
+		} else if a.ostype == util.Darwin {
 			a.Write("    ret")
 		}
 	case Unary:

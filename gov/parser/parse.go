@@ -6,6 +6,7 @@ import (
 
 	"github.com/your-moon/mn_compiler_go_version/errors"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
+	"github.com/your-moon/mn_compiler_go_version/utfconvert"
 )
 
 type Parser struct {
@@ -198,7 +199,7 @@ func (p *Parser) parseFnDecl() *FnDecl {
 		return nil
 	}
 
-	ast.Ident = *p.peekToken.Value
+	ast.Ident = utfconvert.UtfConvert(*p.peekToken.Value)
 	p.nextToken()
 
 	if !p.expect(lexer.OPEN_PAREN) {
@@ -658,9 +659,11 @@ func (p *Parser) parseFnCall() ASTExpression {
 		return nil
 	}
 
+	ident := utfconvert.UtfConvert(*cur.Value)
+
 	return &ASTFnCall{
 		Token: cur,
-		Ident: *cur.Value,
+		Ident: ident,
 		Args:  args,
 	}
 }

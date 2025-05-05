@@ -631,11 +631,7 @@ func (p *Parser) parseGrouping() ASTExpression {
 	return inner
 }
 
-func (p *Parser) parseFnCall() ASTExpression {
-	cur := p.current
-	p.nextToken() // consume '('
-
-	//parse args
+func (p *Parser) parseArgList() []ASTExpression {
 	args := []ASTExpression{}
 
 	for !p.peekIs(lexer.CLOSE_PAREN) {
@@ -644,6 +640,16 @@ func (p *Parser) parseFnCall() ASTExpression {
 			p.nextToken()
 		}
 	}
+
+	return args
+}
+
+func (p *Parser) parseFnCall() ASTExpression {
+	cur := p.current
+	p.nextToken() // consume '('
+
+	//parse args
+	args := p.parseArgList()
 
 	p.expect(lexer.CLOSE_PAREN)
 

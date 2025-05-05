@@ -9,7 +9,6 @@ import (
 )
 
 type TackyGen struct {
-	Irs        []Instruction
 	TempCount  uint64
 	LabelCount uint64
 	UniqueGen  unique.UniqueGen
@@ -54,42 +53,72 @@ func (c *TackyGen) makeLabel(prefix string) Var {
 func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	program := TackyProgram{}
 
-	for _, stmt := range node.Decls[0].Body.BlockItems {
-		switch ast := stmt.(type) {
-		case *parser.Decl:
-			if ast.Expr != nil {
-				c.EmitExpr(&parser.ASTAssignment{
-					Left:  &parser.ASTVar{Ident: ast.Ident},
-					Right: ast.Expr,
-				})
-			}
-		case parser.ASTStmt:
-			c.EmitTackyStmt(ast)
+	for _, stmt := range node.Decls {
+		if stmt.Body != nil {
+			program.FnDefs = append(program.FnDefs, c.EmitTackyFn(&stmt))
 		}
 	}
 
 	return program
 }
-
-func (c *TackyGen) EmitTackyBlock(node parser.ASTBlock) {
-	for _, stmt := range node.BlockItems {
-		switch ast := stmt.(type) {
-		case *parser.Decl:
-			if ast.Expr != nil {
-				c.EmitExpr(&parser.ASTAssignment{
-					Left:  &parser.ASTVar{Ident: ast.Ident},
-					Right: ast.Expr,
-				})
-			}
-		case parser.ASTStmt:
-			c.EmitTackyStmt(ast)
-		}
-	}
+func (c *TackyGen) EmitTackyParam(node *parser.Param) TackyVal {
+	return Var{Name: node.Ident}
 }
 
-func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
+func (c *TackyGen) EmitTackyFn(node *parser.FnDecl) TackyFn {
+	irs := []Instruction{}
+	irs = append(irs, c.EmitTackyBlock(*node.Body)...)
+	irs = append(irs, Return{Value: Constant{Value: 0}})
+	params := []TackyVal{}
+	for _, param := range node.Params {
+		params = append(params, c.EmitTackyParam(&param))
+	}
+	return TackyFn{Name: node.Ident, Instructions: irs, Params: params}
+}
+
+func (c *TackyGen) EmitTackyBlock(node parser.ASTBlock) []Instruction {
+	irs := []Instruction{}
+	for _, stmt := range node.BlockItems {
+		irs = append(irs, c.EmitTackyBlockItem(stmt)...)
+	}
+	return irs
+}
+
+func (c *TackyGen) EmitTackyBlockItem(node parser.BlockItem) []Instruction {
+	switch ast := node.(type) {
+	case parser.ASTStmt:
+		return c.EmitTackyStmt(ast)
+	case parser.ASTDecl:
+		return c.EmitTackyLocalDecl(ast)
+	}
+	return []Instruction{}
+}
+
+func (c *TackyGen) EmitTackyLocalDecl(node parser.ASTDecl) []Instruction {
+	switch ast := node.(type) {
+	case *parser.FnDecl:
+		return []Instruction{}
+	case *parser.VarDecl:
+		return c.EmitVarDecl(ast)
+	}
+	return []Instruction{}
+}
+
+func (c *TackyGen) EmitVarDecl(node *parser.VarDecl) []Instruction {
+	irs := []Instruction{}
+	haveInit := node.Expr != nil
+	if haveInit {
+		initVal, initValIrs := c.EmitExpr(node.Expr)
+		irs = append(irs, initValIrs...)
+		irs = append(irs, Copy{Src: initVal, Dst: Var{Name: node.Ident}})
+	}
+	return irs
+}
+
+func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 	switch ast := node.(type) {
 	case *parser.ASTLoop:
+		irs := []Instruction{}
 		startLabel := c.makeLabel("loop")
 		continueLabel := c.continueLabel(ast.Id)
 		breakLabel := c.breakLabel(ast.Id)
@@ -97,103 +126,128 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) {
 
 		rangeExpr, ok := ast.Expr.(*parser.ASTRangeExpr)
 		if ok {
-			rangeStart := c.EmitExpr(rangeExpr.Start)
+			rangeStart, rangeStartIrs := c.EmitExpr(rangeExpr.Start)
 			loopVar, ok := ast.Var.(*parser.ASTVar)
 			if !ok {
 				panic("Expected ASTVar for loop variable")
 			}
-			c.Irs = append(c.Irs, Copy{
+			irs = append(irs, Copy{
 				Src: rangeStart,
 				Dst: Var{Name: loopVar.Ident},
 			})
+			irs = append(irs, rangeStartIrs...)
 
-			c.Irs = append(c.Irs, Label{Ident: startLabel.Name})
+			irs = append(irs, Label{Ident: startLabel.Name})
 
-			endVal := c.EmitExpr(rangeExpr.End)
-			loopVarVal := c.EmitExpr(ast.Var)
+			endVal, endValIrs := c.EmitExpr(rangeExpr.End)
+			loopVarVal, loopVarValIrs := c.EmitExpr(ast.Var)
 			temp := c.makeTemp()
-			c.Irs = append(c.Irs, Binary{
+			irs = append(irs, Binary{
 				Op:   LessThanEqual,
 				Src1: loopVarVal,
 				Src2: endVal,
 				Dst:  temp,
 			})
-			c.Irs = append(c.Irs, JumpIfZero{
+			irs = append(irs, loopVarValIrs...)
+			irs = append(irs, endValIrs...)
+			irs = append(irs, JumpIfZero{
 				Val:   temp,
 				Ident: breakLabel.Name,
 			})
 
 			c.EmitTackyBlock(ast.Body)
 
-			c.Irs = append(c.Irs, Label{Ident: continueLabel.Name})
+			irs = append(irs, Label{Ident: continueLabel.Name})
 
-			c.Irs = append(c.Irs, Binary{
+			irs = append(irs, Binary{
 				Op:   Add,
 				Src1: Var{Name: loopVar.Ident},
 				Src2: Constant{Value: 1},
 				Dst:  Var{Name: loopVar.Ident},
 			})
 
-			c.Irs = append(c.Irs, Jump{Target: startLabel.Name})
+			irs = append(irs, Jump{Target: startLabel.Name})
 		} else {
-			c.Irs = append(c.Irs, Label{Ident: startLabel.Name})
+			irs = append(irs, Label{Ident: startLabel.Name})
 
-			condVal := c.EmitExpr(ast.Expr)
-			c.Irs = append(c.Irs, JumpIfZero{
+			condVal, condValIrs := c.EmitExpr(ast.Expr)
+			irs = append(irs, condValIrs...)
+			irs = append(irs, JumpIfZero{
 				Val:   condVal,
 				Ident: breakLabel.Name,
 			})
 
 			c.EmitTackyBlock(ast.Body)
 
-			c.Irs = append(c.Irs, Label{Ident: continueLabel.Name})
-			c.Irs = append(c.Irs, Jump{Target: startLabel.Name})
+			irs = append(irs, Label{Ident: continueLabel.Name})
+			irs = append(irs, Jump{Target: startLabel.Name})
 		}
 
 		// End label
-		c.Irs = append(c.Irs, Label{Ident: breakLabel.Name})
+		irs = append(irs, Label{Ident: breakLabel.Name})
+		return irs
 	case *parser.ASTBreakStmt:
-		c.Irs = append(c.Irs, Jump{Target: c.breakLabel(ast.Id).Name})
+		irs := []Instruction{}
+		irs = append(irs, Jump{Target: c.breakLabel(ast.Id).Name})
+		return irs
 	case *parser.ASTContinueStmt:
-		c.Irs = append(c.Irs, Jump{Target: c.continueLabel(ast.Id).Name})
+		irs := []Instruction{}
+		irs = append(irs, Jump{Target: c.continueLabel(ast.Id).Name})
+		return irs
 	case *parser.ASTCompoundStmt:
-		c.EmitTackyBlock(ast.Block)
+		irs := []Instruction{}
+		irs = append(irs, c.EmitTackyBlock(ast.Block)...)
+		return irs
 	case *parser.ASTIfStmt:
+		irs := []Instruction{}
 		// no else clause
 		if ast.Else == nil {
 			endLabel := c.makeLabel("if_end")
 			//instruction of cond
 			// c = result of cond
-			evalCond := c.EmitExpr(ast.Cond)
+			evalCond, condIrs := c.EmitExpr(ast.Cond)
+			irs = append(irs, condIrs...)
 			// jumpifzero(c, end)
 			jmpifzero := JumpIfZero{Val: evalCond, Ident: endLabel.Name}
-			c.Irs = append(c.Irs, jmpifzero)
+			irs = append(irs, jmpifzero)
 
 			// instructions of body
-			c.EmitTackyStmt(ast.Then)
+			irs = append(irs, c.EmitTackyStmt(ast.Then)...)
 			// label(end)
-			c.Irs = append(c.Irs, Label{Ident: endLabel.Name})
-
+			irs = append(irs, Label{Ident: endLabel.Name})
+			return irs
 		} else {
 			elseLabel := c.makeLabel("else")
 			endLabel := c.makeLabel("")
-			evalCond := c.EmitExpr(ast.Cond)
+			evalCond, condIrs := c.EmitExpr(ast.Cond)
+			irs = append(irs, condIrs...)
 			jmpifzero := JumpIfZero{Val: evalCond, Ident: elseLabel.Name}
-			c.Irs = append(c.Irs, []Instruction{jmpifzero}...)
-			c.EmitTackyStmt(ast.Then)
-			c.Irs = append(c.Irs, []Instruction{Label{Ident: elseLabel.Name}}...)
-			c.EmitTackyStmt(ast.Else)
-			c.Irs = append(c.Irs, []Instruction{Label{Ident: endLabel.Name}}...)
+			irs = append(irs, jmpifzero)
+			irs = append(irs, c.EmitTackyStmt(ast.Then)...)
+			irs = append(irs, Label{Ident: elseLabel.Name})
+			irs = append(irs, c.EmitTackyStmt(ast.Else)...)
+			irs = append(irs, Label{Ident: endLabel.Name})
+			return irs
 		}
 
 	case *parser.ASTReturnStmt:
+		irs := []Instruction{}
 		if ast.ReturnValue != nil {
-			val := c.EmitExpr(ast.ReturnValue)
-			c.Irs = append(c.Irs, Return{Value: val})
+			val, valIrs := c.EmitExpr(ast.ReturnValue)
+			irs = append(irs, valIrs...)
+			irs = append(irs, Return{Value: val})
+		} else {
+			irs = append(irs, Return{Value: Constant{Value: 0}})
 		}
+		return irs
 	case *parser.ExpressionStmt:
-		c.EmitExpr(ast.Expression)
+		irs := []Instruction{}
+		_, valIrs := c.EmitExpr(ast.Expression)
+		irs = append(irs, valIrs...)
+		return irs
 	}
+
+	return []Instruction{}
 }
 
 func ToUnaryTackyOp(op lexer.TokenType) (UnaryOperator, error) {
@@ -253,19 +307,21 @@ func ToTackyOp(op parser.ASTBinOp) (TackyBinaryOp, error) {
 	return Add, fmt.Errorf("cannot convert token to tackyop")
 }
 
-func (c *TackyGen) EmitAndExpr(expr *parser.ASTBinary) TackyVal {
+func (c *TackyGen) EmitAndExpr(expr *parser.ASTBinary) (TackyVal, []Instruction) {
+	irs := []Instruction{}
 	falseLabel := c.makeLabel("and_false")
 	endLabel := c.makeLabel("and_end")
 	dst := c.makeTemp()
 
-	v1 := c.EmitExpr(expr.Left)
-	c.Irs = append(c.Irs, JumpIfZero{
+	v1, v1Irs := c.EmitExpr(expr.Left)
+	irs = append(irs, v1Irs...)
+	irs = append(irs, JumpIfZero{
 		Val:   v1,
 		Ident: falseLabel.Name,
 	})
-	v2 := c.EmitExpr(expr.Right)
-
-	c.Irs = append(c.Irs, []Instruction{
+	v2, v2Irs := c.EmitExpr(expr.Right)
+	irs = append(irs, v2Irs...)
+	irs = append(irs, []Instruction{
 		JumpIfZero{
 			Val:   v2,
 			Ident: falseLabel.Name,
@@ -289,22 +345,24 @@ func (c *TackyGen) EmitAndExpr(expr *parser.ASTBinary) TackyVal {
 		},
 	}...)
 
-	return dst
+	return dst, irs
 }
 
-func (c *TackyGen) EmitOrExpr(expr *parser.ASTBinary) TackyVal {
+func (c *TackyGen) EmitOrExpr(expr *parser.ASTBinary) (TackyVal, []Instruction) {
+	irs := []Instruction{}
 	trueLabel := c.makeLabel("or_true")
 	endLabel := c.makeLabel("or_end")
 	dst := c.makeTemp()
 
-	left := c.EmitExpr(expr.Left)
-	c.Irs = append(c.Irs, JumpIfNotZero{
+	left, leftIrs := c.EmitExpr(expr.Left)
+	irs = append(irs, leftIrs...)
+	irs = append(irs, JumpIfNotZero{
 		Val:   left,
 		Ident: trueLabel.Name,
 	})
-	right := c.EmitExpr(expr.Right)
-
-	c.Irs = append(c.Irs, []Instruction{
+	right, rightIrs := c.EmitExpr(expr.Right)
+	irs = append(irs, rightIrs...)
+	irs = append(irs, []Instruction{
 		JumpIfNotZero{
 			Val:   right,
 			Ident: trueLabel.Name,
@@ -328,62 +386,83 @@ func (c *TackyGen) EmitOrExpr(expr *parser.ASTBinary) TackyVal {
 		},
 	}...)
 
-	return dst
+	return dst, irs
 }
 
-func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
+func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction) {
 	switch expr := node.(type) {
-	case *parser.ASTRangeExpr:
-		start := c.EmitExpr(expr.Start)
-		end := c.EmitExpr(expr.End)
+	case *parser.ASTFnCall:
+		irs := []Instruction{}
 		dst := c.makeTemp()
-		c.Irs = append(c.Irs, Binary{
+		args := []TackyVal{}
+		for _, arg := range expr.Args {
+			argVal, argIrs := c.EmitExpr(arg)
+			args = append(args, argVal)
+			irs = append(irs, argIrs...)
+		}
+		irs = append(irs, FnCall{Name: expr.Ident, Dst: dst, Args: args})
+		return dst, irs
+	case *parser.ASTRangeExpr:
+		irs := []Instruction{}
+		start, startIrs := c.EmitExpr(expr.Start)
+		irs = append(irs, startIrs...)
+		end, endIrs := c.EmitExpr(expr.End)
+		irs = append(irs, endIrs...)
+		dst := c.makeTemp()
+		irs = append(irs, Binary{
 			Op:   Sub,
 			Src1: end,
 			Src2: start,
 			Dst:  dst,
 		})
-		c.Irs = append(c.Irs, Binary{
+		irs = append(irs, Binary{
 			Op:   Add,
 			Src1: dst,
 			Src2: Constant{Value: 1},
 			Dst:  dst,
 		})
-		return dst
+		return dst, irs
 
 	case *parser.ASTConditional:
+		irs := []Instruction{}
 		endLabel := c.makeLabel("conditional_end")
 		elseLabel := c.makeLabel("conditional_else")
 		dst := c.makeTemp()
 
-		condEval := c.EmitExpr(expr.Cond)
-		c.Irs = append(c.Irs, JumpIfZero{Val: condEval, Ident: elseLabel.Name})
+		condEval, condIrs := c.EmitExpr(expr.Cond)
+		irs = append(irs, condIrs...)
+		irs = append(irs, JumpIfZero{Val: condEval, Ident: elseLabel.Name})
 
-		evalThen := c.EmitExpr(expr.Then)
-		c.Irs = append(c.Irs, Copy{Src: evalThen, Dst: dst})
-		c.Irs = append(c.Irs, Jump{Target: endLabel.Name})
-		c.Irs = append(c.Irs, Label{Ident: elseLabel.Name})
+		evalThen, thenIrs := c.EmitExpr(expr.Then)
+		irs = append(irs, thenIrs...)
+		irs = append(irs, Copy{Src: evalThen, Dst: dst})
+		irs = append(irs, Jump{Target: endLabel.Name})
+		irs = append(irs, Label{Ident: elseLabel.Name})
 
-		evalElse := c.EmitExpr(expr.Else)
-		c.Irs = append(c.Irs, Copy{Src: evalElse, Dst: dst})
-		c.Irs = append(c.Irs, Label{Ident: endLabel.Name})
-		return dst
+		evalElse, elseIrs := c.EmitExpr(expr.Else)
+		irs = append(irs, elseIrs...)
+		irs = append(irs, Copy{Src: evalElse, Dst: dst})
+		irs = append(irs, Label{Ident: endLabel.Name})
+		return dst, irs
 	case *parser.ASTVar:
-		return Var{Name: expr.Ident}
+		return Var{Name: expr.Ident}, []Instruction{}
 	case *parser.ASTAssignment:
+		irs := []Instruction{}
 		astVar, ok := expr.Left.(*parser.ASTVar)
 		if !ok {
 			panic("assignment left side must be var")
 		}
 
-		rhsResult := c.EmitExpr(expr.Right)
-
-		c.Irs = append(c.Irs, Copy{Src: rhsResult, Dst: Var{Name: astVar.Ident}})
-		return Var{Name: astVar.Ident}
+		rhsResult, rhsIrs := c.EmitExpr(expr.Right)
+		irs = append(irs, rhsIrs...)
+		irs = append(irs, Copy{Src: rhsResult, Dst: Var{Name: astVar.Ident}})
+		return Var{Name: astVar.Ident}, irs
 	case *parser.ASTConstant:
-		return Constant{Value: int(expr.Value)}
+		return Constant{Value: int(expr.Value)}, []Instruction{}
 	case *parser.ASTUnary:
-		src := c.EmitExpr(expr.Inner)
+		irs := []Instruction{}
+		src, srcIrs := c.EmitExpr(expr.Inner)
+		irs = append(irs, srcIrs...)
 		dst := c.makeTemp()
 
 		op, err := ToUnaryTackyOp(expr.Op)
@@ -396,9 +475,10 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
 			Src: src,
 			Dst: dst,
 		}
-		c.Irs = append(c.Irs, instr)
-		return dst
+		irs = append(irs, instr)
+		return dst, irs
 	case *parser.ASTBinary:
+		irs := []Instruction{}
 		if expr.Op == parser.ASTBinOp(parser.A_AND) {
 			return c.EmitAndExpr(expr)
 		}
@@ -411,8 +491,10 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
 			panic(err)
 		}
 
-		v1 := c.EmitExpr(expr.Left)
-		v2 := c.EmitExpr(expr.Right)
+		v1, v1Irs := c.EmitExpr(expr.Left)
+		irs = append(irs, v1Irs...)
+		v2, v2Irs := c.EmitExpr(expr.Right)
+		irs = append(irs, v2Irs...)
 		dst := c.makeTemp()
 		instr := Binary{
 			Op:   op,
@@ -420,22 +502,18 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) TackyVal {
 			Src2: v2,
 			Dst:  dst,
 		}
-		c.Irs = append(c.Irs, instr)
-		return dst
+		irs = append(irs, instr)
+		return dst, irs
 	default:
 		panic(fmt.Sprintf("unimplemented expr: %s", node.TokenLiteral()))
 	}
 }
 
-func (c *TackyGen) Emit(op Instruction) {
-	c.Irs = append(c.Irs, op)
-}
-
 func (c *TackyGen) PrettyPrint(program TackyProgram) {
-	fmt.Println("\n// Function:", program.FnDef.Name)
+	fmt.Println("\n// Function:", program.FnDefs[0].Name)
 	fmt.Println("// Three-address code:")
 	fmt.Println()
-	for _, instr := range program.FnDef.Instructions {
+	for _, instr := range program.FnDefs[0].Instructions {
 		instr.Ir()
 	}
 	fmt.Println()

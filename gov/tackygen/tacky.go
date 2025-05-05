@@ -132,9 +132,41 @@ type Instruction interface {
 
 type TackyFn struct {
 	Name         string
+	Params       []TackyVal
 	Instructions []Instruction
 }
 
+func (f TackyFn) Ir() {
+	fmt.Printf("fn %s {\n", f.Name)
+	for _, instr := range f.Instructions {
+		instr.Ir()
+	}
+	fmt.Printf("}\n")
+}
+
 type TackyProgram struct {
-	FnDef TackyFn
+	FnDefs []TackyFn
+}
+
+func (p TackyProgram) Ir() {
+	for _, fn := range p.FnDefs {
+		fn.Ir()
+	}
+}
+
+type FnCall struct {
+	Name string
+	Args []TackyVal
+	Dst  TackyVal
+}
+
+func (f FnCall) Ir() {
+	args := ""
+	for i, arg := range f.Args {
+		if i > 0 {
+			args += ", "
+		}
+		args += arg.val()
+	}
+	fmt.Printf("%s := call %s(%s)\n", f.Dst.val(), f.Name, args)
 }

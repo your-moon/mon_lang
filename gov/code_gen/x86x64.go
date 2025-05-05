@@ -40,7 +40,9 @@ func (a *AsmGen) GenAsm(program AsmProgram) {
 		a.Write("    .section ,note.GNU-stack,\"\",@progbits")
 	}
 
-	a.GenFn(program.AsmFnDef)
+	for _, fn := range program.AsmFnDef {
+		a.GenFn(fn)
+	}
 }
 
 func (a *AsmGen) GenFn(fn AsmFnDef) {
@@ -55,6 +57,12 @@ func (a *AsmGen) GenFn(fn AsmFnDef) {
 
 func (a *AsmGen) GenInstr(instr AsmInstruction) {
 	switch ast := instr.(type) {
+	case Push:
+		a.Write(fmt.Sprintf("    pushq %s", a.GenOperand(ast.Op)))
+	case DeallocateStack:
+		a.Write(fmt.Sprintf("    addq $%d, %%rsp", ast.Value))
+	case Call:
+		a.Write(fmt.Sprintf("    call %s", ast.Ident))
 	case Label:
 		a.Write(fmt.Sprintf(".L%s:", ast.Ident))
 	case SetCC:

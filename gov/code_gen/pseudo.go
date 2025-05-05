@@ -92,6 +92,9 @@ func (r *ReplacementPassGen) ReplacePseudosInFn(fn AsmFnDef) AsmFnDef {
 }
 
 func (r *ReplacementPassGen) ReplacePseudosInProgram(program AsmProgram) AsmProgram {
-	program.AsmFnDef = r.ReplacePseudosInFn(program.AsmFnDef)
-	return program
+	asmFnDefs := []AsmFnDef{}
+	for _, fn := range program.AsmFnDef {
+		asmFnDefs = append(asmFnDefs, r.ReplacePseudosInFn(fn))
+	}
+	return AsmProgram{AsmFnDef: asmFnDefs}
 }

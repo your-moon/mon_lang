@@ -15,11 +15,15 @@ type Emitter interface {
 }
 
 type AsmASTGen struct {
-	Irs []AsmInstruction
+	Irs       []AsmInstruction
+	Registers []AsmRegister
 }
 
 func NewAsmGen() AsmASTGen {
-	return AsmASTGen{}
+	return AsmASTGen{
+		Irs:       []AsmInstruction{},
+		Registers: []AsmRegister{DI, SI, DX, CX, R8, R9},
+	}
 }
 
 func (a *AsmASTGen) EmitInstr(instr AsmInstruction) {
@@ -29,36 +33,107 @@ func (a *AsmASTGen) EmitInstr(instr AsmInstruction) {
 func (a *AsmASTGen) GenASTAsm(program tackygen.TackyProgram) AsmProgram {
 	asmprogram := AsmProgram{}
 
-	asmfn := a.GenASTFn(program.FnDef)
-	asmprogram.AsmFnDef = asmfn
+	for _, fn := range program.FnDefs {
+		asmfn := a.GenASTFn(fn)
+		asmprogram.AsmFnDef = append(asmprogram.AsmFnDef, asmfn)
+	}
 
 	fmt.Println("---- ASMAST ----:")
-	for _, instr := range asmprogram.AsmFnDef.Irs {
-		fmt.Println(instr.Ir())
+	for _, fn := range asmprogram.AsmFnDef {
+		for _, instr := range fn.Irs {
+			fmt.Println(instr.Ir())
+		}
 	}
 
 	pass1 := NewReplacementPassGen()
 	asmprogram = pass1.ReplacePseudosInProgram(asmprogram)
 
 	fmt.Println("---- ASMAST AFTER PSEUDO REPLACEMENT ----:")
-	for _, instr := range asmprogram.AsmFnDef.Irs {
-		fmt.Println(instr.Ir())
+	for _, fn := range asmprogram.AsmFnDef {
+		for _, instr := range fn.Irs {
+			fmt.Println(instr.Ir())
+		}
 	}
 
 	pass2 := NewFixUpPassGen(pass1.CurrentOffset)
 	asmprogram = pass2.FixUpProgram(asmprogram)
 
 	fmt.Println("---- ASMAST AFTER FIXUP ----:")
-	for _, instr := range asmprogram.AsmFnDef.Irs {
-		fmt.Println(instr.Ir())
+	for _, fn := range asmprogram.AsmFnDef {
+		for _, instr := range fn.Irs {
+			fmt.Println(instr.Ir())
+		}
 	}
 
 	return asmprogram
 }
 
+func (a *AsmASTGen) passInStack(param tackygen.TackyVal) tackygen.TackyVal {
+	switch valtype := param.(type) {
+	case tackygen.Var:
+		asmArg := a.GenASTVal(valtype)
+		switch asmArg.(type) {
+		case Register:
+		case Imm:
+			push := Push{
+				Op: asmArg,
+			}
+			a.EmitInstr(push)
+		default:
+			mov := AsmMov{
+				Src: asmArg,
+				Dst: Register{Reg: AX},
+			}
+			a.EmitInstr(mov)
+		}
+	}
+	return param
+}
+
+func (a *AsmASTGen) passInRegisters(param tackygen.TackyVal) tackygen.TackyVal {
+	switch valtype := param.(type) {
+	case tackygen.Var:
+		passRegister := ""
+		for _, register := range a.Registers {
+			if register.String() == valtype.Name {
+				passRegister = register.String()
+			}
+		}
+		mov := AsmMov{
+			Src: Imm{Value: 0},
+			Dst: Register{Reg: AsmRegister(passRegister)},
+		}
+		a.EmitInstr(mov)
+	}
+	return param
+}
+
+func (a *AsmASTGen) passParams(fn tackygen.TackyFn) tackygen.TackyFn {
+	registerParams := []tackygen.TackyVal{}
+	stackParams := []tackygen.TackyVal{}
+
+	for _, param := range fn.Params {
+		if len(registerParams) < 6 {
+			registerParams = append(registerParams, param)
+		} else {
+			stackParams = append(stackParams, param)
+		}
+	}
+
+	for _, param := range registerParams {
+		a.passInRegisters(param)
+	}
+
+	for _, param := range stackParams {
+		a.passInStack(param)
+	}
+
+	return fn
+}
+
 func (a *AsmASTGen) GenASTFn(fn tackygen.TackyFn) AsmFnDef {
 	asmfn := AsmFnDef{}
-
+	fn = a.passParams(fn)
 	a.GenASTInstr(fn.Instructions)
 	asmfn.Irs = a.Irs
 	asmfn.Ident = fn.Name
@@ -70,6 +145,81 @@ func (a *AsmASTGen) GenASTInstr(instrs []tackygen.Instruction) {
 
 	for _, instr := range instrs {
 		switch ast := instr.(type) {
+		case tackygen.FnCall:
+			argRegisters := []AsmRegister{DI, SI, DX, CX, R8, R9}
+			stackPadding := 0
+
+			registerArgs := []tackygen.TackyVal{}
+			stackArgs := []tackygen.TackyVal{}
+			if len(ast.Args) <= 6 {
+				registerArgs = ast.Args
+				stackArgs = []tackygen.TackyVal{}
+			} else {
+				registerArgs = ast.Args[:6]
+				stackArgs = ast.Args[6:]
+			}
+
+			if len(stackArgs)%2 != 0 {
+				stackPadding = 8
+			} else {
+				stackPadding = 0
+			}
+
+			if stackPadding != 0 {
+				a.EmitInstr(AllocateStack{Value: stackPadding})
+			}
+
+			for i, arg := range registerArgs {
+				r := argRegisters[i]
+				mov := AsmMov{
+					Src: a.GenASTVal(arg),
+					Dst: Register{Reg: r},
+				}
+				a.EmitInstr(mov)
+			}
+
+			reversedArgs := make([]tackygen.TackyVal, len(stackArgs))
+			for i, arg := range stackArgs {
+				reversedArgs[len(stackArgs)-1-i] = arg
+			}
+
+			for _, arg := range reversedArgs {
+				asmArg := a.GenASTVal(arg)
+				switch asmArg.(type) {
+				case Register:
+				case Imm:
+					push := Push{
+						Op: asmArg,
+					}
+					a.EmitInstr(push)
+				default:
+					mov := AsmMov{
+						Src: asmArg,
+						Dst: Register{Reg: AX},
+					}
+					a.EmitInstr(mov)
+					push := Push{
+						Op: Register{Reg: AX},
+					}
+					a.EmitInstr(push)
+				}
+			}
+
+			call := Call{
+				Ident: ast.Name,
+			}
+			a.EmitInstr(call)
+
+			bytesToRemove := 8*len(stackArgs) + stackPadding
+			if bytesToRemove != 0 {
+				a.EmitInstr(DeallocateStack{Value: bytesToRemove})
+			}
+			asmDst := a.GenASTVal(ast.Dst)
+			mov := AsmMov{
+				Src: asmDst,
+				Dst: Register{Reg: AX},
+			}
+			a.EmitInstr(mov)
 		case tackygen.Jump:
 			jmp := Jmp{
 				Ident: ast.Target,

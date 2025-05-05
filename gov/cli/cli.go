@@ -280,8 +280,11 @@ func (c *CLI) runTacky(args []string) error {
 	tackyprogram := compilerx.EmitTacky(resolvedAst)
 
 	fmt.Println("---- TACKY IR ЖАГСААЛТ ----:")
-	for _, ir := range tackyprogram.FnDef.Instructions {
-		ir.Ir()
+	for _, fn := range tackyprogram.FnDefs {
+		fmt.Println(fmt.Sprintf("%s:", fn.Name))
+		for _, ir := range fn.Instructions {
+			ir.Ir()
+		}
 	}
 	return nil
 }
@@ -306,10 +309,24 @@ func (c *CLI) runCompiler(args []string) error {
 	tackyprogram := compilerx.EmitTacky(resolvedAst)
 
 	fmt.Println("---- TACKY ЖАГСААЛТ ----:")
-	for _, ir := range tackyprogram.FnDef.Instructions {
-		fmt.Println(ir)
-		ir.Ir()
+	for _, fn := range tackyprogram.FnDefs {
+		fmt.Println(fn.Name)
+		for _, ir := range fn.Instructions {
+			ir.Ir()
+		}
 	}
+
+	fmt.Println("\n---- ASSEMBLY ҮҮСГЭЖ БАЙНА ----:")
+	asmgen := codegen.NewAsmGen()
+	asmast := asmgen.GenASTAsm(tackyprogram)
+
+	fmt.Println("---- ASMAST ЖАГСААЛТ ----:")
+	for _, fn := range asmast.AsmFnDef {
+		for _, ir := range fn.Irs {
+			ir.Ir()
+		}
+	}
+
 	return nil
 }
 

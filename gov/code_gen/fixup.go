@@ -143,8 +143,11 @@ func (f *FixUpPassGen) FixUpInFn(fn AsmFnDef) AsmFnDef {
 }
 
 func (f *FixUpPassGen) FixUpProgram(program AsmProgram) AsmProgram {
-	program.AsmFnDef = f.FixUpInFn(program.AsmFnDef)
-	return program
+	asmFnDefs := []AsmFnDef{}
+	for _, fn := range program.AsmFnDef {
+		asmFnDefs = append(asmFnDefs, f.FixUpInFn(fn))
+	}
+	return AsmProgram{AsmFnDef: asmFnDefs}
 }
 
 func absInt(n int) int {

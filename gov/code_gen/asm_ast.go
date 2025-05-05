@@ -32,11 +32,20 @@ const (
 type AsmRegister string
 
 const (
-	AX  AsmRegister = "%eax"  // rax's lower 32 bits
-	R10 AsmRegister = "%r10d" // r10's lower 32 bits
+	AX  AsmRegister = "%eax" // rax's lower 32 bits
+	CX  AsmRegister = "%ecx" // rax's lower 32 bits
 	DX  AsmRegister = "%edx"
+	DI  AsmRegister = "%edi"
+	SI  AsmRegister = "%esi"
+	R8  AsmRegister = "%r8d"
+	R9  AsmRegister = "%r9d"
+	R10 AsmRegister = "%r10d" // r10's lower 32 bits
 	R11 AsmRegister = "%r11d"
 )
+
+func (a AsmRegister) String() string {
+	return string(a)
+}
 
 type AsmOperand interface {
 	Op() string
@@ -76,6 +85,30 @@ func (a Stack) Op() string {
 
 type AsmInstruction interface {
 	Ir() string
+}
+
+type DeallocateStack struct {
+	Value int
+}
+
+func (a DeallocateStack) Ir() string {
+	return fmt.Sprintf("addq $%d, %s", a.Value, R10)
+}
+
+type Push struct {
+	Op AsmOperand
+}
+
+func (a Push) Ir() string {
+	return fmt.Sprintf("push %s", a.Op.Op())
+}
+
+type Call struct {
+	Ident string
+}
+
+func (a Call) Ir() string {
+	return fmt.Sprintf("call %s", a.Ident)
 }
 
 type Cmp struct {
@@ -185,5 +218,5 @@ type AsmFnDef struct {
 }
 
 type AsmProgram struct {
-	AsmFnDef AsmFnDef
+	AsmFnDef []AsmFnDef
 }

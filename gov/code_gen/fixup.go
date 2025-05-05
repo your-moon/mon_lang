@@ -1,28 +1,26 @@
 package codegen
 
+import (
+	semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
+	"github.com/your-moon/mn_compiler_go_version/util/roundingutil"
+)
+
 type FixUpPassGen struct {
-	stackSize         int
-	fixedInstructions []AsmInstruction
+	symbolTable *semanticanalysis.SymbolTable
 }
 
-func NewFixUpPassGen(stackSize int) FixUpPassGen {
+func NewFixUpPassGen(symbolTable *semanticanalysis.SymbolTable) FixUpPassGen {
 	return FixUpPassGen{
-		stackSize:         stackSize,
-		fixedInstructions: []AsmInstruction{},
+		symbolTable: symbolTable,
 	}
 }
 
-func (f *FixUpPassGen) AppendFixedInstruction(instr AsmInstruction) {
-	f.fixedInstructions = append(f.fixedInstructions, instr)
-}
-
 // in golang if you give array to param, its call by ref that means instructions is mutable
-func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, instructions []AsmInstruction, idx int) {
+func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction {
 	switch ast := instr.(type) {
 	case Cmp:
 		srcstack, isit := ast.Src.(Stack)
 		dststack, isitdst := ast.Dst.(Stack)
-
 		// is invalid mov instruction
 		if isit && isitdst {
 			mov1 := AsmMov{
@@ -33,9 +31,7 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, instructions []A
 				Src: Register{Reg: R10},
 				Dst: dststack,
 			}
-			f.AppendFixedInstruction(mov1)
-			f.AppendFixedInstruction(cmp)
-			return
+			return []AsmInstruction{mov1, cmp}
 		}
 
 		dstimm, isitdst := ast.Dst.(Imm)
@@ -48,11 +44,9 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, instructions []A
 				Src: ast.Src,
 				Dst: Register{Reg: R11},
 			}
-			f.AppendFixedInstruction(mov1)
-			f.AppendFixedInstruction(cmp)
-			return
+			return []AsmInstruction{mov1, cmp}
 		}
-
+		return []AsmInstruction{ast}
 	case AsmMov:
 		srcstack, isit := ast.Src.(Stack)
 		dststack, isitdst := ast.Dst.(Stack)
@@ -66,10 +60,9 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, instructions []A
 				Src: Register{Reg: R10},
 				Dst: dststack,
 			}
-			f.AppendFixedInstruction(mov1)
-			f.AppendFixedInstruction(mov2)
-			return
+			return []AsmInstruction{mov1, mov2}
 		}
+		return []AsmInstruction{ast}
 	case AsmBinary:
 		//check invalid check is both stack
 		srcstack, isit := ast.Src.(Stack)
@@ -84,11 +77,7 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, instructions []A
 				Src: Register{Reg: R10},
 				Dst: dststack,
 			}
-			// instructions[idx] = binary
-			// instructions = append(instructions[:idx+1], append([]AsmInstruction{mov}, instructions[idx+1:]...)...)
-			f.AppendFixedInstruction(mov)
-			f.AppendFixedInstruction(binary)
-			return
+			return []AsmInstruction{mov, binary}
 		}
 		//FIX: this type is wrong
 		if ast.Op == Mult && isitdst {
@@ -106,11 +95,9 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, instructions []A
 				Dst: dststack,
 			}
 
-			f.AppendFixedInstruction(mov)
-			f.AppendFixedInstruction(binary)
-			f.AppendFixedInstruction(mov2)
-			return
+			return []AsmInstruction{mov, binary, mov2}
 		}
+		return []AsmInstruction{ast}
 	case Idiv:
 		mov := AsmMov{
 			Src: ast.Src,
@@ -119,26 +106,26 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction, instructions []A
 		idiv := Idiv{
 			Src: Register{Reg: R10},
 		}
-		f.AppendFixedInstruction(mov)
-		f.AppendFixedInstruction(idiv)
-		return
+		return []AsmInstruction{mov, idiv}
+	default:
+		return []AsmInstruction{instr}
 	}
-	f.AppendFixedInstruction(instr)
-	return
 }
 
 func (f *FixUpPassGen) FixUpInFn(fn AsmFnDef) AsmFnDef {
 	allocStack := AllocateStack{
-		Value: absInt(f.stackSize),
-	}
-	// fn.Irs = append([]AsmInstruction{allocStack}, fn.Irs...)
-	f.fixedInstructions = append(f.fixedInstructions, allocStack)
-
-	for i, instr := range fn.Irs {
-		f.FixUpInInstruction(instr, f.fixedInstructions, i)
+		Value: roundingutil.RoundAwayFromZero(16, f.symbolTable.Get(fn.Ident).StackFrameSize),
 	}
 
-	fn.Irs = f.fixedInstructions
+	fixedInstructions := []AsmInstruction{}
+	fixedInstructions = append(fixedInstructions, allocStack)
+
+	for _, instr := range fn.Irs {
+		fixedInstructions = append(fixedInstructions, f.FixUpInInstruction(instr)...)
+	}
+
+	fn.Irs = fixedInstructions
+
 	return fn
 }
 
@@ -148,11 +135,4 @@ func (f *FixUpPassGen) FixUpProgram(program AsmProgram) AsmProgram {
 		asmFnDefs = append(asmFnDefs, f.FixUpInFn(fn))
 	}
 	return AsmProgram{AsmFnDef: asmFnDefs}
-}
-
-func absInt(n int) int {
-	if n < 0 {
-		return -n
-	}
-	return n
 }

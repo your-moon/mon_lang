@@ -19,18 +19,18 @@ func NewSemanticAnalyzer(source []int32, uniqueGen unique.UniqueGen) *SemanticAn
 	}
 }
 
-func (s *SemanticAnalyzer) Analyze(program *parser.ASTProgram) (*parser.ASTProgram, error) {
+func (s *SemanticAnalyzer) Analyze(program *parser.ASTProgram) (*parser.ASTProgram, *SymbolTable, error) {
 	program, err := s.resolver.Resolve(program)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	program, err = s.labelPass.LabelLoops(program)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	program, err = s.typeChecker.Check(program)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return program, nil
+	return program, s.typeChecker.symbolTable, nil
 }

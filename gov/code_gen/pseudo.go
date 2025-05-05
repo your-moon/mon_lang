@@ -1,100 +1,111 @@
 package codegen
 
-type ReplacementPassGen struct {
+import semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
+
+type ReplacementState struct {
 	CurrentOffset int
 	OffsetMap     map[string]int
 }
 
-func NewReplacementPassGen() ReplacementPassGen {
-	return ReplacementPassGen{
-		CurrentOffset: 0,
-		OffsetMap:     make(map[string]int),
-	}
+type ReplacementPassGen struct {
 }
 
-func (r *ReplacementPassGen) ReplaceOperand(operand AsmOperand) AsmOperand {
+func NewReplacementPassGen() ReplacementPassGen {
+	return ReplacementPassGen{}
+}
+
+func (r *ReplacementPassGen) ReplaceOperand(operand AsmOperand, state ReplacementState) (ReplacementState, AsmOperand) {
 	pseudo, isit := operand.(Pseudo)
 	if isit {
-		value, exists := r.OffsetMap[pseudo.Ident]
+		value, exists := state.OffsetMap[pseudo.Ident]
 		if exists {
-			return Stack{value}
+			return state, Stack{value}
 		} else {
-			r.CurrentOffset = r.CurrentOffset - 4
-			r.OffsetMap[pseudo.Ident] = r.CurrentOffset
-			return Stack{r.CurrentOffset}
+			state.CurrentOffset = state.CurrentOffset - 4
+			state.OffsetMap[pseudo.Ident] = state.CurrentOffset
+			return state, Stack{state.CurrentOffset}
 		}
 	} else {
-		return operand
+		return state, operand
 	}
 }
 
-func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction) AsmInstruction {
+func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction, state ReplacementState) (ReplacementState, AsmInstruction) {
 	switch ast := instr.(type) {
+	case DeallocateStack:
+		return state, instr
 	case Label:
-		return instr
+		return state, instr
 	case SetCC:
-		op := r.ReplaceOperand(ast.Op)
-		return SetCC{
+		replacedState, op := r.ReplaceOperand(ast.Op, state)
+		return replacedState, SetCC{
 			Op: op,
 			CC: ast.CC,
 		}
 	case Cmp:
-		src := r.ReplaceOperand(ast.Src)
-		dst := r.ReplaceOperand(ast.Dst)
-		return Cmp{
+		replacedState, src := r.ReplaceOperand(ast.Src, state)
+		replacedState, dst := r.ReplaceOperand(ast.Dst, replacedState)
+		return replacedState, Cmp{
 			Src: src,
 			Dst: dst,
 		}
 	case AsmMov:
-		src := r.ReplaceOperand(ast.Src)
-		dst := r.ReplaceOperand(ast.Dst)
-		return AsmMov{
+		replacedState, src := r.ReplaceOperand(ast.Src, state)
+		replacedState, dst := r.ReplaceOperand(ast.Dst, replacedState)
+		return replacedState, AsmMov{
 			Src: src,
 			Dst: dst,
 		}
 	case Unary:
-		dst := r.ReplaceOperand(ast.Dst)
-		return Unary{
+		replacedState, dst := r.ReplaceOperand(ast.Dst, state)
+		return replacedState, Unary{
 			Dst: dst,
 			Op:  ast.Op,
 		}
 	case AsmBinary:
-		src := r.ReplaceOperand(ast.Src)
-		dst := r.ReplaceOperand(ast.Dst)
-		return AsmBinary{
+		replacedState, src := r.ReplaceOperand(ast.Src, state)
+		replacedState, dst := r.ReplaceOperand(ast.Dst, replacedState)
+		return replacedState, AsmBinary{
 			Src: src,
 			Dst: dst,
 			Op:  ast.Op,
 		}
 	case Idiv:
-		src := r.ReplaceOperand(ast.Src)
-		return Idiv{
+		replacedState, src := r.ReplaceOperand(ast.Src, state)
+		return replacedState, Idiv{
 			Src: src,
 		}
 	case Return:
-		return instr
+		return state, instr
 	case Cdq:
-		return instr
+		return state, instr
 	case AllocateStack:
 		panic("you are not belong to us")
 	default:
-		return instr
+		return state, instr
 		// panic("unimplemented pseudo ininstruction")
 	}
 }
 
-func (r *ReplacementPassGen) ReplacePseudosInFn(fn AsmFnDef) AsmFnDef {
+func (r *ReplacementPassGen) ReplacePseudosInFn(fn AsmFnDef, state ReplacementState) (ReplacementState, AsmFnDef) {
 	for i, instr := range fn.Irs {
-		replaced := r.ReplacePseudosInInstruction(instr)
+		replacedState, replaced := r.ReplacePseudosInInstruction(instr, state)
 		fn.Irs[i] = replaced
+		state = replacedState
 	}
-	return fn
+	return state, fn
 }
 
-func (r *ReplacementPassGen) ReplacePseudosInProgram(program AsmProgram) AsmProgram {
+func (r *ReplacementPassGen) ReplacePseudosInProgram(program AsmProgram, symbolTable *semanticanalysis.SymbolTable) AsmProgram {
+	initState := ReplacementState{
+		CurrentOffset: 0,
+		OffsetMap:     make(map[string]int),
+	}
 	asmFnDefs := []AsmFnDef{}
 	for _, fn := range program.AsmFnDef {
-		asmFnDefs = append(asmFnDefs, r.ReplacePseudosInFn(fn))
+		finalState, asmFnDef := r.ReplacePseudosInFn(fn, initState)
+		asmFnDefs = append(asmFnDefs, asmFnDef)
+		symbolTable.SetBytesRequired(fn.Ident, finalState.CurrentOffset)
 	}
 	return AsmProgram{AsmFnDef: asmFnDefs}
 }

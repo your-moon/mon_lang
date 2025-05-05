@@ -243,7 +243,7 @@ func (c *CLI) runValidate(args []string) error {
 
 	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen)
 
-	resolvedAst, err := resolver.Analyze(node)
+	resolvedAst, _, err := resolver.Analyze(node)
 	if err != nil {
 		return fmt.Errorf("семантик шинжилгээний алдаа: %v", err)
 	}
@@ -270,7 +270,7 @@ func (c *CLI) runTacky(args []string) error {
 
 	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen)
 
-	resolvedAst, err := resolver.Analyze(node)
+	resolvedAst, _, err := resolver.Analyze(node)
 	if err != nil {
 		return fmt.Errorf("семантик шинжилгээний алдаа: %v", err)
 	}
@@ -299,7 +299,7 @@ func (c *CLI) runCompiler(args []string) error {
 	}
 
 	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen)
-	resolvedAst, err := resolver.Analyze(node)
+	resolvedAst, symbolTable, err := resolver.Analyze(node)
 	if err != nil {
 		return fmt.Errorf("семантик шинжилгээний алдаа: %v", err)
 	}
@@ -318,7 +318,7 @@ func (c *CLI) runCompiler(args []string) error {
 
 	fmt.Println("\n---- ASSEMBLY ҮҮСГЭЖ БАЙНА ----:")
 	asmgen := codegen.NewAsmGen()
-	asmast := asmgen.GenASTAsm(tackyprogram)
+	asmast := asmgen.GenASTAsm(tackyprogram, symbolTable)
 
 	fmt.Println("---- ASMAST ЖАГСААЛТ ----:")
 	for _, fn := range asmast.AsmFnDef {
@@ -340,7 +340,7 @@ func (c *CLI) runGen(args []string) error {
 	}
 
 	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen)
-	resolvedAst, err := resolver.Analyze(node)
+	resolvedAst, symbolTable, err := resolver.Analyze(node)
 	if err != nil {
 		return fmt.Errorf("семантик шинжилгээний алдаа: %v", err)
 	}
@@ -357,7 +357,7 @@ func (c *CLI) runGen(args []string) error {
 	defer openFile.Close()
 
 	asmastgen := codegen.NewAsmGen()
-	asmast := asmastgen.GenASTAsm(tackyprogram)
+	asmast := asmastgen.GenASTAsm(tackyprogram, symbolTable)
 
 	asmgen := codegen.NewGenASM(openFile, codegen.Aarch64)
 	asmgen.GenAsm(asmast)

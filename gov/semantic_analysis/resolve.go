@@ -77,9 +77,9 @@ func (r *Resolver) resolveParams(params []parser.Param, innerMap map[string]VarE
 }
 
 func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, error) {
-	innerMap := make(IdMap)
+	emptyMap := make(IdMap)
 	for i, decl := range program.Decls {
-		_, fndecl, err := r.ResolveFnDecl(decl, innerMap)
+		_, fndecl, err := r.ResolveFnDecl(decl, emptyMap)
 		if err != nil {
 			return nil, err
 		}
@@ -90,14 +90,12 @@ func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, erro
 }
 
 func (r *Resolver) ResolveFnDecl(fndecl parser.FnDecl, innerMap IdMap) (IdMap, parser.FnDecl, error) {
-	if found, exists := innerMap[fndecl.Ident]; exists {
-		if found.fromCurrentScope && !found.hasLinkage {
-			return nil, parser.FnDecl{}, r.createSemanticError(
-				fmt.Sprintf(compilererrors.ErrDuplicateFnDecl, fndecl.Ident),
-				fndecl.Token.Line,
-				fndecl.Token.Span,
-			)
-		}
+	if found, exists := innerMap[fndecl.Ident]; exists && found.fromCurrentScope && !found.hasLinkage {
+		return nil, parser.FnDecl{}, r.createSemanticError(
+			fmt.Sprintf(compilererrors.ErrDuplicateFnDecl, fndecl.Ident),
+			fndecl.Token.Line,
+			fndecl.Token.Span,
+		)
 	}
 
 	innerMap[fndecl.Ident] = VarEntry{
@@ -167,11 +165,11 @@ func (r *Resolver) ResolveBlockItem(program parser.BlockItem, innerMap IdMap) (I
 		}
 		return innerMap, resolvedStmt, nil
 	case parser.ASTDecl:
-		resolvedInnerMap, decl, err := r.ResolveLocalDecl(nodetype, innerMap)
+		resolvedNewMap, decl, err := r.ResolveLocalDecl(nodetype, innerMap)
 		if err != nil {
 			return nil, nil, err
 		}
-		return resolvedInnerMap, decl, nil
+		return resolvedNewMap, decl, nil
 	}
 
 	return innerMap, program, fmt.Errorf("unreachable point")
@@ -306,21 +304,21 @@ func (r *Resolver) ResolveLocalDecl(program parser.ASTDecl, innerMap IdMap) (IdM
 }
 
 func (r *Resolver) ResolveLocalVarDecl(decl *parser.VarDecl, innerMap IdMap) (IdMap, *parser.VarDecl, error) {
-	innerMap, uniqueName, err := r.resolveLocalVarHelper(innerMap, decl)
+	newMap, uniqueName, err := r.resolveLocalVarHelper(innerMap, decl)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	decl.Ident = uniqueName
 	if decl.Expr != nil {
-		resolvedExpr, err := r.ResolveExpr(decl.Expr, innerMap)
+		resolvedExpr, err := r.ResolveExpr(decl.Expr, newMap)
 		if err != nil {
 			return nil, nil, err
 		}
 		decl.Expr = resolvedExpr
 	}
 
-	return innerMap, decl, nil
+	return newMap, decl, nil
 }
 
 func (r *Resolver) ResolveExpr(program parser.ASTExpression, innerMap IdMap) (parser.ASTExpression, error) {

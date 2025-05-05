@@ -19,6 +19,6 @@ type FnType struct {
 
 func (t *FnType) typecheck() {}
 
-func (t *FnType) IsFn() bool {
+func (t FnType) IsFn() bool {
 	return true
 }

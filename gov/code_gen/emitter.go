@@ -159,8 +159,8 @@ func (a *AsmASTGen) convertFnCall(fn tackygen.FnCall) []AsmInstruction {
 	for i, arg := range registerArgs {
 		r := argRegisters[i]
 		mov := AsmMov{
-			Src: Register{Reg: r},
-			Dst: a.GenASTVal(arg),
+			Src: a.GenASTVal(arg),
+			Dst: Register{Reg: r},
 		}
 		irs = append(irs, mov)
 	}

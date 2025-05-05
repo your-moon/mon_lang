@@ -1,4 +1,7 @@
-.globl wndsen
+.globl _start
+_start:
+    call _wndsen
+    ret
 _wndsen:
     pushq %rbp
     movq %rsp, %rbp

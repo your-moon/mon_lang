@@ -100,8 +100,8 @@ func (a *AsmASTGen) passInRegisters(paramIdx int, param tackygen.TackyVal) []Asm
 		return []AsmInstruction{}
 	}
 	mov := AsmMov{
-		Src: a.GenASTVal(param),
-		Dst: Register{Reg: AsmRegister(passRegister)},
+		Src: Register{Reg: AsmRegister(passRegister)},
+		Dst: a.GenASTVal(param),
 	}
 	return []AsmInstruction{mov}
 }

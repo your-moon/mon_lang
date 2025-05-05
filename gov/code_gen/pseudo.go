@@ -1,6 +1,9 @@
 package codegen
 
-import semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
+import (
+	semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
+	"github.com/your-moon/mn_compiler_go_version/util"
+)
 
 type ReplacementState struct {
 	CurrentOffset int
@@ -105,7 +108,7 @@ func (r *ReplacementPassGen) ReplacePseudosInProgram(program AsmProgram, symbolT
 	for _, fn := range program.AsmFnDef {
 		finalState, asmFnDef := r.ReplacePseudosInFn(fn, initState)
 		asmFnDefs = append(asmFnDefs, asmFnDef)
-		symbolTable.SetBytesRequired(fn.Ident, finalState.CurrentOffset)
+		symbolTable.SetBytesRequired(fn.Ident, util.Abs(finalState.CurrentOffset))
 	}
 	return AsmProgram{AsmFnDef: asmFnDefs}
 }

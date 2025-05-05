@@ -1,20 +1,24 @@
-_toobod:
+.globl тообод
+тообод:
     pushq %rbp
     movq %rsp, %rbp
-    subq $-16, %rsp
+    subq $16, %rsp
 
+    movl -4(%rbp), %edi
     movl -4(%rbp), %eax
     movq %rbp, %rsp
     popq %rbp
     ret
-.globl _main
-_main:
+.globl үндсэн
+үндсэн:
     pushq %rbp
     movq %rsp, %rbp
-    subq $-16, %rsp
+    subq $16, %rsp
 
     movl $1, %edi
-    call _toobod
+    call тообод
+    movl -4(%rbp), %eax
+    movl $0, %eax
     movq %rbp, %rsp
     popq %rbp
     ret

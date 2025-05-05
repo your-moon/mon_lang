@@ -79,39 +79,35 @@ func (a *AsmASTGen) passInStack(param tackygen.TackyVal) []AsmInstruction {
 				Src: asmArg,
 				Dst: Register{Reg: AX},
 			}
-			return []AsmInstruction{mov}
 			push := Push{
 				Op: Register{Reg: AX},
 			}
-			return []AsmInstruction{push}
+			return []AsmInstruction{mov, push}
 		}
 	}
 	return []AsmInstruction{}
 }
 
-func (a *AsmASTGen) passInRegisters(param tackygen.TackyVal) []AsmInstruction {
-	switch valtype := param.(type) {
-	case tackygen.Var:
-		passRegister := ""
-		for _, register := range a.Registers {
-			if register.String() == valtype.Name {
-				passRegister = register.String()
-				break
-			}
+func (a *AsmASTGen) passInRegisters(paramIdx int, param tackygen.TackyVal) []AsmInstruction {
+	passRegister := ""
+	for _, register := range a.Registers {
+		if register.String() == a.Registers[paramIdx].String() {
+			passRegister = register.String()
+			break
 		}
-		if passRegister == "" {
-			return []AsmInstruction{}
-		}
-		mov := AsmMov{
-			Src: Imm{Value: 0},
-			Dst: Register{Reg: AsmRegister(passRegister)},
-		}
-		return []AsmInstruction{mov}
 	}
-	return []AsmInstruction{}
+	if passRegister == "" {
+		return []AsmInstruction{}
+	}
+	mov := AsmMov{
+		Src: a.GenASTVal(param),
+		Dst: Register{Reg: AsmRegister(passRegister)},
+	}
+	return []AsmInstruction{mov}
 }
 
-func (a *AsmASTGen) passParams(fn tackygen.TackyFn) tackygen.TackyFn {
+func (a *AsmASTGen) passParams(fn tackygen.TackyFn) (tackygen.TackyFn, []AsmInstruction) {
+	ir := []AsmInstruction{}
 	registerParams := []tackygen.TackyVal{}
 	stackParams := []tackygen.TackyVal{}
 
@@ -123,15 +119,15 @@ func (a *AsmASTGen) passParams(fn tackygen.TackyFn) tackygen.TackyFn {
 		}
 	}
 
-	for _, param := range registerParams {
-		a.passInRegisters(param)
+	for i, param := range registerParams {
+		ir = append(ir, a.passInRegisters(i, param)...)
 	}
 
 	for _, param := range stackParams {
-		a.passInStack(param)
+		ir = append(ir, a.passInStack(param)...)
 	}
 
-	return fn
+	return fn, ir
 }
 
 func (a *AsmASTGen) splitArgs(args []tackygen.TackyVal) ([]tackygen.TackyVal, []tackygen.TackyVal) {
@@ -221,12 +217,12 @@ func (a *AsmASTGen) convertFnCall(fn tackygen.FnCall) []AsmInstruction {
 
 func (a *AsmASTGen) GenASTFn(fn tackygen.TackyFn) AsmFnDef {
 	asmfn := AsmFnDef{}
-	fn = a.passParams(fn)
+	fn, paramIrs := a.passParams(fn)
+	asmfn.Irs = append(asmfn.Irs, paramIrs...)
 	for _, instr := range fn.Instructions {
 		asmfn.Irs = append(asmfn.Irs, a.GenASTInstr(instr)...)
 	}
 	asmfn.Ident = fn.Name
-
 	return asmfn
 }
 

@@ -37,8 +37,15 @@ func NewGenASM(file *os.File, osType util.OsType) AsmGen {
 }
 
 func (a *AsmGen) GenAsm(program AsmProgram) {
-	a.Write(".globl _start")
-	a.Write("_start:")
+	if a.ostype == util.Linux {
+		a.Write(".globl main")
+		a.Write("main:")
+
+	} else if a.ostype == util.Darwin {
+		a.Write(".globl _start")
+		a.Write("_start:")
+	}
+
 	if a.ostype == util.Linux {
 		a.Write("    call wndsen")
 		a.Write("    movq $60, %rax")
@@ -53,7 +60,7 @@ func (a *AsmGen) GenAsm(program AsmProgram) {
 		a.GenFn(fn)
 	}
 	if a.ostype == util.Linux {
-		a.Write("    .section note.GNU-stack,\"\",@progbits")
+		a.Write(".section note.GNU-stack,\"\",@progbits")
 	}
 }
 

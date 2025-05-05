@@ -207,8 +207,8 @@ func (a *AsmASTGen) convertFnCall(fn tackygen.FnCall) []AsmInstruction {
 
 	asmDst := a.GenASTVal(fn.Dst)
 	mov := AsmMov{
-		Src: asmDst,
-		Dst: Register{Reg: AX},
+		Src: Register{Reg: AX},
+		Dst: asmDst,
 	}
 	irs = append(irs, mov)
 

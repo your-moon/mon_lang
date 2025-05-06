@@ -48,12 +48,12 @@ func (a *AsmGen) GenAsm(program AsmProgram) {
 
 	if a.ostype == util.Linux {
 		a.Write("    call wndsen")
-		a.Write("    movq $60, %rax")
-		a.Write("    movq $0, %rdi")
-		a.Write("    syscall")
+		a.Write("    movq %rax, %rdi") // Move return value to %rdi for syscall
+		a.Write("    movq $60, %rax")  // Exit syscall number
+		a.Write("    syscall")         // Make the syscall
 	} else if a.ostype == util.Darwin {
 		a.Write("    call _wndsen")
-		a.Write("    ret")
+		a.Write("    ret") // Return value is already in %rax
 	}
 
 	for _, fn := range program.AsmFnDef {

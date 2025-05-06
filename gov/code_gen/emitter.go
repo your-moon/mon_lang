@@ -276,7 +276,7 @@ func (a *AsmASTGen) GenASTInstr(instr tackygen.Instruction) []AsmInstruction {
 		ret := Return{}
 		return []AsmInstruction{mov, ret}
 	case tackygen.Binary:
-		a.GenASTBinary(ast)
+		return a.GenASTBinary(ast)
 	case tackygen.Unary:
 		if ast.Op == tackygen.Not {
 			cmp := Cmp{

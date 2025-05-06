@@ -83,6 +83,53 @@ func (c *TypeChecker) checkBlock(block *parser.ASTBlock) error {
 
 func (c *TypeChecker) checkStmt(stmt parser.ASTStmt) error {
 	switch stmt := stmt.(type) {
+	case *parser.ASTWhile:
+		if stmt.Cond != nil {
+			if err := c.checkExpr(stmt.Cond); err != nil {
+				return err
+			}
+		}
+		if err := c.checkBlock(&stmt.Body); err != nil {
+			return err
+		}
+		return nil
+	case *parser.ASTBreakStmt:
+		return nil
+	case *parser.ASTContinueStmt:
+		return nil
+	case *parser.ASTLoop:
+		if stmt.Var != nil {
+			if err := c.checkExpr(stmt.Var); err != nil {
+				return err
+			}
+		}
+
+		if err := c.checkExpr(stmt.Expr); err != nil {
+			return err
+		}
+
+		if err := c.checkBlock(&stmt.Body); err != nil {
+			return err
+		}
+		return nil
+	case *parser.ASTCompoundStmt:
+		if err := c.checkBlock(&stmt.Block); err != nil {
+			return err
+		}
+		return nil
+	case *parser.ASTIfStmt:
+		if err := c.checkExpr(stmt.Cond); err != nil {
+			return err
+		}
+		if err := c.checkStmt(stmt.Then); err != nil {
+			return err
+		}
+		if stmt.Else != nil {
+			if err := c.checkStmt(stmt.Else); err != nil {
+				return err
+			}
+		}
+		return nil
 	case *parser.ExpressionStmt:
 		if err := c.checkExpr(stmt.Expression); err != nil {
 			return err

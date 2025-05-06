@@ -164,9 +164,14 @@ func (s *Scanner) BuildNumber() (Token, error) {
 	return s.BuildToken(NUMBER), nil
 }
 func (s *Scanner) BuildIdent() (Token, error) {
-	for s.isAlpha(s.Peek()) {
+	for s.isAlpha(s.Peek()) || s.Peek() == '_' {
 		s.Next()
 	}
+
+	for s.isDigit(s.Peek()) {
+		s.Next()
+	}
+
 	token, isKeyword := s.ToKeyword()
 	if isKeyword {
 		return token, nil

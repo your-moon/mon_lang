@@ -1,60 +1,47 @@
-.globl main
-main:
-    call wndsen
-    movq $60, %rax
-    movq $0, %rdi
-    syscall
-wndsen:
+.globl _start
+_start:
+    call _wndsen
+    ret
+_faktorial:
     pushq %rbp
     movq %rsp, %rbp
-    subq $64, %rsp
+    subq $32, %rsp
 
-    movl $72, %edi
-    call putchar
-    movl %eax, -4(%rbp)
-    movl $101, %edi
-    call putchar
-    movl %eax, -8(%rbp)
-    movl $108, %edi
-    call putchar
-    movl %eax, -12(%rbp)
-    movl $108, %edi
-    call putchar
-    movl %eax, -16(%rbp)
-    movl $111, %edi
-    call putchar
-    movl %eax, -20(%rbp)
-    movl $44, %edi
-    call putchar
-    movl %eax, -24(%rbp)
-    movl $32, %edi
-    call putchar
-    movl %eax, -28(%rbp)
-    movl $87, %edi
-    call putchar
-    movl %eax, -32(%rbp)
-    movl $111, %edi
-    call putchar
-    movl %eax, -36(%rbp)
-    movl $114, %edi
-    call putchar
-    movl %eax, -40(%rbp)
-    movl $108, %edi
-    call putchar
-    movl %eax, -44(%rbp)
-    movl $100, %edi
-    call putchar
-    movl %eax, -48(%rbp)
-    movl $33, %edi
-    call putchar
-    movl %eax, -52(%rbp)
-    movl $10, %edi
-    call putchar
-    movl %eax, -56(%rbp)
-    movl $0, %eax
+    movl %edi, -4(%rbp)
+    cmpl $1, -4(%rbp)
+    movl $0, -8(%rbp)
+    setle -8(%rbp)
+    cmpl $0, -8(%rbp)
+    je .Lif_end.0
+    movl $1, %eax
     movq %rbp, %rsp
     popq %rbp
-    movq %rax, %rdi
-    movq $60, %rax
-    syscall
-.section note.GNU-stack,"",@progbits
+    ret
+.Lif_end.0:
+    movl -4(%rbp), %r10d
+    movl %r10d, -12(%rbp)
+    subl $1, -12(%rbp)
+    movl -12(%rbp), %edi
+    call _faktorial
+    movl %eax, -16(%rbp)
+    movl -4(%rbp), %r10d
+    movl %r10d, -20(%rbp)
+    movl -20(%rbp), %r11d
+    imull -16(%rbp), %r11d
+    movl %r11d, -20(%rbp)
+    movl -20(%rbp), %eax
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+_wndsen:
+    pushq %rbp
+    movq %rsp, %rbp
+    subq $16, %rsp
+
+    movl $8, %edi
+    call _faktorial
+    movl %eax, -4(%rbp)
+    movl -4(%rbp), %eax
+    movq %rbp, %rsp
+    popq %rbp
+    ret

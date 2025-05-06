@@ -116,13 +116,7 @@ func (a *AsmGen) GenInstr(instr AsmInstruction) {
 	case Return:
 		a.Write("    movq %rbp, %rsp")
 		a.Write("    popq %rbp")
-		if a.ostype == util.Linux {
-			a.Write("    movq %rax, %rdi") // Move return value to %rdi for syscall
-			a.Write("    movq $60, %rax")  // Exit syscall number
-			a.Write("    syscall")         // Make the syscall
-		} else if a.ostype == util.Darwin {
-			a.Write("    ret")
-		}
+		a.Write("    ret")
 	case Unary:
 		a.Write(fmt.Sprintf("    %s %s", string(ast.Op), a.GenOperand(ast.Dst)))
 	case AllocateStack:

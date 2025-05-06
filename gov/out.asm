@@ -1,8 +1,10 @@
-.globl _start
-_start:
-    call _wndsen
-    ret
-_faktorial:
+.globl main
+main:
+    call wndsen
+    movq %rax, %rdi
+    movq $60, %rax
+    syscall
+faktorial:
     pushq %rbp
     movq %rsp, %rbp
     subq $32, %rsp
@@ -16,13 +18,15 @@ _faktorial:
     movl $1, %eax
     movq %rbp, %rsp
     popq %rbp
-    ret
+    movq %rax, %rdi
+    movq $60, %rax
+    syscall
 .Lif_end.0:
     movl -4(%rbp), %r10d
     movl %r10d, -12(%rbp)
     subl $1, -12(%rbp)
     movl -12(%rbp), %edi
-    call _faktorial
+    call faktorial
     movl %eax, -16(%rbp)
     movl -4(%rbp), %r10d
     movl %r10d, -20(%rbp)
@@ -32,16 +36,21 @@ _faktorial:
     movl -20(%rbp), %eax
     movq %rbp, %rsp
     popq %rbp
-    ret
-_wndsen:
+    movq %rax, %rdi
+    movq $60, %rax
+    syscall
+wndsen:
     pushq %rbp
     movq %rsp, %rbp
     subq $16, %rsp
 
     movl $8, %edi
-    call _faktorial
+    call faktorial
     movl %eax, -4(%rbp)
     movl -4(%rbp), %eax
     movq %rbp, %rsp
     popq %rbp
-    ret
+    movq %rax, %rdi
+    movq $60, %rax
+    syscall
+.section note.GNU-stack,"",@progbits

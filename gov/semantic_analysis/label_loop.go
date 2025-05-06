@@ -120,7 +120,11 @@ func (r *LoopPass) LabelStmt(currentLabel string, program parser.ASTStmt) (parse
 		nodetype.Body = *body
 		return nodetype, nil
 	case *parser.ASTCompoundStmt:
-		r.LabelBlock(currentLabel, &nodetype.Block)
+		block, err := r.LabelBlock(currentLabel, &nodetype.Block)
+		if err != nil {
+			return nil, err
+		}
+		nodetype.Block = *block
 		return nodetype, nil
 	case *parser.ASTIfStmt:
 		then, err := r.LabelStmt(currentLabel, nodetype.Then)
@@ -137,81 +141,4 @@ func (r *LoopPass) LabelStmt(currentLabel string, program parser.ASTStmt) (parse
 	default:
 		return program, nil
 	}
-}
-
-func (r *LoopPass) ResolveDecl(program *parser.Decl) (*parser.Decl, error) {
-	return nil, nil
-}
-
-func (r *LoopPass) ResolveExpr(program parser.ASTExpression) (parser.ASTExpression, error) {
-	if program == nil {
-		return nil, nil
-	}
-
-	switch nodetype := program.(type) {
-	case *parser.ASTConditional:
-		cond, err := r.ResolveExpr(nodetype.Cond)
-		if err != nil {
-			return nodetype, err
-		}
-
-		nodetype.Cond = cond
-
-		then, err := r.ResolveExpr(nodetype.Then)
-		if err != nil {
-			return nodetype, err
-		}
-
-		nodetype.Then = then
-		klse, err := r.ResolveExpr(nodetype.Else)
-		if err != nil {
-			return nodetype, err
-		}
-
-		nodetype.Else = klse
-		return nodetype, nil
-	case *parser.ASTAssignment:
-
-		return nil, nil
-
-	case *parser.ASTVar:
-	case *parser.ASTUnary:
-		resolvedInner, err := r.ResolveExpr(nodetype.Inner)
-		if err != nil {
-			return nil, err
-		}
-		return &parser.ASTUnary{
-			Inner: resolvedInner,
-			Op:    nodetype.Op,
-		}, nil
-
-	case *parser.ASTBinary:
-		resolvedLeft, err := r.ResolveExpr(nodetype.Left)
-		if err != nil {
-			return nil, err
-		}
-
-		resolvedRight, err := r.ResolveExpr(nodetype.Right)
-		if err != nil {
-			return nil, err
-		}
-
-		return &parser.ASTBinary{
-			Left:  resolvedLeft,
-			Right: resolvedRight,
-			Op:    nodetype.Op,
-		}, nil
-
-	case *parser.ASTConstant:
-		return nodetype, nil
-
-		// case *parser.ASTIdent:
-		// 	return nodetype, nil
-	}
-
-	return nil, r.createLoopError(
-		fmt.Sprintf(compilererrors.ErrUnknownExpression, program),
-		1,
-		lexer.Span{Start: 0, End: 0},
-	)
 }

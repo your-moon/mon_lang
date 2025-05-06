@@ -18,9 +18,7 @@ faktorial:
     movl $1, %eax
     movq %rbp, %rsp
     popq %rbp
-    movq %rax, %rdi
-    movq $60, %rax
-    syscall
+    ret
 .Lif_end.0:
     movl -4(%rbp), %r10d
     movl %r10d, -12(%rbp)
@@ -36,21 +34,17 @@ faktorial:
     movl -20(%rbp), %eax
     movq %rbp, %rsp
     popq %rbp
-    movq %rax, %rdi
-    movq $60, %rax
-    syscall
+    ret
 wndsen:
     pushq %rbp
     movq %rsp, %rbp
     subq $16, %rsp
 
-    movl $8, %edi
+    movl $20, %edi
     call faktorial
     movl %eax, -4(%rbp)
     movl -4(%rbp), %eax
     movq %rbp, %rsp
     popq %rbp
-    movq %rax, %rdi
-    movq $60, %rax
-    syscall
+    ret
 .section note.GNU-stack,"",@progbits

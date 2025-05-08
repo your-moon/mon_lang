@@ -73,8 +73,14 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 
 	for p.current.Type != lexer.EOF {
 		switch p.current.Type {
+		case lexer.PUBLIC:
+			p.nextToken()
+			stmt := p.parseFnDecl(true)
+			if stmt != nil {
+				program.Decls = append(program.Decls, *stmt)
+			}
 		case lexer.FN:
-			stmt := p.parseFnDecl()
+			stmt := p.parseFnDecl(false)
 			if stmt != nil {
 				program.Decls = append(program.Decls, *stmt)
 			}
@@ -189,9 +195,10 @@ func (p *Parser) parseBlockItems() []BlockItem {
 }
 
 // <function> ::= "функц" <identifier> "(" [ <params> ] ")" "->" "тоо" "{" { <block-item> } "}"
-func (p *Parser) parseFnDecl() *FnDecl {
+func (p *Parser) parseFnDecl(isPublic bool) *FnDecl {
 	ast := &FnDecl{
-		Token: p.current,
+		Token:    p.current,
+		IsPublic: isPublic,
 	}
 
 	if p.peekToken.Value == nil {

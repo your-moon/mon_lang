@@ -23,6 +23,7 @@ func (p *Param) PrintAST(depth int) string {
 type FnDecl struct {
 	Token      lexer.Token
 	Ident      string
+	IsPublic   bool
 	Params     []Param
 	ReturnType lexer.TokenType
 	Body       *ASTBlock
@@ -79,12 +80,14 @@ func (d *FnDecl) PrintAST(depth int) string {
 		paramsStr = "\n" + indent(depth) + "├─ Parameters: none"
 	}
 
-	return fmt.Sprintf("%sFunction: %s%s\n%s├─ Return Type: %s\n%s└─ Body:\n%s",
+	return fmt.Sprintf("%sFunction: %s%s\n%s├─ Return Type: %s\n%s├─ IsPublic: %v\n%s└─ Body:\n%s",
 		indent(depth),
 		d.Ident,
 		paramsStr,
 		indent(depth),
 		d.ReturnType,
+		indent(depth),
+		d.IsPublic,
 		indent(depth),
 		d.Body.PrintAST(depth+1))
 }

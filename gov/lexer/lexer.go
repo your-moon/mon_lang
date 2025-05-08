@@ -100,6 +100,9 @@ func (s *Scanner) BuildToken(ttype TokenType) Token {
 
 func (s *Scanner) ToKeyword() (Token, bool) {
 	str := string(s.Source[s.Start:s.Cursor])
+	if str == string(KeywordPublic) {
+		return s.BuildToken(PUBLIC), true
+	}
 	if str == string(KeywordContinue) {
 		return s.BuildToken(CONTINUE), true
 	}

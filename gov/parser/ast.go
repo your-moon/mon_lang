@@ -52,8 +52,6 @@ func (a *ASTImport) PrintAST(depth int) string {
 
 func (a *ASTImport) declNode() {}
 
-func (a *ASTImport) statementNode() {}
-
 type ASTProgram struct {
 	Decls []ASTDecl
 }

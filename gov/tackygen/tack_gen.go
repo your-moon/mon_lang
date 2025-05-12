@@ -67,6 +67,9 @@ func (c *TackyGen) EmitTackyParam(node *parser.Param) TackyVal {
 }
 
 func (c *TackyGen) isReturnExistsIn(node *parser.FnDecl) bool {
+	if node.Body == nil {
+		return false
+	}
 	for _, stmt := range node.Body.BlockItems {
 		switch stmt.(type) {
 		case *parser.ASTReturnStmt:
@@ -78,10 +81,14 @@ func (c *TackyGen) isReturnExistsIn(node *parser.FnDecl) bool {
 
 func (c *TackyGen) EmitTackyFn(node *parser.FnDecl) TackyFn {
 	irs := []Instruction{}
-	irs = append(irs, c.EmitTackyBlock(*node.Body)...)
+	if node.Body != nil {
+		irs = append(irs, c.EmitTackyBlock(*node.Body)...)
+	}
+
 	if !c.isReturnExistsIn(node) {
 		irs = append(irs, Return{Value: Constant{Value: 0}})
 	}
+
 	params := []TackyVal{}
 	for _, param := range node.Params {
 		params = append(params, c.EmitTackyParam(&param))

@@ -267,6 +267,7 @@ func (p *Parser) parseFnDecl(isPublic bool) *FnDecl {
 		p.appendError(err.Error())
 		return nil
 	}
+	p.nextToken() // consume type
 	ast.ReturnType = returnType
 
 	if p.peekIs(lexer.OPEN_BRACE) {
@@ -305,11 +306,11 @@ func (p *Parser) parseParams() ([]Param, error) {
 }
 
 func (p *Parser) parseType() (lexer.TokenType, error) {
-	if !p.expect(lexer.INT_TYPE) {
+	if !p.peekIs(lexer.INT_TYPE) && !p.peekIs(lexer.VOID) {
 		return lexer.ERROR, errors.New(ErrMissingIntType, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
 	}
 
-	return lexer.INT_TYPE, nil
+	return p.peekToken.Type, nil
 }
 
 func (p *Parser) parseVarDecl() *VarDecl {

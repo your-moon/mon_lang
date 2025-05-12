@@ -79,9 +79,11 @@ func (c *TypeChecker) checkBlock(block *parser.ASTBlock) error {
 				return err
 			}
 			return nil
+		default:
+			return c.createSemanticError("unreachable block", 0, lexer.Span{})
 		}
 	}
-	return c.createSemanticError("unreachable", 0, lexer.Span{})
+	return nil
 }
 
 func (c *TypeChecker) checkStmt(stmt parser.ASTStmt) error {
@@ -226,5 +228,5 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) error {
 			return c.createSemanticError("функц %s-ийг өөр төрөлтэйгөөр дуудасан байна", expr.Token.Line, expr.Token.Span)
 		}
 	}
-	return c.createSemanticError("unreachable", 0, lexer.Span{})
+	return c.createSemanticError("unreachable expr", 0, lexer.Span{})
 }

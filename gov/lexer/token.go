@@ -42,6 +42,7 @@ const (
 	RETURN TokenType = "RETURN"
 	PRINT  TokenType = "PRINT"
 	PUBLIC TokenType = "PUBLIC"
+	IMPORT TokenType = "IMPORT"
 
 	IDENT       TokenType = "IDENT"
 	NUMBER      TokenType = "NUMBER"

@@ -3,6 +3,8 @@ package parser
 import (
 	"bytes"
 	"strings"
+
+	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
 
 type BlockItem interface {
@@ -33,8 +35,27 @@ type ASTDecl interface {
 	declNode()
 }
 
+type ASTImport struct {
+	ASTNode
+	Token      lexer.Token
+	Ident      string
+	SubImports []string
+}
+
+func (a *ASTImport) TokenLiteral() string {
+	return a.Ident
+}
+
+func (a *ASTImport) PrintAST(depth int) string {
+	return indent(depth) + "Import: " + a.Ident
+}
+
+func (a *ASTImport) declNode() {}
+
+func (a *ASTImport) statementNode() {}
+
 type ASTProgram struct {
-	Decls []FnDecl
+	Decls []ASTDecl
 }
 
 func (a *ASTProgram) TokenLiteral() string {

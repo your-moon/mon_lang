@@ -23,7 +23,11 @@ func TestParseSimple(t *testing.T) {
 		t.Fatal("Program is nil")
 	}
 
-	fnDecl := program.Decls[0]
+	decl := program.Decls[0]
+	fnDecl, ok := decl.(*FnDecl)
+	if !ok {
+		t.Errorf("Expected function declaration, got %v", fnDecl)
+	}
 
 	if fnDecl.Token.Type != lexer.FN {
 		t.Errorf("Expected function name to be FN, got %v", fnDecl.Token.Type)
@@ -74,7 +78,11 @@ func TestParseBinaryOperators(t *testing.T) {
 				t.Fatalf("Program is nil for %s", tt.name)
 			}
 
-			fnDecl := program.Decls[0]
+			decl := program.Decls[0]
+			fnDecl, ok := decl.(*FnDecl)
+			if !ok {
+				t.Errorf("Expected function declaration, got %v", fnDecl)
+			}
 
 			if len(fnDecl.Body.BlockItems) != 1 {
 				t.Errorf("Expected 1 statement in function body, got %d", len(fnDecl.Body.BlockItems))
@@ -107,7 +115,11 @@ func TestParseConditional(t *testing.T) {
 		t.Fatal("Program is nil")
 	}
 
-	fnDecl := program.Decls[0]
+	decl := program.Decls[0]
+	fnDecl, ok := decl.(*FnDecl)
+	if !ok {
+		t.Errorf("Expected function declaration, got %v", fnDecl)
+	}
 
 	if len(fnDecl.Body.BlockItems) != 1 {
 		t.Errorf("Expected 1 statement in function body, got %d", len(fnDecl.Body.BlockItems))
@@ -143,7 +155,11 @@ func TestParseDeclarations(t *testing.T) {
 		t.Fatal("Program is nil")
 	}
 
-	fnDecl := program.Decls[0]
+	decl := program.Decls[0]
+	fnDecl, ok := decl.(*FnDecl)
+	if !ok {
+		t.Errorf("Expected function declaration, got %v", fnDecl)
+	}
 
 	if len(fnDecl.Body.BlockItems) != 4 {
 		t.Errorf("Expected 4 statements in function body, got %d", len(fnDecl.Body.BlockItems))
@@ -379,7 +395,7 @@ func TestOperatorPrecedence(t *testing.T) {
 				t.Fatalf("Program is nil for %s", tt.name)
 			}
 
-			returnStmt, ok := program.Decls[0].Body.BlockItems[0].(*ASTReturnStmt)
+			returnStmt, ok := program.Decls[0].(*FnDecl).Body.BlockItems[0].(*ASTReturnStmt)
 			if !ok {
 				t.Fatalf("Expected return statement for %s", tt.name)
 			}

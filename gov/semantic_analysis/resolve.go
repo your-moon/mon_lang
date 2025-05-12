@@ -79,11 +79,14 @@ func (r *Resolver) resolveParams(params []parser.Param, innerMap map[string]VarE
 func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, error) {
 	emptyMap := make(IdMap)
 	for i, decl := range program.Decls {
-		_, fndecl, err := r.ResolveFnDecl(decl, emptyMap)
-		if err != nil {
-			return nil, err
+		switch decltype := decl.(type) {
+		case *parser.FnDecl:
+			_, fndecl, err := r.ResolveFnDecl(*decltype, emptyMap)
+			if err != nil {
+				return nil, err
+			}
+			program.Decls[i] = &fndecl
 		}
-		program.Decls[i] = fndecl
 	}
 
 	return program, nil

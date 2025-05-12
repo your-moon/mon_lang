@@ -3,6 +3,7 @@ package lexer
 type Keyword string
 
 const (
+	KeywordImport   Keyword = "импорт"
 	KeywordPublic   Keyword = "тунх"
 	KeywordBreak    Keyword = "зогс"
 	KeywordContinue Keyword = "үргэлжлүүл"

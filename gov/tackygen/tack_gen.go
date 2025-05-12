@@ -54,8 +54,9 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	program := TackyProgram{}
 
 	for _, stmt := range node.Decls {
-		if stmt.Body != nil {
-			program.FnDefs = append(program.FnDefs, c.EmitTackyFn(&stmt))
+		switch stmttype := stmt.(type) {
+		case *parser.FnDecl:
+			program.FnDefs = append(program.FnDefs, c.EmitTackyFn(stmttype))
 		}
 	}
 

@@ -68,21 +68,52 @@ func (p *Parser) peekError(t lexer.TokenType) {
 	p.parseErrors = append(p.parseErrors, err)
 }
 
+func (p *Parser) parseImport() *ASTImport {
+	ast := &ASTImport{
+		Token: p.current,
+	}
+
+	if !p.expect(lexer.IDENT) {
+		p.appendError(ErrMissingIdentifier)
+		return nil
+	}
+
+	ast.Ident = *p.current.Value
+
+	for !p.peekIs(lexer.SEMICOLON) {
+		if p.peekIs(lexer.DOT) {
+			p.nextToken()
+			if !p.expect(lexer.IDENT) {
+				p.appendError(ErrMissingIdentifier)
+				return nil
+			}
+			ast.SubImports = append(ast.SubImports, *p.current.Value)
+		}
+	}
+	return ast
+}
+
 func (p *Parser) ParseProgram() (*ASTProgram, error) {
 	program := &ASTProgram{}
 
 	for p.current.Type != lexer.EOF {
 		switch p.current.Type {
+		case lexer.IMPORT:
+			stmt := p.parseImport()
+			if stmt != nil {
+				program.Decls = append(program.Decls, stmt)
+			}
+			p.nextToken()
 		case lexer.PUBLIC:
 			p.nextToken()
 			stmt := p.parseFnDecl(true)
 			if stmt != nil {
-				program.Decls = append(program.Decls, *stmt)
+				program.Decls = append(program.Decls, stmt)
 			}
 		case lexer.FN:
 			stmt := p.parseFnDecl(false)
 			if stmt != nil {
-				program.Decls = append(program.Decls, *stmt)
+				program.Decls = append(program.Decls, stmt)
 			}
 		}
 		p.nextToken()

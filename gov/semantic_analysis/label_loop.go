@@ -32,12 +32,15 @@ func (r *LoopPass) createLoopError(message string, line int, span lexer.Span) *c
 }
 
 func (r *LoopPass) LabelLoops(program *parser.ASTProgram) (*parser.ASTProgram, error) {
-	for i, fndecl := range program.Decls {
-		fndef, err := r.LabelFnDecl(&fndecl)
-		if err != nil {
-			return program, err
+	for i, decl := range program.Decls {
+		switch decltype := decl.(type) {
+		case *parser.FnDecl:
+			fndef, err := r.LabelFnDecl(decltype)
+			if err != nil {
+				return program, err
+			}
+			program.Decls[i] = fndef
 		}
-		program.Decls[i] = *fndef
 
 	}
 

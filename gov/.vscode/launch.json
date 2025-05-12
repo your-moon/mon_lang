@@ -9,7 +9,7 @@
       "program": "main.go",
       "args": [
         "compile",
-        "test/fn_call.mn",
+        "test/lib/lib.mn",
         "--debug"
       ]
     }

@@ -25,8 +25,11 @@ func (c *TypeChecker) createSemanticError(message string, line int, span lexer.S
 
 func (c *TypeChecker) Check(program *parser.ASTProgram) (*parser.ASTProgram, error) {
 	for _, decl := range program.Decls {
-		if err := c.checkFnDecl(&decl); err != nil {
-			return program, err
+		switch decltype := decl.(type) {
+		case *parser.FnDecl:
+			if err := c.checkFnDecl(decltype); err != nil {
+				return program, err
+			}
 		}
 	}
 	return program, nil

@@ -134,5 +134,5 @@ func (f *FixUpPassGen) FixUpProgram(program AsmProgram) AsmProgram {
 	for _, fn := range program.AsmFnDef {
 		asmFnDefs = append(asmFnDefs, f.FixUpInFn(fn))
 	}
-	return AsmProgram{AsmFnDef: asmFnDefs}
+	return AsmProgram{AsmFnDef: asmFnDefs, AsmExternFn: program.AsmExternFn}
 }

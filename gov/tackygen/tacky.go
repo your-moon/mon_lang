@@ -130,6 +130,22 @@ type Instruction interface {
 	Ir()
 }
 
+type TackyExternFn struct {
+	Name   string
+	Params []TackyVal
+}
+
+func (f TackyExternFn) Ir() {
+	fmt.Printf("extern %s(", f.Name)
+	for i, param := range f.Params {
+		if i > 0 {
+			fmt.Printf(", ")
+		}
+		fmt.Printf("%s", param.val())
+	}
+	fmt.Printf(")\n")
+}
+
 type TackyFn struct {
 	Name         string
 	Params       []TackyVal
@@ -145,7 +161,8 @@ func (f TackyFn) Ir() {
 }
 
 type TackyProgram struct {
-	FnDefs []TackyFn
+	FnDefs     []TackyFn
+	ExternDefs []TackyExternFn
 }
 
 func (p TackyProgram) Ir() {

@@ -24,6 +24,7 @@ type FnDecl struct {
 	Token      lexer.Token
 	Ident      string
 	IsPublic   bool
+	IsExtern   bool
 	Params     []Param
 	ReturnType lexer.TokenType
 	Body       *ASTBlock

@@ -86,6 +86,13 @@ func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, erro
 				return nil, err
 			}
 			program.Decls[i] = &fndecl
+		case *parser.ASTExtern:
+			_, fndecl, err := r.ResolveFnDecl(*decltype.FnDecl, emptyMap)
+			if err != nil {
+				return nil, err
+			}
+			decltype.FnDecl = &fndecl
+			program.Decls[i] = decltype
 		}
 	}
 

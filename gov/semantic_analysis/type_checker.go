@@ -30,9 +30,19 @@ func (c *TypeChecker) Check(program *parser.ASTProgram) (*parser.ASTProgram, err
 			if err := c.checkFnDecl(decltype); err != nil {
 				return program, err
 			}
+		case *parser.ASTExtern:
+			if err := c.checkExternFnDecl(decltype); err != nil {
+				return program, err
+			}
 		}
 	}
 	return program, nil
+}
+
+func (c *TypeChecker) checkExternFnDecl(decl *parser.ASTExtern) error {
+	fnType := &FnType{ParamCount: len(decl.FnDecl.Params)}
+	c.symbolTable.AddFn(fnType, decl.FnDecl.Ident, false)
+	return nil
 }
 
 func (c *TypeChecker) checkFnDecl(decl *parser.FnDecl) error {
@@ -209,7 +219,12 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) error {
 		}
 		return nil
 	case *parser.ASTFnCall:
-		fType := c.symbolTable.Get(expr.Ident).Type
+		fn := c.symbolTable.Get(expr.Ident)
+		if fn == nil {
+			return c.createSemanticError("функц %s-ийг дуудаж байна", expr.Token.Line, expr.Token.Span)
+		}
+
+		fType := fn.Type
 		switch fType := fType.(type) {
 		case *IntType:
 			return c.createSemanticError("хувьсагч %s-ийг дуудаж байна", expr.Token.Line, expr.Token.Span)

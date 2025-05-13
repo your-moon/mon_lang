@@ -28,12 +28,20 @@ func NewAsmGen() AsmASTGen {
 func (a *AsmASTGen) GenASTAsm(program tackygen.TackyProgram, symbolTable *semanticanalysis.SymbolTable) AsmProgram {
 	asmprogram := AsmProgram{}
 
+	for _, fn := range program.ExternDefs {
+		asmfn := a.GenASTExternFn(fn)
+		asmprogram.AsmExternFn = append(asmprogram.AsmExternFn, asmfn)
+	}
+
 	for _, fn := range program.FnDefs {
 		asmfn := a.GenASTFn(fn)
 		asmprogram.AsmFnDef = append(asmprogram.AsmFnDef, asmfn)
 	}
 
 	fmt.Println("---- ASMAST ----:")
+	for _, fn := range asmprogram.AsmExternFn {
+		fmt.Println(fn.Ir())
+	}
 	for _, fn := range asmprogram.AsmFnDef {
 		for _, instr := range fn.Irs {
 			fmt.Println(instr.Ir())
@@ -61,6 +69,13 @@ func (a *AsmASTGen) GenASTAsm(program tackygen.TackyProgram, symbolTable *semant
 	}
 
 	return asmprogram
+}
+
+func (a *AsmASTGen) GenASTExternFn(fn tackygen.TackyExternFn) AsmExternFn {
+	asmfn := AsmExternFn{
+		Name: fn.Name,
+	}
+	return asmfn
 }
 
 func (a *AsmASTGen) passInStack(param tackygen.TackyVal) []AsmInstruction {

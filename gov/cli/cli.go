@@ -282,6 +282,9 @@ func (c *CLI) runTacky(args []string) error {
 	tackyprogram := compilerx.EmitTacky(resolvedAst)
 
 	fmt.Println("---- TACKY IR ЖАГСААЛТ ----:")
+	for _, fn := range tackyprogram.ExternDefs {
+		fn.Ir()
+	}
 	for _, fn := range tackyprogram.FnDefs {
 		fmt.Println(fmt.Sprintf("%s:", fn.Name))
 		for _, ir := range fn.Instructions {

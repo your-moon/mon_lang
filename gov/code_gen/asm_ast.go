@@ -87,6 +87,14 @@ type AsmInstruction interface {
 	Ir() string
 }
 
+type AsmExternFn struct {
+	Name string
+}
+
+func (a AsmExternFn) Ir() string {
+	return fmt.Sprintf("extern %s", a.Name)
+}
+
 type DeallocateStack struct {
 	Value int
 }
@@ -218,5 +226,6 @@ type AsmFnDef struct {
 }
 
 type AsmProgram struct {
-	AsmFnDef []AsmFnDef
+	AsmFnDef    []AsmFnDef
+	AsmExternFn []AsmExternFn
 }

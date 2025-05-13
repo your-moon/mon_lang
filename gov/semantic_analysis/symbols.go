@@ -39,7 +39,11 @@ func (s *SymbolTable) AddVar(t Type, name string) *Entry {
 }
 
 func (s *SymbolTable) Get(name string) *Entry {
-	return s.entries[name]
+	entry, ok := s.entries[name]
+	if !ok {
+		return nil
+	}
+	return entry
 }
 
 func (s *SymbolTable) GetOptional(name string) *Entry {

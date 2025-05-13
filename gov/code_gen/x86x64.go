@@ -37,6 +37,14 @@ func NewGenASM(file *os.File, osType util.OsType) AsmGen {
 }
 
 func (a *AsmGen) GenAsm(program AsmProgram) {
+	for _, fn := range program.AsmExternFn {
+		if a.ostype == util.Linux {
+			a.Write(fmt.Sprintf(".extern %s", fn.Name))
+		} else if a.ostype == util.Darwin {
+			a.Write(fmt.Sprintf(".extern _%s", fn.Name))
+		}
+	}
+
 	if a.ostype == util.Linux {
 		a.Write(".globl main")
 		a.Write("main:")

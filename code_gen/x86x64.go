@@ -2,7 +2,7 @@ package codegen
 
 import (
 	"fmt"
-	"os"
+	"io"
 
 	"github.com/your-moon/mn_compiler_go_version/util"
 )
@@ -25,13 +25,13 @@ func (a Comment) Ir() string {
 }
 
 type AsmGen struct {
-	file   *os.File
+	writer io.Writer
 	ostype util.OsType
 }
 
-func NewGenASM(file *os.File, osType util.OsType) AsmGen {
+func NewGenASM(writer io.Writer, osType util.OsType) AsmGen {
 	return AsmGen{
-		file:   file,
+		writer: writer,
 		ostype: osType,
 	}
 }
@@ -147,5 +147,5 @@ func (a *AsmGen) GenOperand(op AsmOperand) string {
 }
 
 func (a *AsmGen) Write(line string) {
-	a.file.WriteString(line + "\n")
+	fmt.Fprintln(a.writer, line)
 }

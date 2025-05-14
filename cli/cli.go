@@ -1,16 +1,17 @@
 package cli
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/your-moon/mn_compiler_go_version/base"
 	codegen "github.com/your-moon/mn_compiler_go_version/code_gen"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
+	"github.com/your-moon/mn_compiler_go_version/linker"
 	"github.com/your-moon/mn_compiler_go_version/parser"
 	semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
 	"github.com/your-moon/mn_compiler_go_version/tackygen"
@@ -28,6 +29,8 @@ type CLI struct {
 	commands map[string]Command
 	debug    bool
 	help     bool
+	genAsm   bool
+	genObj   bool
 }
 
 func New() *CLI {
@@ -92,6 +95,8 @@ func (c *CLI) Run(args []string) error {
 	fs := flag.NewFlagSet(command, flag.ExitOnError)
 	fs.BoolVar(&c.debug, "debug", false, "debug mode асаах")
 	fs.BoolVar(&c.help, "help", false, "команд туслах харуулах")
+	fs.BoolVar(&c.genAsm, "asm", false, "assembly файл үүсгэх")
+	fs.BoolVar(&c.genObj, "obj", false, "object файл үүсгэх")
 
 	fileArg := ""
 	flagArgs := args
@@ -142,6 +147,8 @@ func (c *CLI) printUsage() {
 	fmt.Println("\nСонголтууд:")
 	fmt.Println("  --debug    Debug горим идэвхжүүлэх")
 	fmt.Println("  --help     Дэлгэрэнгүй тусламж харуулах")
+	fmt.Println("  --asm      Assembly файл үүсгэх")
+	fmt.Println("  --obj      Object файл үүсгэх")
 }
 
 func (c *CLI) printDetailedHelp() {
@@ -168,6 +175,10 @@ func (c *CLI) printDetailedHelp() {
 	fmt.Println("            Жишээ: compiler lex input.mn --debug")
 	fmt.Println("\n  --help    Дэлгэрэнгүй тусламж харуулах")
 	fmt.Println("            Жишээ: compiler --help")
+	fmt.Println("\n  --asm     Assembly файл үүсгэх")
+	fmt.Println("            Жишээ: compiler gen input.mn --asm")
+	fmt.Println("\n  --obj     Object файл үүсгэх")
+	fmt.Println("            Жишээ: compiler gen input.mn --obj")
 
 	fmt.Println("\nЖишээ:")
 	fmt.Println("  compiler lex input.mn")
@@ -203,7 +214,9 @@ func (c *CLI) runParser(args []string) error {
 		return err
 	}
 
-	fmt.Println("\n---- ПАРСИНГ ----:")
+	if base.Debug {
+		fmt.Println("\n---- ПАРСИНГ ----:")
+	}
 	parsed := parser.NewParser(runeString)
 	node, err := parsed.ParseProgram()
 	if err != nil {
@@ -332,44 +345,104 @@ func (c *CLI) runCompiler(args []string) error {
 		}
 	}
 
+	asmBuffer := new(bytes.Buffer)
+	asmWriter := codegen.NewGenASM(asmBuffer, util.GetOsType())
+	asmWriter.GenAsm(asmast)
+
+	// Write assembly to file for debugging
+	err = os.WriteFile("debug_out.asm", asmBuffer.Bytes(), 0644)
+	if err != nil {
+		fmt.Println("Failed to write debug_out.asm:", err)
+	}
+
+	linker := linker.NewLinker("out")
+	linker.SetAssemblyContent(asmBuffer.String())
+	if err := linker.Link(); err != nil {
+		fmt.Println("Error linking:", err)
+		os.Exit(1)
+	}
+
+	if err := linker.MakeExecutable(); err != nil {
+		fmt.Println("Error making executable:", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Created executable: out")
 	return nil
 }
 
 func (c *CLI) runGen(args []string) error {
-	fmt.Println(runtime.GOOS)
 	uniqueGen := unique.NewUniqueGen()
 	runeString := readFile(args[0])
+	if err := c.runLexer(args); err != nil {
+		return err
+	}
+
+	if base.Debug {
+		fmt.Println("\n---- ПАРСИНГ ----:")
+	}
 	parsed := parser.NewParser(runeString)
 	node, err := parsed.ParseProgram()
 	if err != nil {
 		return fmt.Errorf("парсингийн алдаа: %v", err)
 	}
 
+	if len(parsed.Errors()) > 0 {
+		return fmt.Errorf("парсерын алдаанууд: %v", parsed.Errors()[0].Error())
+	}
+
+	if base.Debug && node != nil {
+		fmt.Println("AST:", node.PrintAST(0))
+	}
+
 	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen)
+
 	resolvedAst, symbolTable, err := resolver.Analyze(node)
 	if err != nil {
 		return fmt.Errorf("семантик шинжилгээний алдаа: %v", err)
 	}
 
-	compilerx := tackygen.NewTackyGen(uniqueGen)
-	tackyprogram := compilerx.EmitTacky(resolvedAst)
-
-	fmt.Println("\n---- ASSEMBLY ҮҮСГЭЖ БАЙНА ----:")
-	outfile := "out.asm"
-	openFile, err := os.OpenFile(outfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return fmt.Errorf("гаралтын файл нээхэд алдаа гарлаа: %v", err)
+	if base.Debug {
+		fmt.Println("\n---- RESOLVED AST ----:")
+		fmt.Println(resolvedAst.PrintAST(0))
 	}
-	defer openFile.Close()
 
-	asmastgen := codegen.NewAsmGen()
-	asmast := asmastgen.GenASTAsm(tackyprogram, symbolTable)
+	tackyGen := tackygen.NewTackyGen(uniqueGen)
+	tackyProgram := tackyGen.EmitTacky(resolvedAst)
 
-	osType := util.GetOsType()
+	if base.Debug {
+		fmt.Println("\n---- TACKY IR ----:")
+		tackyGen.PrettyPrint(tackyProgram)
+	}
 
-	asmgen := codegen.NewGenASM(openFile, osType)
-	asmgen.GenAsm(asmast)
-	fmt.Printf("Assembly файл %s дотор үүслээ\n", outfile)
+	asmGen := codegen.NewAsmGen()
+	asmProgram := asmGen.GenASTAsm(tackyProgram, symbolTable)
+
+	asmBuffer := new(bytes.Buffer)
+	asmWriter := codegen.NewGenASM(asmBuffer, util.GetOsType())
+	asmWriter.GenAsm(asmProgram)
+
+	if base.Debug {
+		fmt.Println("\n---- ASMAST ----:")
+		fmt.Println(asmBuffer.String())
+	}
+
+	outputFile := strings.TrimSuffix(args[0], ".mn")
+	linker := linker.NewLinker(outputFile)
+	linker.SetAssemblyContent(asmBuffer.String())
+	linker.SetGenerateAsm(c.genAsm)
+	linker.SetGenerateObj(c.genObj)
+
+	if err := linker.Link(); err != nil {
+		return fmt.Errorf("Error linking: %v", err)
+	}
+
+	if !c.genAsm && !c.genObj {
+		if err := linker.MakeExecutable(); err != nil {
+			return fmt.Errorf("Error making executable: %v", err)
+		}
+	}
+
 	return nil
 }
 

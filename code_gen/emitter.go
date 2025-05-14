@@ -3,6 +3,7 @@ package codegen
 import (
 	"fmt"
 
+	"github.com/your-moon/mn_compiler_go_version/base"
 	semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
 	"github.com/your-moon/mn_compiler_go_version/tackygen"
 )
@@ -38,33 +39,39 @@ func (a *AsmASTGen) GenASTAsm(program tackygen.TackyProgram, symbolTable *semant
 		asmprogram.AsmFnDef = append(asmprogram.AsmFnDef, asmfn)
 	}
 
-	fmt.Println("---- ASMAST ----:")
-	for _, fn := range asmprogram.AsmExternFn {
-		fmt.Println(fn.Ir())
-	}
-	for _, fn := range asmprogram.AsmFnDef {
-		for _, instr := range fn.Irs {
-			fmt.Println(instr.Ir())
+	if base.Debug {
+		fmt.Println("---- ASMAST ----:")
+		for _, fn := range asmprogram.AsmExternFn {
+			fmt.Println(fn.Ir())
+		}
+		for _, fn := range asmprogram.AsmFnDef {
+			for _, instr := range fn.Irs {
+				fmt.Println(instr.Ir())
+			}
 		}
 	}
 
 	pass1 := NewReplacementPassGen()
 	asmprogram = pass1.ReplacePseudosInProgram(asmprogram, symbolTable)
 
-	fmt.Println("---- ASMAST AFTER PSEUDO REPLACEMENT ----:")
-	for _, fn := range asmprogram.AsmFnDef {
-		for _, instr := range fn.Irs {
-			fmt.Println(instr.Ir())
+	if base.Debug {
+		fmt.Println("---- ASMAST AFTER PSEUDO REPLACEMENT ----:")
+		for _, fn := range asmprogram.AsmFnDef {
+			for _, instr := range fn.Irs {
+				fmt.Println(instr.Ir())
+			}
 		}
 	}
 
 	pass2 := NewFixUpPassGen(symbolTable)
 	asmprogram = pass2.FixUpProgram(asmprogram)
 
-	fmt.Println("---- ASMAST AFTER FIXUP ----:")
-	for _, fn := range asmprogram.AsmFnDef {
-		for _, instr := range fn.Irs {
-			fmt.Println(instr.Ir())
+	if base.Debug {
+		fmt.Println("---- ASMAST AFTER FIXUP ----:")
+		for _, fn := range asmprogram.AsmFnDef {
+			for _, instr := range fn.Irs {
+				fmt.Println(instr.Ir())
+			}
 		}
 	}
 

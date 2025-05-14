@@ -68,6 +68,11 @@ write_number:
     movq -24(%rbp), %rdx  # Length (digits + newline)
     syscall
 
+    # Exit system call
+    movq $60, %rax        # System call number for exit
+    xorq %rdi, %rdi       # Exit code 0
+    syscall
+
     movq %rbp, %rsp
     popq %rbp
     ret 

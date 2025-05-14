@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"unicode/utf8"
 
@@ -427,7 +428,7 @@ func (c *CLI) runGen(args []string) error {
 		fmt.Println(asmBuffer.String())
 	}
 
-	outputFile := strings.TrimSuffix(args[0], ".mn")
+	outputFile := filepath.Base(strings.TrimSuffix(args[0], ".mn"))
 	linker := linker.NewLinker(outputFile)
 	linker.SetAssemblyContent(asmBuffer.String())
 	linker.SetGenerateAsm(c.genAsm)

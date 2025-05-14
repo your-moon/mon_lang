@@ -9,6 +9,10 @@ import (
 	"runtime"
 )
 
+const (
+	OUTPUT_DIR = "out"
+)
+
 type Linker struct {
 	outputFile string
 	asmContent string
@@ -18,8 +22,14 @@ type Linker struct {
 }
 
 func NewLinker(outputFile string) *Linker {
+	outputFile = filepath.Clean(outputFile)
+
+	if filepath.IsAbs(outputFile) {
+		outputFile = filepath.Base(outputFile)
+	}
+
 	return &Linker{
-		outputFile: outputFile,
+		outputFile: filepath.Join(OUTPUT_DIR, outputFile),
 		osType:     runtime.GOOS,
 	}
 }
@@ -37,36 +47,40 @@ func (l *Linker) SetGenerateObj(genObj bool) {
 }
 
 func (l *Linker) Link() error {
-	// Get just the filename without path
+	outputDir := filepath.Dir(l.outputFile)
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %v", err)
+	}
+
 	outputName := filepath.Base(l.outputFile)
 
 	if l.genAsm {
-		return os.WriteFile(outputName+".s", []byte(l.asmContent), 0644)
+		return os.WriteFile(l.outputFile+".s", []byte(l.asmContent), 0644)
 	}
 
-	tempAsmFile := outputName + ".asm"
+	tempAsmFile := filepath.Join(outputDir, outputName+".asm")
 	if err := os.WriteFile(tempAsmFile, []byte(l.asmContent), 0600); err != nil {
 		return fmt.Errorf("failed to write temporary assembly file: %v", err)
 	}
 	defer os.Remove(tempAsmFile)
 
-	objFile := outputName + ".o"
+	objFile := filepath.Join(outputDir, outputName+".o")
 	asmCmd := exec.Command("as", "-o", objFile, tempAsmFile)
 	if err := asmCmd.Run(); err != nil {
 		return fmt.Errorf("failed to assemble: %v", err)
 	}
 
 	if l.genObj {
-		return nil // Object file is already created with the correct name
+		return nil
 	}
 
 	defer os.Remove(objFile)
 
 	var linkCmd *exec.Cmd
 	if l.osType == "darwin" {
-		linkCmd = exec.Command("ld", "-arch", "x86_64", "-o", outputName, objFile, "-e", "_start", "-no_pie", "-lSystem", "-syslibroot", "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk")
+		linkCmd = exec.Command("ld", "-arch", "x86_64", "-o", l.outputFile, objFile, "-e", "_start", "-no_pie", "-lSystem", "-syslibroot", "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk")
 	} else {
-		linkCmd = exec.Command("ld", "-o", outputName, objFile)
+		linkCmd = exec.Command("ld", "-o", l.outputFile, objFile)
 	}
 
 	var stdout, stderr bytes.Buffer

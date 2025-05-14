@@ -162,12 +162,8 @@ go build -o compiler main.go
 
 ```bash
 # Жишээ програм компайл хийх
-./compiler examples/hello.mon
-
-# Үүссэн assembly файлыг ажиллуулах
-as -o out.o out.asm
-ld -o program out.o
-./program
+./compiler examples/hello.mn
+./hello
 ```
 
 ## 📖 Хэлний Тодорхойлолт

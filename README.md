@@ -1,145 +1,114 @@
-## Diploma of Munkherdene-B210900003
+#### Architecture
 
-Энэхүү дипломын ажлийн зорилго нь Монгол хэлэнд суурилсан компиляторыг судлах, зохиомжлох болон хэрэгжүүлсэн бүтээл юм.
-
-#### Components
-
-- [ ] Lexer
-- [ ] Parser
-- [ ] Analyzer
-- [ ] Code Generation
-- [ ] Optimization
-
-#### Resources
-
-- https://cplusplus.com/reference/cwchar/wchar_t/
-- https://craftinginterpreters.com/appendix-i.html
-- https://www.chromium.org/chromium-os/developer-library/reference/linux-constants/syscalls/
-- https://www.tutorialspoint.com/assembly_programming/assembly_memory_segments.htm
-
-#### For Test
-
-- https://github.com/sustrik/libmill
-
-#### Workflow & Requirements
-
-Do i have to write lexer by myself?
-Yes. Because that makes me understand the part of compiler
-
-- [x] Hand Parser Or Generator. Choose?
-      Hand
-
-Do i really need low level language?
-Some memory level control
-
-Should i use compiler backend for compability of any type of cpu or specific arch?
-Maybe
-
-Cyrillic to en ?
-
-#### Formal grammar
-
-```sh
-
-#THIS IS IMPLEMENTED
-# EBNF
-
-program = {statement}
-
-return_statement = "буц" expression
-type = int_type
-int_type = "тоо"
-
-expression = unary
-unary = ("-") primary | primary
-primary = digit
-string = '"' {printable} '"' ;
-identifier = alpha {alpha | digit} ;
-digit = [0-9] ;
-alpha = [а-яА-ЯҮүЁёӨөa-zA-Z] ;
-
-```
-
-```sh
-
-# EBNF
-
-
-program = {statement}
-
-
-return_statement = "буц" expression
-
-variable_declaration = "зарл" identifier ":" type ["=" expression]
-type = int_type | "тэмдэгт" | identifier
-int_type = "этоо" | "этоо8" | "этоо16" | "этоо32" | "этоо64" | "этоо128"
-| "тоо" | "тоо8" | "тоо16" | "тоо32" | "тоо64" | "тоо128"
-
-
-expression = equality
-equality = comparison {("==" | "!=") comparison}
-comparison = term {("<" | "<=" | ">" | ">=") term}
-term = factor {("+" | "-") factor}
-factor = unary {("*" | "/") unary}
-unary = ("-" | "!") unary | primary
-
-primary = digit | string | boolean | identifier | "(" expression ")" | "хоосон"
-string = '"' {printable} '"' ;
-printable = [0x20-0x7E0x0430-0x044F]
-boolean = "үнэн" | "худал" ;
-identifier = alpha {alpha | digit} ;
-digit = [0-9] ;
-alpha = [а-яА-ЯҮүЁёӨөa-zA-Z] ;
-
-```
-
-- newline -> \r, \n, \r\n
-
-```sh
-- а -> 0x0430 -> a
-- б -> 0x0431 -> b
-- в -> 0x0432 -> v
-- г -> 0x0433 -> g
-- д -> 0x0434 -> d
-- е -> 0x0435 -> ye
-- ж -> 0x0436 -> j
-- з -> 0x0437 -> z
-- и -> 0x0438 -> i
-- й -> 0x0439 -> hi
-- к -> 0x043a -> k
-- л -> 0x043b -> l
-- м -> 0x043c -> m
-- н -> 0x043d -> n
-- о -> 0x043e -> o
-- п -> 0x043f -> p
-- р -> 0x0440 -> r
-- с -> 0x0441 -> s
-- т -> 0x0442 -> t
-- у -> 0x0443 -> u
-- ф -> 0x0444 -> f
-- х -> 0x0445 -> h
-- ц -> 0x0446 -> ts
-- ч -> 0x0447 -> ch
-- ш -> 0x0448 -> sh
-- щ -> 0x0449 -> shc
-- ъ -> 0x044a -> qi
-- ы -> 0x044b -> yi
-- ь -> 0x044c -> zi
-- э -> 0x044d -> e
-- ю -> 0x044e -> yu
-- я -> 0x044f -> ya
-- (space) -> 0x0020
-- ё -> 0x0451 -> yo
-- ү -> 0x04af -> w
-- ө -> 0x04e9 -> q
-```
+Lexer -> Parser -> Compiler -> Gen -> Link
 
 #### References
 
-Book -- Writing a C Compiler: Build a Real Programming Language from Scratch Paperback - by Nora Sandler
+- https://github.com/kitasuke/monkey-go
+- https://flint.cs.yale.edu/cs421/papers/x86-asm/asm.html
+- https://docs.oracle.com/cd/E19253-01/817-5477/817-5477.pdf
 
-Book -- Compilers: Principles, Techniques, and Tools
+#### Problems
 
-Book -- Crafting Interpreters: Nystrom, Robert
+- parsing the expression left recursive way
 
-Book -- Writing A Compiler In Go: Thorsten Ball
+```sh
+===EBNF===
+
+(* Program Structure *)
+<program> ::= { <import> } <function>
+<import> ::= "импорт" <identifier> { "." <identifier> } ";"
+<function> ::= "функц" <identifier> "(" [ <param-list> ] ")" [ "->" <type> ] <block>
+<block> ::= "{" <block-item>* "}"
+<block-item> ::= <statement> | <declaration>
+
+(* Declarations *)
+<declaration> ::= <fn-decl> | <var-decl>
+<var-decl> ::= "зарла" <identifier> [ ":" <type> ] [ "=" <exp> ] ";"
+<fn-decl> ::= <identifier> "(" [ <param-list> ] ")" [ "->" <type> ] ";"
+<param-list> ::= <param> { "," <param> }
+<param> ::= <identifier> ":" <type>
+<type> ::= "тоо" | "тэмдэгт"
+
+(* Statements *)
+<statement> ::= <return-stmt>
+              | <if-stmt>
+              | <for-stmt>
+              | <while-stmt>
+              | <break-stmt>
+              | <continue-stmt>
+              | <exp-stmt>
+              | ";"
+
+<return-stmt> ::= "буц" <exp> ";"
+<if-stmt> ::= "хэрэв" <exp> "бол" <block> [ "үгүй бол" <block> ]
+<for-stmt> ::= "давт" <identifier> "бол" <exp> "хүртэл" <block>
+<while-stmt> ::= "давтах" [ <exp> ] "хүртэл" <block>
+<break-stmt> ::= "зогс" ";"
+<continue-stmt> ::= "үргэлжлүүл" ";"
+<exp-stmt> ::= <exp> ";"
+
+(* Expressions *)
+<exp> ::= <assignment>
+<assignment> ::= <identifier> "=" <exp>
+               | <logical-or>
+<logical-or> ::= <logical-and> { "эсвэл" <logical-and> }
+<logical-and> ::= <equality> { "болон" <equality> }
+<equality> ::= <comparison> { ("==" | "!=") <comparison> }
+<comparison> ::= <term> { ("<" | "<=" | ">" | ">=") <term> }
+<term> ::= <factor> { ("+" | "-") <factor> }
+<factor> ::= <unary> { ("*" | "/") <unary> }
+<unary> ::= ("-" | "~" | "!") <unary> | <primary>
+<primary> ::= <number>
+            | <string>
+            | <identifier>
+            | <fn-call>
+            | <range-exp>
+            | "(" <exp> ")"
+
+<fn-call> ::= <identifier> "(" [ <argument-list> ] ")"
+<argument-list> ::= <exp> { "," <exp> }
+<range-exp> ::= <exp> ".." <exp>
+
+(* Lexical Elements *)
+<identifier> ::= <letter> { <letter> | <digit> }
+<number> ::= <digit> { <digit> }
+<string> ::= '"' { <char> } '"'
+<letter> ::= "A" | "B" | ... | "Z" | "a" | "b" | ... | "z" | "_"
+<digit> ::= "0" | "1" | ... | "9"
+<char> ::= (* Any character except unescaped double quote *)
+
+(* Comments *)
+<comment> ::= "//" { <char> } <newline>
+
+```sh
+===AST===
+
+program = Program(function_definition)
+function_definition = Function(identifier name, parameter* params, type return_type, block_item* body)
+parameter = Parameter(identifier name, type type)
+type = Number | String
+block_item = S(statement) | D(declaration)
+declaration = Declaration(identifier name, type? type, exp? init)
+statement = Return(exp)
+         | If(exp, block, block?)
+         | For(identifier, exp, exp, block)
+         | Expression(exp)
+         | Null
+block = Block(block_item* items)
+exp = Constant(int)
+    | String(string)
+    | Var(identifier)
+    | ArrayAccess(identifier, exp)
+    | Unary(unary_operator, exp)
+    | Binary(binary_operator, exp, exp)
+    | Assignment(exp, exp)
+    | Ternary(exp, exp, exp)
+unary_operator = Complement | Negate | Not
+binary_operator = Add | Subtract | Multiply | Divide | Remainder
+                | And | Or
+                | Equal | NotEqual | LessThan | LessOrEqual
+                | GreaterThan | GreaterOrEqual
+
+
+```

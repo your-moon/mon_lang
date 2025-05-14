@@ -1,4 +1,3 @@
-main
-rustv/target
-rustv/out
-rustv/program
+out.asm
+out
+out.o

@@ -58,7 +58,7 @@ func (l *Linker) Link() error {
 		return os.WriteFile(l.outputFile+".s", []byte(l.asmContent), 0644)
 	}
 
-	tempAsmFile := filepath.Join(outputDir, outputName+".asm")
+	tempAsmFile := filepath.Join(outputDir, outputName+".s")
 	if err := os.WriteFile(tempAsmFile, []byte(l.asmContent), 0600); err != nil {
 		return fmt.Errorf("failed to write temporary assembly file: %v", err)
 	}
@@ -66,8 +66,11 @@ func (l *Linker) Link() error {
 
 	objFile := filepath.Join(outputDir, outputName+".o")
 	asmCmd := exec.Command("as", "-o", objFile, tempAsmFile)
+	var asmStdout, asmStderr bytes.Buffer
+	asmCmd.Stdout = &asmStdout
+	asmCmd.Stderr = &asmStderr
 	if err := asmCmd.Run(); err != nil {
-		return fmt.Errorf("failed to assemble: %v", err)
+		return fmt.Errorf("failed to assemble: %v\nstdout: %s\nstderr: %s", err, asmStdout.String(), asmStderr.String())
 	}
 
 	if l.genObj {

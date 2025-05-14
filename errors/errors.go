@@ -8,16 +8,14 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
 
-// CompilerError represents an error in the compiler with location information
 type CompilerError struct {
 	Message string
 	Line    int
 	Span    lexer.Span
 	Source  []int32
-	Module  string // The module where the error occurred (parser, resolver, etc.)
+	Module  string
 }
 
-// New creates a new compiler error with the given message and location information
 func New(message string, line int, span lexer.Span, source []int32, module string) *CompilerError {
 	return &CompilerError{
 		Message: message,
@@ -28,7 +26,6 @@ func New(message string, line int, span lexer.Span, source []int32, module strin
 	}
 }
 
-// Error implements the error interface
 func (e *CompilerError) Error() string {
 	var buf bytes.Buffer
 
@@ -44,7 +41,6 @@ func (e *CompilerError) Error() string {
 	return buf.String()
 }
 
-// findLineBoundaries finds the start and end positions of the line containing the error
 func (e *CompilerError) findLineBoundaries() (start, end int) {
 	start = 0
 	end = 0
@@ -65,17 +61,12 @@ func (e *CompilerError) findLineBoundaries() (start, end int) {
 	return start, end
 }
 
-// createErrorPointer creates a string of spaces and carets to point to the error location
 func (e *CompilerError) createErrorPointer(lineStart int) string {
 	return strings.Repeat(" ", e.Span.Start-lineStart) +
 		strings.Repeat("^", e.Span.End-e.Span.Start)
 }
 
-// Common error messages
 const (
-	//
-
-	// Parser errors
 	ErrExpectedNextToken = "дараагийн тэмдэгт '%s' байх ёстой, та бичиглэлээ шалгана уу"
 	ErrMissingIdentifier = "хувьсагчийн нэр заавал заагдах ёстой"
 	ErrUnknownExpression = "илэрхийллийн төрөл тодорхойгүй байна: '%s'"
@@ -90,7 +81,6 @@ const (
 	ErrMissingArrow      = "'->' тэмдэгт шаардлагатай"
 	ErrMissingIntType    = "'тоо' төрөл шаардлагатай"
 
-	// Semantic analysis errors
 	ErrNotValidExpression         = "буруу илэрхийлэл байна"
 	ErrDuplicateVariable          = "хувьсагч '%s' нь давхардсан байна"
 	ErrDuplicateFnDecl            = "функц '%s' нь давхардсан байна"
@@ -101,7 +91,6 @@ const (
 	ErrNotDeclaredFnCall          = "функц '%s'-г зарлаагүй байна"
 )
 
-// FormatError formats an error message with the given arguments
 func FormatError(format string, args ...interface{}) string {
 	return fmt.Sprintf(format, args...)
 }

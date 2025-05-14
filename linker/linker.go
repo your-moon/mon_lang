@@ -11,6 +11,7 @@ import (
 
 const (
 	OUTPUT_DIR = "out"
+	STDLIB_DIR = "stdlib"
 )
 
 type Linker struct {
@@ -79,11 +80,22 @@ func (l *Linker) Link() error {
 
 	defer os.Remove(objFile)
 
+	stdlibFile := filepath.Join(STDLIB_DIR, "lib_"+l.osType+".asm")
+	stdlibObj := filepath.Join(outputDir, "lib_"+l.osType+".o")
+	stdlibAsmCmd := exec.Command("as", "-o", stdlibObj, stdlibFile)
+	var stdlibStdout, stdlibStderr bytes.Buffer
+	stdlibAsmCmd.Stdout = &stdlibStdout
+	stdlibAsmCmd.Stderr = &stdlibStderr
+	if err := stdlibAsmCmd.Run(); err != nil {
+		return fmt.Errorf("failed to assemble stdlib: %v\nstdout: %s\nstderr: %s", err, stdlibStdout.String(), stdlibStderr.String())
+	}
+	defer os.Remove(stdlibObj)
+
 	var linkCmd *exec.Cmd
 	if l.osType == "darwin" {
-		linkCmd = exec.Command("ld", "-arch", "x86_64", "-o", l.outputFile, objFile, "-e", "_start", "-no_pie", "-lSystem", "-syslibroot", "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk")
+		linkCmd = exec.Command("ld", "-arch", "x86_64", "-o", l.outputFile, objFile, stdlibObj, "-e", "_start", "-no_pie", "-lSystem", "-syslibroot", "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk")
 	} else {
-		linkCmd = exec.Command("ld", "-o", l.outputFile, objFile)
+		linkCmd = exec.Command("ld", "-o", l.outputFile, objFile, stdlibObj)
 	}
 
 	var stdout, stderr bytes.Buffer

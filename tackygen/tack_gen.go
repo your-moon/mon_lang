@@ -152,6 +152,29 @@ func (c *TackyGen) EmitVarDecl(node *parser.VarDecl) []Instruction {
 
 func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 	switch ast := node.(type) {
+	case *parser.ASTWhile:
+		irs := []Instruction{}
+		startLabel := c.makeLabel("while")
+		continueLabel := c.makeLabel("while_continue")
+		breakLabel := c.makeLabel("while_break")
+
+		irs = append(irs, Label{Ident: startLabel.Name})
+
+		condVal, condValIrs := c.EmitExpr(ast.Cond)
+		irs = append(irs, condValIrs...)
+		irs = append(irs, JumpIfZero{
+			Val:   condVal,
+			Ident: breakLabel.Name,
+		})
+
+		blockIrs := c.EmitTackyBlock(ast.Body)
+		irs = append(irs, blockIrs...)
+
+		irs = append(irs, Label{Ident: continueLabel.Name})
+		irs = append(irs, Jump{Target: startLabel.Name})
+
+		irs = append(irs, Label{Ident: breakLabel.Name})
+		return irs
 	case *parser.ASTLoop:
 		irs := []Instruction{}
 		startLabel := c.makeLabel("loop")
@@ -190,7 +213,8 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 				Ident: breakLabel.Name,
 			})
 
-			c.EmitTackyBlock(ast.Body)
+			blockIrs := c.EmitTackyBlock(ast.Body)
+			irs = append(irs, blockIrs...)
 
 			irs = append(irs, Label{Ident: continueLabel.Name})
 

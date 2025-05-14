@@ -8,8 +8,8 @@
       "mode": "auto",
       "program": "main.go",
       "args": [
-        "gen",
-        "test/lib/lib.mn",
+        "tacky",
+        "test/loop/range.mn",
         "--debug"
       ]
     }

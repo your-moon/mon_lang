@@ -52,7 +52,7 @@ func (l *Linker) SetGenerateObj(genObj bool) {
 func (l *Linker) Link() error {
 	outputDir := filepath.Dir(l.outputFile)
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return fmt.Errorf("failed to create output directory: %v", err)
+		return fmt.Errorf("гаралтын хавтас үүсгэхэд алдаа гарлаа: %v", err)
 	}
 
 	outputName := filepath.Base(l.outputFile)
@@ -63,7 +63,7 @@ func (l *Linker) Link() error {
 
 	tempAsmFile := filepath.Join(outputDir, outputName+".s")
 	if err := os.WriteFile(tempAsmFile, []byte(l.asmContent), 0600); err != nil {
-		return fmt.Errorf("failed to write temporary assembly file: %v", err)
+		return fmt.Errorf("гаралтын түр ассемблер файл үүсгэхэд алдаа гарлаа: %v", err)
 	}
 	defer os.Remove(tempAsmFile)
 
@@ -73,7 +73,7 @@ func (l *Linker) Link() error {
 	asmCmd.Stdout = &asmStdout
 	asmCmd.Stderr = &asmStderr
 	if err := asmCmd.Run(); err != nil {
-		return fmt.Errorf("failed to assemble: %v\nstdout: %s\nstderr: %s", err, asmStdout.String(), asmStderr.String())
+		return fmt.Errorf("ассембле хийхэд алдаа гарлаа: %v\nstdout: %s\nstderr: %s", err, asmStdout.String(), asmStderr.String())
 	}
 
 	if l.genObj {
@@ -89,7 +89,7 @@ func (l *Linker) Link() error {
 	stdlibAsmCmd.Stdout = &stdlibStdout
 	stdlibAsmCmd.Stderr = &stdlibStderr
 	if err := stdlibAsmCmd.Run(); err != nil {
-		return fmt.Errorf("failed to assemble stdlib: %v\nstdout: %s\nstderr: %s", err, stdlibStdout.String(), stdlibStderr.String())
+		return fmt.Errorf("стандарт сан ассембле хийхэд алдаа гарлаа: %v\nstdout: %s\nstderr: %s", err, stdlibStdout.String(), stdlibStderr.String())
 	}
 	defer os.Remove(stdlibObj)
 
@@ -105,7 +105,7 @@ func (l *Linker) Link() error {
 	linkCmd.Stderr = &stderr
 
 	if err := linkCmd.Run(); err != nil {
-		return fmt.Errorf("failed to link: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+		return fmt.Errorf("линк хийхэд алдаа гарлаа: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
 	}
 
 	return nil

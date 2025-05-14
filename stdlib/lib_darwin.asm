@@ -2,7 +2,17 @@
 _khevle:
     pushq %rbp
     movq %rsp, %rbp
-    subq $32, %rsp        # Allocate space for local variables
+    subq $48, %rsp        # Align stack to 16 bytes and allocate space for locals
+
+    # Save registers that we'll use
+    pushq %rbx
+    pushq %r12
+    pushq %r13
+    pushq %r14
+    pushq %r15
+
+    # Save input number to return later
+    movl %edi, -28(%rbp)  # Save input number to stack
 
     # Store number in buffer
     movl %edi, -4(%rbp)   # Store input number
@@ -56,11 +66,17 @@ write_number:
     movq -24(%rbp), %rdx  # Length (digits + newline)
     syscall
 
-    # Exit system call
-    movq $0x2000001, %rax # System call number for exit
-    xorq %rdi, %rdi       # Exit code 0
-    syscall
+    # Restore original input value to return
+    movl -28(%rbp), %eax  # Load saved input number into return register
 
+    # Restore saved registers
+    popq %r15
+    popq %r14
+    popq %r13
+    popq %r12
+    popq %rbx
+
+    # Clean up and return
     movq %rbp, %rsp
     popq %rbp
     ret

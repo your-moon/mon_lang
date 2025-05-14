@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 const (
@@ -23,10 +24,11 @@ type Linker struct {
 }
 
 func NewLinker(outputFile string) *Linker {
-	outputFile = filepath.Clean(outputFile)
-
-	if filepath.IsAbs(outputFile) {
-		outputFile = filepath.Base(outputFile)
+	if filepath.IsAbs(outputFile) || strings.HasPrefix(outputFile, ".") || strings.HasPrefix(outputFile, "..") {
+		return &Linker{
+			outputFile: outputFile,
+			osType:     runtime.GOOS,
+		}
 	}
 
 	return &Linker{

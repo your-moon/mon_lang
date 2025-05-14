@@ -27,11 +27,19 @@ type Command struct {
 }
 
 type CLI struct {
-	commands map[string]Command
-	debug    bool
-	help     bool
-	genAsm   bool
-	genObj   bool
+	commands   map[string]Command
+	debug      bool
+	help       bool
+	genAsm     bool
+	genObj     bool
+	outputFile string
+}
+
+type Options struct {
+	InputFile  string
+	OutputFile string
+	GenAsm     bool
+	GenObj     bool
 }
 
 func New() *CLI {
@@ -98,6 +106,7 @@ func (c *CLI) Run(args []string) error {
 	fs.BoolVar(&c.help, "help", false, "команд туслах харуулах")
 	fs.BoolVar(&c.genAsm, "asm", false, "assembly файл үүсгэх")
 	fs.BoolVar(&c.genObj, "obj", false, "object файл үүсгэх")
+	fs.StringVar(&c.outputFile, "o", "", "гаралтын файлын нэр (анхдагч: оролтын файлын нэр)")
 
 	fileArg := ""
 	flagArgs := args
@@ -150,6 +159,7 @@ func (c *CLI) printUsage() {
 	fmt.Println("  --help     Дэлгэрэнгүй тусламж харуулах")
 	fmt.Println("  --asm      Assembly файл үүсгэх")
 	fmt.Println("  --obj      Object файл үүсгэх")
+	fmt.Println("  -o         Гаралтын файлын нэр")
 }
 
 func (c *CLI) printDetailedHelp() {
@@ -180,11 +190,13 @@ func (c *CLI) printDetailedHelp() {
 	fmt.Println("            Жишээ: compiler gen input.mn --asm")
 	fmt.Println("\n  --obj     Object файл үүсгэх")
 	fmt.Println("            Жишээ: compiler gen input.mn --obj")
+	fmt.Println("\n  -o        Гаралтын файлын нэр")
+	fmt.Println("            Жишээ: compiler gen input.mn -o output")
 
 	fmt.Println("\nЖишээ:")
 	fmt.Println("  compiler lex input.mn")
 	fmt.Println("  compiler parse input.mn --debug")
-	fmt.Println("  compiler gen input.mn")
+	fmt.Println("  compiler gen input.mn -o myprogram")
 }
 
 func (c *CLI) runLexer(args []string) error {
@@ -350,7 +362,6 @@ func (c *CLI) runCompiler(args []string) error {
 	asmWriter := codegen.NewGenASM(asmBuffer, util.GetOsType())
 	asmWriter.GenAsm(asmast)
 
-	// Write assembly to file for debugging
 	err = os.WriteFile("debug_out.asm", asmBuffer.Bytes(), 0644)
 	if err != nil {
 		fmt.Println("Failed to write debug_out.asm:", err)
@@ -428,7 +439,17 @@ func (c *CLI) runGen(args []string) error {
 		fmt.Println(asmBuffer.String())
 	}
 
-	outputFile := filepath.Base(strings.TrimSuffix(args[0], ".mn"))
+	outputFile := c.outputFile
+	if outputFile == "" {
+		outputFile = filepath.Base(strings.TrimSuffix(args[0], ".mn"))
+	}
+
+	if dir := filepath.Dir(outputFile); dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create output directory: %v", err)
+		}
+	}
+
 	linker := linker.NewLinker(outputFile)
 	linker.SetAssemblyContent(asmBuffer.String())
 	linker.SetGenerateAsm(c.genAsm)
@@ -465,4 +486,28 @@ func convertToRuneArray(dataString string) []int32 {
 	}
 	runeString = append(runeString, 0)
 	return runeString
+}
+
+func ParseArgs() (*Options, error) {
+	options := &Options{}
+
+	flag.StringVar(&options.OutputFile, "o", "", "Output file name (default: input file name)")
+	flag.BoolVar(&options.GenAsm, "asm", false, "Generate assembly file")
+	flag.BoolVar(&options.GenObj, "obj", false, "Generate object file")
+	flag.Parse()
+
+	args := flag.Args()
+	if len(args) != 2 || args[0] != "gen" {
+		return nil, fmt.Errorf("usage: %s gen <input_file>", os.Args[0])
+	}
+
+	options.InputFile = args[1]
+
+	if options.OutputFile == "" {
+		base := filepath.Base(options.InputFile)
+		ext := filepath.Ext(base)
+		options.OutputFile = base[:len(base)-len(ext)]
+	}
+
+	return options, nil
 }

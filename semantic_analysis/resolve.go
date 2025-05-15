@@ -6,7 +6,7 @@ import (
 	compilererrors "github.com/your-moon/mn_compiler_go_version/errors"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 	"github.com/your-moon/mn_compiler_go_version/parser"
-	"github.com/your-moon/mn_compiler_go_version/unique"
+	"github.com/your-moon/mn_compiler_go_version/util/unique"
 )
 
 const (
@@ -456,7 +456,7 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression, innerMap IdMap) (pa
 			Op:    nodetype.Op,
 		}, nil
 
-	case *parser.ASTConstant:
+	case parser.ASTConst:
 		return nodetype, nil
 
 		// case *parser.ASTIdent:

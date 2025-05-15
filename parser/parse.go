@@ -6,7 +6,7 @@ import (
 
 	"github.com/your-moon/mn_compiler_go_version/errors"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
-	"github.com/your-moon/mn_compiler_go_version/utfconvert"
+	"github.com/your-moon/mn_compiler_go_version/util/utfconvert"
 )
 
 type Parser struct {
@@ -311,11 +311,15 @@ func (p *Parser) parseParams() ([]Param, error) {
 			p.appendError(ErrMissingIdentifier)
 			return nil, errors.New(ErrMissingIdentifier, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
 		}
+		paramType, err := p.parseType()
+		if err != nil {
+			p.appendError(err.Error())
+		}
 
 		params = append(params, Param{
 			Token: p.peekToken,
 			Ident: *ident,
-			Type:  p.peekToken.Type,
+			Type:  paramType,
 		})
 		p.nextToken()
 
@@ -327,12 +331,17 @@ func (p *Parser) parseParams() ([]Param, error) {
 	return params, nil
 }
 
-func (p *Parser) parseType() (lexer.TokenType, error) {
-	if !p.peekIs(lexer.INT_TYPE) && !p.peekIs(lexer.VOID) {
-		return lexer.ERROR, errors.New(ErrMissingIntType, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
+func (p *Parser) parseType() (Type, error) {
+	switch p.peekToken.Type {
+	case lexer.INT_TYPE:
+		return &IntType{}, nil
+	case lexer.LONG:
+		return &LongType{}, nil
+	case lexer.VOID:
+		return &VoidType{}, nil
+	default:
+		return &VoidType{}, errors.New(ErrMissingIntType, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
 	}
-
-	return p.peekToken.Type, nil
 }
 
 func (p *Parser) parseVarDecl() *VarDecl {
@@ -351,10 +360,10 @@ func (p *Parser) parseVarDecl() *VarDecl {
 	p.nextToken()
 
 	if p.checkOptional(lexer.COLON) {
-		if !p.expect(lexer.INT_TYPE) {
-			p.appendError(ErrMissingIntType)
-			return nil
-		}
+		varType, err := p.parseType()
+		p.appendError(err.Error())
+		ast.VarType = varType
+		return nil
 	}
 
 	if p.checkOptional(lexer.ASSIGN) {
@@ -483,7 +492,7 @@ func (p *Parser) parseFactor() ASTExpression {
 	case lexer.IDENT:
 		return p.parseIdent()
 	case lexer.NUMBER:
-		return p.parseIntLit()
+		return p.parseConst()
 	case lexer.MINUS, lexer.TILDE, lexer.NOT:
 		return p.parseUnary(next.Type)
 	case lexer.OPEN_PAREN:
@@ -742,11 +751,22 @@ func (p *Parser) parseIdent() ASTExpression {
 	}
 }
 
-func (p *Parser) parseIntLit() ASTExpression {
+func (p *Parser) parseConst() ASTConst {
 	next := p.peekToken
 	p.nextToken()
-	intVal, _ := strconv.ParseInt(*next.Value, 0, 64)
-	return &ASTConstant{Token: next, Value: intVal}
+
+	intVal, err := strconv.ParseInt(*next.Value, 0, 64)
+	if err != nil {
+		p.appendError("cant parse number")
+		return nil
+	}
+
+	intVal, err = strconv.ParseInt(*next.Value, 0, 32)
+	if err != nil {
+		return &ASTConstLong{Token: next, Value: intVal}
+	}
+
+	return &ASTConstInt{Token: next, Value: intVal}
 }
 
 func (p *Parser) peekPrecedence() int {

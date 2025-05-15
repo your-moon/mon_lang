@@ -16,8 +16,8 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/parser"
 	semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
 	"github.com/your-moon/mn_compiler_go_version/tackygen"
-	"github.com/your-moon/mn_compiler_go_version/unique"
 	"github.com/your-moon/mn_compiler_go_version/util"
+	"github.com/your-moon/mn_compiler_go_version/util/unique"
 )
 
 type Command struct {

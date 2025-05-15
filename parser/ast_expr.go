@@ -64,6 +64,13 @@ func (op ASTBinOp) String() string {
 	}
 }
 
+type ASTCast struct {
+	TargetType Type
+	Expr       ASTExpression
+}
+
+func (a *ASTCast) expressionNode() {}
+
 type ASTFnCall struct {
 	Token lexer.Token
 	Ident string
@@ -111,14 +118,34 @@ func (a *ASTConditional) PrintAST(depth int) string {
 	return out.String()
 }
 
-type ASTConstant struct {
+type ASTConst interface {
+	constant()
+	expressionNode()
+	TokenLiteral() string
+	PrintAST(depth int) string
+}
+
+type ASTConstInt struct {
 	Token lexer.Token
 	Value int64
 }
 
-func (a *ASTConstant) expressionNode()      {}
-func (a *ASTConstant) TokenLiteral() string { return string(a.Token.Type) }
-func (a *ASTConstant) PrintAST(depth int) string {
+func (a *ASTConstInt) expressionNode()      {}
+func (a *ASTConstInt) constant()            {}
+func (a *ASTConstInt) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTConstInt) PrintAST(depth int) string {
+	return fmt.Sprintf("%d", a.Value)
+}
+
+type ASTConstLong struct {
+	Token lexer.Token
+	Value int64
+}
+
+func (a *ASTConstLong) expressionNode()      {}
+func (a *ASTConstLong) constant()            {}
+func (a *ASTConstLong) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTConstLong) PrintAST(depth int) string {
 	return fmt.Sprintf("%d", a.Value)
 }
 

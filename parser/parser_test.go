@@ -41,7 +41,7 @@ func TestParseSimple(t *testing.T) {
 	if !ok {
 		t.Error("Expected return statement")
 	} else {
-		constant, ok := returnStmt.ReturnValue.(*ASTConstant)
+		constant, ok := returnStmt.ReturnValue.(*ASTConstInt)
 		if !ok {
 			t.Error("Expected constant in return statement")
 		} else if constant.Value != 5 {
@@ -267,7 +267,7 @@ func TestOperatorPrecedence(t *testing.T) {
 				if bin.Op != ASTBinOp(A_PLUS) {
 					t.Errorf("Expected root operator to be +, got %v", bin.Op)
 				}
-				left, ok := bin.Left.(*ASTConstant)
+				left, ok := bin.Left.(*ASTConstInt)
 				if !ok || left.Value != 10 {
 					t.Error("Expected left operand to be constant 10")
 				}
@@ -275,11 +275,11 @@ func TestOperatorPrecedence(t *testing.T) {
 				if !ok || right.Op != ASTBinOp(A_MUL) {
 					t.Error("Expected right operand to be multiplication")
 				}
-				rightLeft, ok := right.Left.(*ASTConstant)
+				rightLeft, ok := right.Left.(*ASTConstInt)
 				if !ok || rightLeft.Value != 3 {
 					t.Error("Expected first multiplicand to be 3")
 				}
-				rightRight, ok := right.Right.(*ASTConstant)
+				rightRight, ok := right.Right.(*ASTConstInt)
 				if !ok || rightRight.Value != 5 {
 					t.Error("Expected second multiplicand to be 5")
 				}
@@ -300,7 +300,7 @@ func TestOperatorPrecedence(t *testing.T) {
 					t.Error("Expected left to be addition")
 				}
 
-				leftLeft, ok := left.Left.(*ASTConstant)
+				leftLeft, ok := left.Left.(*ASTConstInt)
 				if !ok || leftLeft.Value != 10 {
 					t.Error("Expected leftmost operand to be 10")
 				}
@@ -330,7 +330,7 @@ func TestOperatorPrecedence(t *testing.T) {
 					t.Error("Expected addition in parentheses")
 				}
 
-				right, ok := bin.Right.(*ASTConstant)
+				right, ok := bin.Right.(*ASTConstInt)
 				if !ok || right.Value != 5 {
 					t.Error("Expected right operand to be 5")
 				}

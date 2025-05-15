@@ -5,7 +5,7 @@ import (
 
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 	"github.com/your-moon/mn_compiler_go_version/parser"
-	"github.com/your-moon/mn_compiler_go_version/unique"
+	"github.com/your-moon/mn_compiler_go_version/util/unique"
 )
 
 type TackyGen struct {
@@ -516,8 +516,17 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs = append(irs, rhsIrs...)
 		irs = append(irs, Copy{Src: rhsResult, Dst: Var{Name: astVar.Ident}})
 		return Var{Name: astVar.Ident}, irs
-	case *parser.ASTConstant:
-		return Constant{Value: int(expr.Value)}, []Instruction{}
+	case parser.ASTConst:
+		switch consttype := expr.(type) {
+		case *parser.ASTConstInt:
+			return Constant{Value: int(consttype.Value)}, []Instruction{}
+		case *parser.ASTConstLong:
+			return Constant{Value: int(consttype.Value)}, []Instruction{}
+		default:
+			panic("unimplemented type")
+
+		}
+
 	case *parser.ASTUnary:
 		irs := []Instruction{}
 		src, srcIrs := c.EmitExpr(expr.Inner)

@@ -6,7 +6,7 @@ import (
 	compilererrors "github.com/your-moon/mn_compiler_go_version/errors"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 	"github.com/your-moon/mn_compiler_go_version/parser"
-	"github.com/your-moon/mn_compiler_go_version/unique"
+	"github.com/your-moon/mn_compiler_go_version/util/unique"
 )
 
 const (

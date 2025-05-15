@@ -9,7 +9,7 @@ import (
 type Param struct {
 	Token lexer.Token
 	Ident string
-	Type  lexer.TokenType
+	Type  Type
 }
 
 func (p *Param) PrintAST(depth int) string {
@@ -26,7 +26,7 @@ type FnDecl struct {
 	IsPublic   bool
 	IsExtern   bool
 	Params     []Param
-	ReturnType lexer.TokenType
+	ReturnType Type
 	Body       *ASTBlock
 }
 
@@ -94,9 +94,10 @@ func (d *FnDecl) PrintAST(depth int) string {
 }
 
 type VarDecl struct {
-	Token lexer.Token
-	Ident string
-	Expr  ASTExpression
+	Token   lexer.Token
+	Ident   string
+	VarType Type
+	Expr    ASTExpression
 }
 
 func (d *VarDecl) declNode() {}

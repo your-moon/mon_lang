@@ -8,6 +8,22 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
 
+type Type interface {
+	mtype()
+}
+
+type IntType struct{}
+
+func (i *IntType) mtype() {}
+
+type LongType struct{}
+
+func (i *LongType) mtype() {}
+
+type VoidType struct{}
+
+func (i *VoidType) mtype() {}
+
 type BlockItem interface {
 	PrintAST(depth int) string
 }

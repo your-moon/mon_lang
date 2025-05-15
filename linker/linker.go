@@ -114,3 +114,10 @@ func (l *Linker) Link() error {
 func (l *Linker) MakeExecutable() error {
 	return os.Chmod(l.outputFile, 0755)
 }
+
+func (l *Linker) Run() error {
+	cmd := exec.Command(l.outputFile)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}

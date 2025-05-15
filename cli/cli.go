@@ -32,6 +32,7 @@ type CLI struct {
 	help       bool
 	genAsm     bool
 	genObj     bool
+	run        bool
 	outputFile string
 }
 
@@ -106,7 +107,8 @@ func (c *CLI) Run(args []string) error {
 	fs.BoolVar(&c.help, "help", false, "команд туслах харуулах")
 	fs.BoolVar(&c.genAsm, "asm", false, "assembly файл үүсгэх")
 	fs.BoolVar(&c.genObj, "obj", false, "object файл үүсгэх")
-	fs.StringVar(&c.outputFile, "o", "", "гаралтын файлын нэр (анхдагч: оролтын файлын нэр)")
+	fs.BoolVar(&c.run, "run", false, "компиляц хийгээд ажиллуулах")
+	fs.StringVar(&c.outputFile, "o", "", "гаралтын файлын нэр)")
 
 	fileArg := ""
 	flagArgs := args
@@ -159,6 +161,7 @@ func (c *CLI) printUsage() {
 	fmt.Println("  --help     Дэлгэрэнгүй тусламж харуулах")
 	fmt.Println("  --asm      Assembly файл үүсгэх")
 	fmt.Println("  --obj      Object файл үүсгэх")
+	fmt.Println("  --run      Compile and run the program")
 	fmt.Println("  -o         Гаралтын файлын нэр")
 }
 
@@ -190,6 +193,8 @@ func (c *CLI) printDetailedHelp() {
 	fmt.Println("            Жишээ: compiler gen input.mn --asm")
 	fmt.Println("\n  --obj     Object файл үүсгэх")
 	fmt.Println("            Жишээ: compiler gen input.mn --obj")
+	fmt.Println("\n  --run     Компиляцын ард програм ажиллуулах")
+	fmt.Println("            Жишээ: compiler gen input.mn --run")
 	fmt.Println("\n  -o        Гаралтын файлын нэр")
 	fmt.Println("            Жишээ: compiler gen input.mn -o output")
 
@@ -462,6 +467,12 @@ func (c *CLI) runGen(args []string) error {
 	if !c.genAsm && !c.genObj {
 		if err := linker.MakeExecutable(); err != nil {
 			return fmt.Errorf("Error making executable: %v", err)
+		}
+
+		if c.run {
+			if err := linker.Run(); err != nil {
+				return fmt.Errorf("Error running program: %v", err)
+			}
 		}
 	}
 

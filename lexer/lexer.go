@@ -100,6 +100,9 @@ func (s *Scanner) BuildToken(ttype TokenType) Token {
 
 func (s *Scanner) ToKeyword() (Token, bool) {
 	str := string(s.Source[s.Start:s.Cursor])
+	if str == string(KeywordLong) {
+		return s.BuildToken(LONG), true
+	}
 	if str == string(KeywordExtern) {
 		return s.BuildToken(EXTERN), true
 	}

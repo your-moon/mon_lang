@@ -47,6 +47,7 @@ const (
 
 	IDENT       TokenType = "IDENT"
 	NUMBER      TokenType = "NUMBER"
+	LONG        TokenType = "LONG"
 	FN          TokenType = "FN"
 	DECL        TokenType = "DECL"
 	OPEN_PAREN  TokenType = "OPEN_PAREN"

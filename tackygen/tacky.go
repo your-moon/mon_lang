@@ -47,6 +47,24 @@ func (v Var) val() string {
 	return v.Name
 }
 
+type Truncate struct {
+	Src TackyVal
+	Dst TackyVal
+}
+
+func (s Truncate) Ir() {
+	fmt.Printf("%s truncate:= %s\n", s.Dst.val(), s.Src.val())
+}
+
+type SignExtend struct {
+	Src TackyVal
+	Dst TackyVal
+}
+
+func (s SignExtend) Ir() {
+	fmt.Printf("%s signextend:= %s\n", s.Dst.val(), s.Src.val())
+}
+
 type Copy struct {
 	Src TackyVal
 	Dst TackyVal

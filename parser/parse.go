@@ -311,6 +311,7 @@ func (p *Parser) parseParams() ([]Param, error) {
 			p.appendError(ErrMissingIdentifier)
 			return nil, errors.New(ErrMissingIdentifier, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
 		}
+
 		paramType, err := p.parseType()
 		if err != nil {
 			p.appendError(err.Error())

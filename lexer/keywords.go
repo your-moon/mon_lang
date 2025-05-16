@@ -23,6 +23,6 @@ const (
 	KeywordNot    Keyword = "үгүй"
 	//type
 	KeywordInt  Keyword = "тоо"
-	KeywordLong Keyword = "64тоо"
+	KeywordLong Keyword = "тоо64"
 	KeywordVoid Keyword = "хоосон"
 )

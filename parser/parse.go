@@ -362,7 +362,9 @@ func (p *Parser) parseVarDecl() *VarDecl {
 
 	if p.checkOptional(lexer.COLON) {
 		varType, err := p.parseType()
-		p.appendError(err.Error())
+		if err != nil {
+			p.appendError(err.Error())
+		}
 		ast.VarType = varType
 		return nil
 	}

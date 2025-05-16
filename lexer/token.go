@@ -50,7 +50,7 @@ const (
 	NUMBER      TokenType = "NUMBER"
 	LONG        TokenType = "LONG"
 	FN          TokenType = "FN"
-	DECL        TokenType = "DECL"
+	VAR_DECL    TokenType = "DECL"
 	OPEN_PAREN  TokenType = "OPEN_PAREN"
 	CLOSE_PAREN TokenType = "CLOSE_PAREN"
 	RIGHT_ARROW TokenType = "RIGHT_ARROW"

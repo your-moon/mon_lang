@@ -27,36 +27,32 @@ func NewParser(source []int32) *Parser {
 	return p
 }
 
-func (p *Parser) isSpecificToken(token lexer.TokenType) bool {
-	return token == lexer.EXTERN || token == lexer.STATIC
-}
-
 func (p *Parser) ParseProgram() (*ASTProgram, error) {
 	program := &ASTProgram{}
 
 	for p.current.Type != lexer.EOF {
 		switch p.current.Type {
-		case lexer.EXTERN:
-			stmt := p.parseExtern()
-			if stmt != nil {
-				program.Decls = append(program.Decls, stmt)
-			}
 		case lexer.IMPORT:
 			stmt := p.parseImport()
 			if stmt != nil {
 				program.Decls = append(program.Decls, stmt)
 			}
 			p.nextToken()
-		case lexer.PUBLIC:
-			p.nextToken()
-			stmt := p.parseFnDecl(true)
+		case lexer.EXTERN:
+			stmt := p.parseDecl(false, true)
 			if stmt != nil {
 				program.Decls = append(program.Decls, stmt)
 			}
-		case lexer.FN:
-			stmt := p.parseFnDecl(false)
+		case lexer.PUBLIC:
+			p.nextToken()
+			stmt := p.parseDecl(true, false)
 			if stmt != nil {
 				program.Decls = append(program.Decls, stmt)
+			}
+		default:
+			decl := p.parseDecl(false, false)
+			if decl != nil {
+				program.Decls = append(program.Decls, decl)
 			}
 		}
 		p.nextToken()
@@ -69,6 +65,17 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 	}
 
 	return program, nil
+}
+
+func (p *Parser) parseDecl(globl bool, extern bool) ASTDecl {
+	switch p.peekToken.Type {
+	case lexer.FN:
+		return p.parseFnDecl(globl, extern)
+	case lexer.VAR_DECL:
+		return p.parseVarDecl(globl, extern)
+	default:
+		panic("unimplemented token")
+	}
 }
 
 func (p *Parser) parseImport() *ASTImport {
@@ -96,27 +103,27 @@ func (p *Parser) parseImport() *ASTImport {
 	return ast
 }
 
-func (p *Parser) parseExtern() *ASTExtern {
-	ast := &ASTExtern{
-		Token: p.current,
-	}
-
-	p.nextToken()
-	fn := p.parseFnDecl(true)
-	if fn == nil {
-		p.appendError("функц байх ёстой")
-		return nil
-	}
-
-	ast.FnDecl = fn
-
-	return ast
-}
+// func (p *Parser) parseExtern() *ASTExtern {
+// 	ast := &ASTExtern{
+// 		Token: p.current,
+// 	}
+//
+// 	p.nextToken()
+// 	decl := p.parseDecl(false)
+// 	if decl == nil {
+// 		p.appendError("функц байх ёстой")
+// 		return nil
+// 	}
+//
+// 	ast.Decl = decl
+//
+// 	return ast
+// }
 
 func (p *Parser) parseBlockItem() BlockItem {
 	switch p.peekToken.Type {
-	case lexer.DECL:
-		return p.parseVarDecl()
+	case lexer.VAR_DECL:
+		return p.parseVarDecl(false, false)
 	case lexer.FN:
 		p.appendError("функц дотор функц үүсгэж болохгүй")
 		return nil
@@ -211,10 +218,11 @@ func (p *Parser) parseBlockItems() []BlockItem {
 }
 
 // <function> ::= "функц" <identifier> "(" [ <params> ] ")" "->" "тоо" "{" { <block-item> } "}"
-func (p *Parser) parseFnDecl(isPublic bool) *FnDecl {
+func (p *Parser) parseFnDecl(isPublic bool, isExtern bool) *FnDecl {
 	ast := &FnDecl{
 		Token:    p.current,
 		IsPublic: isPublic,
+		IsExtern: isExtern,
 	}
 
 	if p.peekToken.Value == nil {
@@ -308,8 +316,11 @@ func (p *Parser) parseType() (Type, error) {
 	}
 }
 
-func (p *Parser) parseVarDecl() *VarDecl {
-	ast := &VarDecl{}
+func (p *Parser) parseVarDecl(globl bool, extern bool) *VarDecl {
+	ast := &VarDecl{
+		IsExtern: extern,
+		IsPublic: globl,
+	}
 
 	p.nextToken() // consume 'зарла'
 
@@ -740,39 +751,6 @@ func (p *Parser) peekPrecedence() int {
 		return prec
 	}
 	return Lowest
-}
-
-func (p *Parser) parseOptionalExpr() ASTExpression {
-	currentToken := p.current
-	peekToken := p.peekToken
-
-	expr := p.parseExpr(Lowest)
-
-	if expr == nil {
-		p.current = currentToken
-		p.peekToken = peekToken
-		return nil
-	}
-
-	return expr
-}
-
-func (p *Parser) parseOptionalExprWithDelimiter(delimiter lexer.TokenType) ASTExpression {
-	if p.peekIs(delimiter) {
-		p.nextToken() // consume the delimiter
-		return nil
-	}
-
-	expr := p.parseExpr(Lowest)
-	if expr == nil {
-		return nil
-	}
-
-	if !p.expect(delimiter) {
-		return nil
-	}
-
-	return expr
 }
 
 func (p *Parser) Errors() []error {

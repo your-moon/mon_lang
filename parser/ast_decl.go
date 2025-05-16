@@ -21,13 +21,14 @@ func (p *Param) PrintAST(depth int) string {
 }
 
 type FnDecl struct {
-	Token      lexer.Token
-	Ident      string
-	IsPublic   bool
-	IsExtern   bool
-	Params     []Param
-	ReturnType Type
-	Body       *ASTBlock
+	Token        lexer.Token
+	Ident        string
+	IsPublic     bool
+	IsExtern     bool
+	Params       []Param
+	ReturnType   Type
+	Body         *ASTBlock
+	StorageClass StorageClass
 }
 
 func (d *FnDecl) declNode() {}
@@ -94,10 +95,13 @@ func (d *FnDecl) PrintAST(depth int) string {
 }
 
 type VarDecl struct {
-	Token   lexer.Token
-	Ident   string
-	VarType Type
-	Expr    ASTExpression
+	Token        lexer.Token
+	Ident        string
+	VarType      Type
+	Expr         ASTExpression
+	StorageClass StorageClass
+	IsExtern     bool
+	IsPublic     bool
 }
 
 func (d *VarDecl) declNode() {}

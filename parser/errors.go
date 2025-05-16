@@ -56,7 +56,7 @@ var tokenTranslations = map[lexer.TokenType]string{
 	lexer.IF:               "хэрэв",
 	lexer.IFNOT:            "бол",
 	lexer.RETURN:           "буц",
-	lexer.DECL:             "зарла",
+	lexer.VAR_DECL:         "зарла",
 }
 
 // Error message formatters

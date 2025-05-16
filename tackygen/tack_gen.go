@@ -57,25 +57,25 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 		switch stmttype := stmt.(type) {
 		case *parser.FnDecl:
 			program.FnDefs = append(program.FnDefs, c.EmitTackyFn(stmttype))
-		case *parser.ASTExtern:
-			program.ExternDefs = append(program.ExternDefs, c.EmitTackyExtern(stmttype))
+			// case *parser.ASTExtern:
+			// 	program.ExternDefs = append(program.ExternDefs, c.EmitTackyExtern(stmttype))
 		}
 	}
 
 	return program
 }
 
-func (c *TackyGen) EmitTackyExtern(node *parser.ASTExtern) TackyExternFn {
-	return c.EmitTackyExternFn(node)
-}
+// func (c *TackyGen) EmitTackyExtern(node *parser.ASTExtern) TackyExternFn {
+// 	return c.EmitTackyExternFn(node)
+// }
 
-func (c *TackyGen) EmitTackyExternFn(node *parser.ASTExtern) TackyExternFn {
-	params := []TackyVal{}
-	for _, param := range node.FnDecl.Params {
-		params = append(params, c.EmitTackyParam(&param))
-	}
-	return TackyExternFn{Name: node.FnDecl.Ident, Params: params}
-}
+// func (c *TackyGen) EmitTackyExternFn(node *parser.ASTExtern) TackyExternFn {
+// 	params := []TackyVal{}
+// 	for _, param := range node.FnDecl.Params {
+// 		params = append(params, c.EmitTackyParam(&param))
+// 	}
+// 	return TackyExternFn{Name: node.FnDecl.Ident, Params: params}
+// }
 
 func (c *TackyGen) EmitTackyParam(node *parser.Param) TackyVal {
 	return Var{Name: node.Ident}

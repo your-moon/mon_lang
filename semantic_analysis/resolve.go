@@ -22,6 +22,7 @@ type VarEntry struct {
 	UniqueName       string
 	fromCurrentScope bool
 	hasLinkage       bool
+	StorageClass     parser.StorageClass
 }
 type VariableMap struct {
 	idMap map[string]VarEntry
@@ -79,29 +80,49 @@ func (r *Resolver) resolveParams(params []parser.Param, innerMap map[string]VarE
 func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, error) {
 	emptyMap := make(IdMap)
 	for i, decl := range program.Decls {
-		switch decltype := decl.(type) {
-		case *parser.FnDecl:
-			_, fndecl, err := r.ResolveFnDecl(*decltype, emptyMap)
-			if err != nil {
-				return nil, err
-			}
-			program.Decls[i] = &fndecl
-		case *parser.ASTExtern:
-			_, fndecl, err := r.ResolveFnDecl(*decltype.FnDecl, emptyMap)
-			if err != nil {
-				return nil, err
-			}
-			decltype.FnDecl = &fndecl
-			program.Decls[i] = decltype
+		_, decl, err := r.ResolveDecl(decl, emptyMap)
+		if err != nil {
+			return nil, err
 		}
+		program.Decls[i] = decl
 	}
 
 	return program, nil
 }
 
-func (r *Resolver) ResolveFnDecl(fndecl parser.FnDecl, innerMap IdMap) (IdMap, parser.FnDecl, error) {
+func (r *Resolver) ResolveDecl(decl parser.ASTDecl, innerMap IdMap) (IdMap, parser.ASTDecl, error) {
+	switch declType := decl.(type) {
+	case *parser.FnDecl:
+		return r.ResolveFnDecl(declType, innerMap)
+	case *parser.VarDecl:
+		return r.ResolveFileScopeVarDecl(declType, innerMap)
+	default:
+		panic("unimplemented decl type on resolve")
+	}
+}
+
+func (r *Resolver) ResolveFileScopeVarDecl(varDecl *parser.VarDecl, innerMap IdMap) (IdMap, *parser.VarDecl, error) {
+	if _, exists := innerMap[varDecl.Ident]; exists && innerMap[varDecl.Ident].fromCurrentScope {
+		return nil, nil, r.createSemanticError(
+			fmt.Sprintf(compilererrors.ErrDuplicateVariable, varDecl.Ident),
+			varDecl.Token.Line,
+			varDecl.Token.Span,
+		)
+	}
+
+	uniqueName := r.makeNamedTemporary(varDecl.Ident)
+	innerMap[varDecl.Ident] = VarEntry{
+		UniqueName:       uniqueName,
+		fromCurrentScope: true,
+		hasLinkage:       true,
+	}
+
+	return innerMap, varDecl, nil
+
+}
+func (r *Resolver) ResolveFnDecl(fndecl *parser.FnDecl, innerMap IdMap) (IdMap, *parser.FnDecl, error) {
 	if found, exists := innerMap[fndecl.Ident]; exists && found.fromCurrentScope && !found.hasLinkage {
-		return nil, parser.FnDecl{}, r.createSemanticError(
+		return nil, nil, r.createSemanticError(
 			fmt.Sprintf(compilererrors.ErrDuplicateFnDecl, fndecl.Ident),
 			fndecl.Token.Line,
 			fndecl.Token.Span,
@@ -118,7 +139,7 @@ func (r *Resolver) ResolveFnDecl(fndecl parser.FnDecl, innerMap IdMap) (IdMap, p
 
 	solvedInnerMap, resolvedParams, err := r.resolveParams(fndecl.Params, newMap)
 	if err != nil {
-		return nil, parser.FnDecl{}, err
+		return nil, nil, err
 	}
 
 	fndecl.Params = resolvedParams
@@ -126,7 +147,7 @@ func (r *Resolver) ResolveFnDecl(fndecl parser.FnDecl, innerMap IdMap) (IdMap, p
 	if fndecl.Body != nil {
 		body, err := r.ResolveBlock(fndecl.Body, solvedInnerMap)
 		if err != nil {
-			return nil, parser.FnDecl{}, err
+			return nil, nil, err
 		}
 		fndecl.Body = body
 		return solvedInnerMap, fndecl, nil
@@ -137,12 +158,16 @@ func (r *Resolver) ResolveFnDecl(fndecl parser.FnDecl, innerMap IdMap) (IdMap, p
 
 // resolveLocalVarHelper is used to resolve local variables in a function
 func (r *Resolver) resolveLocalVarHelper(innerMap map[string]VarEntry, varDecl *parser.VarDecl) (map[string]VarEntry, string, error) {
-	if _, exists := innerMap[varDecl.Ident]; exists && innerMap[varDecl.Ident].fromCurrentScope {
-		return nil, "", r.createSemanticError(
-			fmt.Sprintf(compilererrors.ErrDuplicateVariable, varDecl.Ident),
-			varDecl.Token.Line,
-			varDecl.Token.Span,
-		)
+	if existVar, exists := innerMap[varDecl.Ident]; exists && innerMap[varDecl.Ident].fromCurrentScope {
+		_, strclass := existVar.StorageClass.(*parser.Extern)
+		// end linkage bish bolon external bish uyd
+		if !existVar.hasLinkage && !strclass {
+			return nil, "", r.createSemanticError(
+				fmt.Sprintf(compilererrors.ErrDuplicateVariable, varDecl.Ident),
+				varDecl.Token.Line,
+				varDecl.Token.Span,
+			)
+		}
 	}
 
 	uniqueName := r.makeNamedTemporary(varDecl.Ident)

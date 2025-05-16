@@ -2,11 +2,22 @@ package parser
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 )
+
+type StorageClass interface {
+	storage()
+}
+
+type Static struct{}
+
+func (i *Static) storage() {}
+
+type Extern struct{}
+
+func (i *Extern) storage() {}
 
 type Type interface {
 	mtype()
@@ -52,21 +63,21 @@ type ASTDecl interface {
 	declNode()
 }
 
-type ASTExtern struct {
-	ASTNode
-	Token  lexer.Token
-	FnDecl *FnDecl
-}
-
-func (a *ASTExtern) TokenLiteral() string {
-	return a.FnDecl.TokenLiteral()
-}
-
-func (a *ASTExtern) PrintAST(depth int) string {
-	return fmt.Sprintf("%sExtern: %s", indent(depth), a.FnDecl.TokenLiteral()+"\n")
-}
-
-func (a *ASTExtern) declNode() {}
+// type ASTExtern struct {
+// 	ASTNode
+// 	Token lexer.Token
+// 	Decl  ASTDecl
+// }
+//
+// func (a *ASTExtern) TokenLiteral() string {
+// 	return a.Decl.TokenLiteral()
+// }
+//
+// func (a *ASTExtern) PrintAST(depth int) string {
+// 	return fmt.Sprintf("%sExtern: %s", indent(depth), a.Decl.TokenLiteral()+"\n")
+// }
+//
+// func (a *ASTExtern) declNode() {}
 
 type ASTImport struct {
 	ASTNode

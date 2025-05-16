@@ -30,20 +30,20 @@ func (c *TypeChecker) Check(program *parser.ASTProgram) (*parser.ASTProgram, err
 			if err := c.checkFnDecl(decltype); err != nil {
 				return program, err
 			}
-		case *parser.ASTExtern:
-			if err := c.checkExternFnDecl(decltype); err != nil {
-				return program, err
-			}
+			// case *parser.ASTExtern:
+			// 	if err := c.checkExternFnDecl(decltype); err != nil {
+			// 		return program, err
+			// 	}
 		}
 	}
 	return program, nil
 }
 
-func (c *TypeChecker) checkExternFnDecl(decl *parser.ASTExtern) error {
-	fnType := &FnType{ParamCount: len(decl.FnDecl.Params)}
-	c.symbolTable.AddFn(fnType, decl.FnDecl.Ident, false)
-	return nil
-}
+// func (c *TypeChecker) checkExternFnDecl(decl *parser.ASTExtern) error {
+// 	fnType := &FnType{ParamCount: len(decl.FnDecl.Params)}
+// 	c.symbolTable.AddFn(fnType, decl.FnDecl.Ident, false)
+// 	return nil
+// }
 
 func (c *TypeChecker) checkFnDecl(decl *parser.FnDecl) error {
 	fnType := &FnType{ParamCount: len(decl.Params)}

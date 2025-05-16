@@ -156,7 +156,7 @@ func (s *Scanner) ToKeyword() (Token, bool) {
 		return s.BuildToken(FN), true
 	}
 	if str == string(KeywordDecl) {
-		return s.BuildToken(DECL), true
+		return s.BuildToken(VAR_DECL), true
 	}
 	if str == string(KeywordInt) {
 		return s.BuildToken(INT_TYPE), true

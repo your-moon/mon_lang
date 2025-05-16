@@ -5,6 +5,7 @@ type Keyword string
 const (
 	//for compiler its english
 	KeywordExtern Keyword = "extern"
+	KeywordStatic Keyword = "статик"
 
 	KeywordImport   Keyword = "импорт"
 	KeywordPublic   Keyword = "тунх"

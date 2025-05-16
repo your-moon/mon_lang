@@ -44,6 +44,7 @@ const (
 	PUBLIC TokenType = "PUBLIC"
 	IMPORT TokenType = "IMPORT"
 	EXTERN TokenType = "EXTERN"
+	STATIC TokenType = "STATIC"
 
 	IDENT       TokenType = "IDENT"
 	NUMBER      TokenType = "NUMBER"

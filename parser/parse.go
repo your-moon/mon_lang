@@ -27,45 +27,8 @@ func NewParser(source []int32) *Parser {
 	return p
 }
 
-func (p *Parser) Errors() []error {
-	return p.parseErrors
-}
-
-func (p *Parser) nextToken() {
-	p.current = p.peekToken
-	p.peekToken, _ = p.scanner.Scan()
-}
-
-func (p *Parser) checkOptional(expected lexer.TokenType) bool {
-	if p.peekToken.Type == expected {
-		p.nextToken()
-		return true
-	}
-	return false
-}
-
-func (p *Parser) expect(expected lexer.TokenType) bool {
-	if p.peekToken.Type == expected {
-		p.nextToken()
-		return true
-	}
-	p.peekError(expected)
-	return false
-}
-
-func (p *Parser) peekIs(expected lexer.TokenType) bool {
-	return p.peekToken.Type == expected
-}
-
-func (p *Parser) appendError(message string) {
-	err := errors.New(message, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
-	p.parseErrors = append(p.parseErrors, err)
-}
-
-func (p *Parser) peekError(t lexer.TokenType) {
-	message := formatExpectedNextToken(t)
-	err := errors.New(message, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
-	p.parseErrors = append(p.parseErrors, err)
+func (p *Parser) isSpecificToken(token lexer.TokenType) bool {
+	return token == lexer.EXTERN || token == lexer.STATIC
 }
 
 func (p *Parser) ParseProgram() (*ASTProgram, error) {
@@ -810,4 +773,45 @@ func (p *Parser) parseOptionalExprWithDelimiter(delimiter lexer.TokenType) ASTEx
 	}
 
 	return expr
+}
+
+func (p *Parser) Errors() []error {
+	return p.parseErrors
+}
+
+func (p *Parser) nextToken() {
+	p.current = p.peekToken
+	p.peekToken, _ = p.scanner.Scan()
+}
+
+func (p *Parser) checkOptional(expected lexer.TokenType) bool {
+	if p.peekToken.Type == expected {
+		p.nextToken()
+		return true
+	}
+	return false
+}
+
+func (p *Parser) expect(expected lexer.TokenType) bool {
+	if p.peekToken.Type == expected {
+		p.nextToken()
+		return true
+	}
+	p.peekError(expected)
+	return false
+}
+
+func (p *Parser) peekIs(expected lexer.TokenType) bool {
+	return p.peekToken.Type == expected
+}
+
+func (p *Parser) appendError(message string) {
+	err := errors.New(message, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
+	p.parseErrors = append(p.parseErrors, err)
+}
+
+func (p *Parser) peekError(t lexer.TokenType) {
+	message := formatExpectedNextToken(t)
+	err := errors.New(message, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
+	p.parseErrors = append(p.parseErrors, err)
 }

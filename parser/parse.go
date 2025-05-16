@@ -366,7 +366,7 @@ func (p *Parser) parseVarDecl() *VarDecl {
 			p.appendError(err.Error())
 		}
 		ast.VarType = varType
-		return nil
+		p.nextToken()
 	}
 
 	if p.checkOptional(lexer.ASSIGN) {

@@ -23,12 +23,12 @@ func (p *Param) PrintAST(depth int) string {
 type FnDecl struct {
 	Token        lexer.Token
 	Ident        string
-	IsPublic     bool
-	IsExtern     bool
 	Params       []Param
 	ReturnType   Type
 	Body         *ASTBlock
 	StorageClass StorageClass
+	IsPublic     bool
+	IsExtern     bool
 }
 
 func (d *FnDecl) declNode() {}

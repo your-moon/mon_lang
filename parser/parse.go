@@ -39,6 +39,7 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 			}
 			p.nextToken()
 		case lexer.EXTERN:
+			p.nextToken()
 			stmt := p.parseDecl(false, true)
 			if stmt != nil {
 				program.Decls = append(program.Decls, stmt)
@@ -68,7 +69,7 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 }
 
 func (p *Parser) parseDecl(globl bool, extern bool) ASTDecl {
-	switch p.peekToken.Type {
+	switch p.current.Type {
 	case lexer.FN:
 		return p.parseFnDecl(globl, extern)
 	case lexer.VAR_DECL:
@@ -219,6 +220,7 @@ func (p *Parser) parseBlockItems() []BlockItem {
 
 // <function> ::= "функц" <identifier> "(" [ <params> ] ")" "->" "тоо" "{" { <block-item> } "}"
 func (p *Parser) parseFnDecl(isPublic bool, isExtern bool) *FnDecl {
+
 	ast := &FnDecl{
 		Token:    p.current,
 		IsPublic: isPublic,

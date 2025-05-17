@@ -9,7 +9,7 @@
       "program": "main.go",
       "args": [
         "parse",
-        "test/long.mn",
+        "test/fn_call.mn",
         "--debug"
       ]
     }

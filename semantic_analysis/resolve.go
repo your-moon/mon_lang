@@ -159,14 +159,23 @@ func (r *Resolver) ResolveFnDecl(fndecl *parser.FnDecl, innerMap IdMap) (IdMap, 
 // resolveLocalVarHelper is used to resolve local variables in a function
 func (r *Resolver) resolveLocalVarHelper(innerMap map[string]VarEntry, varDecl *parser.VarDecl) (map[string]VarEntry, string, error) {
 	if existVar, exists := innerMap[varDecl.Ident]; exists && innerMap[varDecl.Ident].fromCurrentScope {
-		_, strclass := existVar.StorageClass.(*parser.Extern)
+		_, extrclass := existVar.StorageClass.(*parser.Extern)
 		// end linkage bish bolon external bish uyd
-		if !existVar.hasLinkage && !strclass {
+		if !existVar.hasLinkage && !extrclass {
 			return nil, "", r.createSemanticError(
 				fmt.Sprintf(compilererrors.ErrDuplicateVariable, varDecl.Ident),
 				varDecl.Token.Line,
 				varDecl.Token.Span,
 			)
+		}
+	}
+
+	_, ok := varDecl.StorageClass.(*parser.Extern)
+	if ok {
+		innerMap[varDecl.Ident] = VarEntry{
+			UniqueName:       varDecl.Ident,
+			fromCurrentScope: true,
+			hasLinkage:       false,
 		}
 	}
 

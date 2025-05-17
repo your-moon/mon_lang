@@ -2,6 +2,7 @@ package semanticanalysis
 
 import (
 	"github.com/your-moon/mn_compiler_go_version/parser"
+	"github.com/your-moon/mn_compiler_go_version/symbols"
 	"github.com/your-moon/mn_compiler_go_version/util/unique"
 )
 
@@ -11,15 +12,15 @@ type SemanticAnalyzer struct {
 	typeChecker *TypeChecker
 }
 
-func NewSemanticAnalyzer(source []int32, uniqueGen unique.UniqueGen) *SemanticAnalyzer {
+func NewSemanticAnalyzer(source []int32, uniqueGen unique.UniqueGen, table *symbols.SymbolTable) *SemanticAnalyzer {
 	return &SemanticAnalyzer{
 		resolver:    NewResolver(source, uniqueGen),
 		labelPass:   NewLoopPass(source),
-		typeChecker: NewTypeChecker(source, uniqueGen),
+		typeChecker: NewTypeChecker(source, uniqueGen, table),
 	}
 }
 
-func (s *SemanticAnalyzer) Analyze(program *parser.ASTProgram) (*parser.ASTProgram, *SymbolTable, error) {
+func (s *SemanticAnalyzer) Analyze(program *parser.ASTProgram) (*parser.ASTProgram, *symbols.SymbolTable, error) {
 	program, err := s.resolver.Resolve(program)
 	if err != nil {
 		return nil, nil, err

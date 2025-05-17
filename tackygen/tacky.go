@@ -152,30 +152,39 @@ type Instruction interface {
 	Ir()
 }
 
-type TackyExternFn struct {
-	Name   string
-	Params []TackyVal
-}
-
-func (f TackyExternFn) Ir() {
-	fmt.Printf("extern %s(", f.Name)
-	for i, param := range f.Params {
-		if i > 0 {
-			fmt.Printf(", ")
-		}
-		fmt.Printf("%s", param.val())
-	}
-	fmt.Printf(")\n")
-}
+// type TackyExternFn struct {
+// 	Name   string
+// 	Params []TackyVal
+// }
+//
+// func (f TackyExternFn) Ir() {
+// 	fmt.Printf("extern %s(", f.Name)
+// 	for i, param := range f.Params {
+// 		if i > 0 {
+// 			fmt.Printf(", ")
+// 		}
+// 		fmt.Printf("%s", param.val())
+// 	}
+// 	fmt.Printf(")\n")
+// }
 
 type TackyFn struct {
 	Name         string
 	Params       []TackyVal
+	IsExtern     bool
+	Global       bool
 	Instructions []Instruction
 }
 
 func (f TackyFn) Ir() {
-	fmt.Printf("fn %s {\n", f.Name)
+	if f.IsExtern {
+		fmt.Printf("extern fn %s \n", f.Name)
+		return
+	} else if f.Global {
+		fmt.Printf("globl fn %s {\n", f.Name)
+	} else {
+		fmt.Printf("fn %s {\n", f.Name)
+	}
 	for _, instr := range f.Instructions {
 		instr.Ir()
 	}

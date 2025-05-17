@@ -1,7 +1,7 @@
 package codegen
 
 import (
-	semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
+	"github.com/your-moon/mn_compiler_go_version/symbols"
 	"github.com/your-moon/mn_compiler_go_version/util"
 )
 
@@ -99,7 +99,7 @@ func (r *ReplacementPassGen) ReplacePseudosInFn(fn AsmFnDef, state ReplacementSt
 	return state, fn
 }
 
-func (r *ReplacementPassGen) ReplacePseudosInProgram(program AsmProgram, symbolTable *semanticanalysis.SymbolTable) AsmProgram {
+func (r *ReplacementPassGen) ReplacePseudosInProgram(program AsmProgram, symbolTable *symbols.SymbolTable) AsmProgram {
 	initState := ReplacementState{
 		CurrentOffset: 0,
 		OffsetMap:     make(map[string]int),

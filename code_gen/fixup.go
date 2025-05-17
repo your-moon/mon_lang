@@ -1,15 +1,15 @@
 package codegen
 
 import (
-	semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
+	"github.com/your-moon/mn_compiler_go_version/symbols"
 	"github.com/your-moon/mn_compiler_go_version/util/roundingutil"
 )
 
 type FixUpPassGen struct {
-	symbolTable *semanticanalysis.SymbolTable
+	symbolTable *symbols.SymbolTable
 }
 
-func NewFixUpPassGen(symbolTable *semanticanalysis.SymbolTable) FixUpPassGen {
+func NewFixUpPassGen(symbolTable *symbols.SymbolTable) FixUpPassGen {
 	return FixUpPassGen{
 		symbolTable: symbolTable,
 	}

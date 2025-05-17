@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/your-moon/mn_compiler_go_version/lexer"
+	"github.com/your-moon/mn_compiler_go_version/mtypes"
 )
 
 type ASTBinOp int
@@ -65,20 +66,24 @@ func (op ASTBinOp) String() string {
 }
 
 type ASTCast struct {
-	TargetType Type
+	TargetType mtypes.Type
 	Expr       ASTExpression
+	Type       mtypes.Type
 }
 
-func (a *ASTCast) expressionNode() {}
+func (a *ASTCast) expressionNode()      {}
+func (a *ASTCast) GetType() mtypes.Type { return a.Type }
 
 type ASTFnCall struct {
 	Token lexer.Token
 	Ident string
 	Args  []ASTExpression
+	Type  mtypes.Type
 }
 
 func (a *ASTFnCall) expressionNode()      {}
 func (a *ASTFnCall) TokenLiteral() string { return "CALL" }
+func (a *ASTFnCall) GetType() mtypes.Type { return a.Type }
 func (a *ASTFnCall) PrintAST(depth int) string {
 	var out bytes.Buffer
 	out.WriteString(fmt.Sprintf("%s%s(", indent(depth), a.Ident))
@@ -97,10 +102,12 @@ type ASTConditional struct {
 	Cond  ASTExpression
 	Then  ASTExpression
 	Else  ASTExpression
+	Type  mtypes.Type
 }
 
 func (a *ASTConditional) expressionNode()      {}
 func (a *ASTConditional) TokenLiteral() string { return "CONDITIONAL" }
+func (a *ASTConditional) GetType() mtypes.Type { return a.Type }
 func (a *ASTConditional) PrintAST(depth int) string {
 	var out bytes.Buffer
 
@@ -123,16 +130,19 @@ type ASTConst interface {
 	expressionNode()
 	TokenLiteral() string
 	PrintAST(depth int) string
+	GetType() mtypes.Type
 }
 
 type ASTConstInt struct {
 	Token lexer.Token
 	Value int64
+	Type  mtypes.Type
 }
 
 func (a *ASTConstInt) expressionNode()      {}
 func (a *ASTConstInt) constant()            {}
 func (a *ASTConstInt) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTConstInt) GetType() mtypes.Type { return a.Type }
 func (a *ASTConstInt) PrintAST(depth int) string {
 	return fmt.Sprintf("%d", a.Value)
 }
@@ -140,11 +150,13 @@ func (a *ASTConstInt) PrintAST(depth int) string {
 type ASTConstLong struct {
 	Token lexer.Token
 	Value int64
+	Type  mtypes.Type
 }
 
 func (a *ASTConstLong) expressionNode()      {}
 func (a *ASTConstLong) constant()            {}
 func (a *ASTConstLong) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTConstLong) GetType() mtypes.Type { return a.Type }
 func (a *ASTConstLong) PrintAST(depth int) string {
 	return fmt.Sprintf("%d", a.Value)
 }
@@ -152,10 +164,12 @@ func (a *ASTConstLong) PrintAST(depth int) string {
 type ASTStringExpression struct {
 	Token lexer.Token
 	Value string
+	Type  mtypes.Type
 }
 
 func (a *ASTStringExpression) expressionNode()      {}
 func (a *ASTStringExpression) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTStringExpression) GetType() mtypes.Type { return a.Type }
 func (a *ASTStringExpression) PrintAST(depth int) string {
 	return fmt.Sprintf("%s└─ String: %s", indent(depth), *a.Token.Value)
 }
@@ -164,10 +178,12 @@ type ASTPrefixExpression struct {
 	Token lexer.Token
 	Right ASTExpression
 	Op    string
+	Type  mtypes.Type
 }
 
 func (a *ASTPrefixExpression) expressionNode()      {}
 func (a *ASTPrefixExpression) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTPrefixExpression) GetType() mtypes.Type { return a.Type }
 func (a *ASTPrefixExpression) PrintAST(depth int) string {
 	var out bytes.Buffer
 
@@ -186,10 +202,12 @@ type ASTBinary struct {
 	Right ASTExpression
 	Left  ASTExpression
 	Op    ASTBinOp
+	Type  mtypes.Type
 }
 
 func (a ASTBinary) expressionNode()      {}
 func (a ASTBinary) TokenLiteral() string { return string(a.Op.String()) }
+func (a ASTBinary) GetType() mtypes.Type { return a.Type }
 func (a ASTBinary) PrintAST(depth int) string {
 	var out bytes.Buffer
 	out.WriteString(fmt.Sprintf("(%s %s %s)",
@@ -203,10 +221,12 @@ type ASTAssignment struct {
 	Token lexer.Token
 	Left  ASTExpression
 	Right ASTExpression
+	Type  mtypes.Type
 }
 
 func (a *ASTAssignment) expressionNode()      {}
 func (a *ASTAssignment) TokenLiteral() string { return "VAR" }
+func (a *ASTAssignment) GetType() mtypes.Type { return a.Type }
 func (a *ASTAssignment) PrintAST(depth int) string {
 	var out bytes.Buffer
 	out.WriteString(fmt.Sprintf("%s = %s",
@@ -219,10 +239,12 @@ type ASTRangeExpr struct {
 	Token lexer.Token
 	Start ASTExpression
 	End   ASTExpression
+	Type  mtypes.Type
 }
 
 func (a *ASTRangeExpr) expressionNode()      {}
 func (a *ASTRangeExpr) TokenLiteral() string { return "RANGE" }
+func (a *ASTRangeExpr) GetType() mtypes.Type { return a.Type }
 func (a *ASTRangeExpr) PrintAST(depth int) string {
 	var out bytes.Buffer
 	out.WriteString(fmt.Sprintf("%sRange Expression:\n", indent(depth)))
@@ -236,10 +258,12 @@ func (a *ASTRangeExpr) PrintAST(depth int) string {
 type ASTVar struct {
 	Token lexer.Token
 	Ident string
+	Type  mtypes.Type
 }
 
 func (a ASTVar) expressionNode()      {}
 func (a ASTVar) TokenLiteral() string { return "VAR" }
+func (a ASTVar) GetType() mtypes.Type { return a.Type }
 func (a ASTVar) PrintAST(depth int) string {
 	var out bytes.Buffer
 	out.WriteString(fmt.Sprintf("%s%s", indent(depth), a.Ident))
@@ -250,10 +274,12 @@ type ASTUnary struct {
 	Token lexer.Token
 	Inner ASTExpression
 	Op    lexer.TokenType
+	Type  mtypes.Type
 }
 
 func (a *ASTUnary) expressionNode()      {}
 func (a *ASTUnary) TokenLiteral() string { return string(a.Op) }
+func (a *ASTUnary) GetType() mtypes.Type { return a.Type }
 func (a *ASTUnary) PrintAST(depth int) string {
 	var out bytes.Buffer
 	out.WriteString(fmt.Sprintf("%s%s",
@@ -267,10 +293,12 @@ type ASTInfixExpression struct {
 	Left  ASTExpression
 	Right ASTExpression
 	Op    string
+	Type  mtypes.Type
 }
 
 func (a *ASTInfixExpression) expressionNode()      {}
 func (a *ASTInfixExpression) TokenLiteral() string { return string(a.Token.Type) }
+func (a *ASTInfixExpression) GetType() mtypes.Type { return a.Type }
 func (a *ASTInfixExpression) PrintAST(depth int) string {
 	var out bytes.Buffer
 

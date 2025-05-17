@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/your-moon/mn_compiler_go_version/lexer"
+	"github.com/your-moon/mn_compiler_go_version/mtypes"
 )
 
 type StorageClass interface {
@@ -19,22 +20,6 @@ type Extern struct{}
 
 func (i *Extern) storage() {}
 
-type Type interface {
-	mtype()
-}
-
-type IntType struct{}
-
-func (i *IntType) mtype() {}
-
-type LongType struct{}
-
-func (i *LongType) mtype() {}
-
-type VoidType struct{}
-
-func (i *VoidType) mtype() {}
-
 type BlockItem interface {
 	PrintAST(depth int) string
 }
@@ -47,6 +32,7 @@ type ASTNode interface {
 type ASTExpression interface {
 	ASTNode
 	expressionNode()
+	GetType() mtypes.Type
 }
 
 type ASTFactor interface {
@@ -62,22 +48,6 @@ type ASTDecl interface {
 	ASTNode
 	declNode()
 }
-
-// type ASTExtern struct {
-// 	ASTNode
-// 	Token lexer.Token
-// 	Decl  ASTDecl
-// }
-//
-// func (a *ASTExtern) TokenLiteral() string {
-// 	return a.Decl.TokenLiteral()
-// }
-//
-// func (a *ASTExtern) PrintAST(depth int) string {
-// 	return fmt.Sprintf("%sExtern: %s", indent(depth), a.Decl.TokenLiteral()+"\n")
-// }
-//
-// func (a *ASTExtern) declNode() {}
 
 type ASTImport struct {
 	ASTNode

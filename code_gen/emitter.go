@@ -4,7 +4,10 @@ import (
 	"fmt"
 
 	"github.com/your-moon/mn_compiler_go_version/base"
-	semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
+	"github.com/your-moon/mn_compiler_go_version/code_gen/asmsymbol"
+	"github.com/your-moon/mn_compiler_go_version/code_gen/asmtype"
+	"github.com/your-moon/mn_compiler_go_version/mtypes"
+	"github.com/your-moon/mn_compiler_go_version/symbols"
 	"github.com/your-moon/mn_compiler_go_version/tackygen"
 )
 
@@ -26,7 +29,7 @@ func NewAsmGen() AsmASTGen {
 	}
 }
 
-func (a *AsmASTGen) GenASTAsm(program tackygen.TackyProgram, symbolTable *semanticanalysis.SymbolTable) AsmProgram {
+func (a *AsmASTGen) GenASTAsm(program tackygen.TackyProgram, symbolTable *symbols.SymbolTable, asmSymbols *asmsymbol.SymbolTable) AsmProgram {
 	asmprogram := AsmProgram{}
 
 	for _, fn := range program.ExternDefs {
@@ -38,6 +41,17 @@ func (a *AsmASTGen) GenASTAsm(program tackygen.TackyProgram, symbolTable *semant
 		asmfn := a.GenASTFn(fn)
 		asmprogram.AsmFnDef = append(asmprogram.AsmFnDef, asmfn)
 	}
+
+	for i, v := range symbolTable.Entries {
+		switch v.Type.(type) {
+		case *mtypes.FnType:
+			asmSymbols.AddFun(i, true)
+		default:
+			convType := a.ConvType(v.Type)
+			asmSymbols.AddVar(i, convType, false)
+		}
+	}
+	// END ON INIT PASS //
 
 	if base.Debug {
 		fmt.Println("---- ASMAST ----:")
@@ -242,8 +256,10 @@ func (a *AsmASTGen) convertFnCall(fn tackygen.FnCall) []AsmInstruction {
 
 func (a *AsmASTGen) GenASTFn(fn tackygen.TackyFn) AsmFnDef {
 	asmfn := AsmFnDef{}
+
 	fn, paramIrs := a.passParams(fn)
 	asmfn.Irs = append(asmfn.Irs, paramIrs...)
+
 	for _, instr := range fn.Instructions {
 		asmfn.Irs = append(asmfn.Irs, a.GenASTInstr(instr)...)
 	}
@@ -445,9 +461,22 @@ func (a *AsmASTGen) GenASTUnaryOp(op tackygen.UnaryOperator) AsmUnaryOperator {
 func (a *AsmASTGen) GenASTVal(val tackygen.TackyVal) AsmOperand {
 	switch ast := val.(type) {
 	case tackygen.Constant:
-		return Imm{Value: int(ast.Value.GetValue())}
+		return Imm{Value: ast.Value.GetValue()}
 	case tackygen.Var:
 		return Pseudo{Ident: ast.Name}
+	}
+
+	return nil
+}
+
+func (a *AsmASTGen) ConvType(val mtypes.Type) asmtype.AsmType {
+	switch val.(type) {
+	case *mtypes.IntType:
+		return &asmtype.LongWord{}
+	case *mtypes.LongType:
+		return &asmtype.QuadWord{}
+	case *mtypes.FnType:
+		panic("fn type should not be here")
 	}
 
 	return nil

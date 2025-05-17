@@ -4,12 +4,13 @@ import (
 	"fmt"
 
 	"github.com/your-moon/mn_compiler_go_version/lexer"
+	"github.com/your-moon/mn_compiler_go_version/mtypes"
 )
 
 type Param struct {
 	Token lexer.Token
 	Ident string
-	Type  Type
+	Type  mtypes.Type
 }
 
 func (p *Param) PrintAST(depth int) string {
@@ -24,7 +25,7 @@ type FnDecl struct {
 	Token        lexer.Token
 	Ident        string
 	Params       []Param
-	ReturnType   Type
+	ReturnType   mtypes.Type
 	Body         *ASTBlock
 	StorageClass StorageClass
 	IsPublic     bool
@@ -97,7 +98,7 @@ func (d *FnDecl) PrintAST(depth int) string {
 type VarDecl struct {
 	Token        lexer.Token
 	Ident        string
-	VarType      Type
+	VarType      mtypes.Type
 	Expr         ASTExpression
 	StorageClass StorageClass
 	IsExtern     bool

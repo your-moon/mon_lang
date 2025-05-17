@@ -5,21 +5,25 @@ import (
 
 	"github.com/your-moon/mn_compiler_go_version/constant"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
+	"github.com/your-moon/mn_compiler_go_version/mtypes"
 	"github.com/your-moon/mn_compiler_go_version/parser"
+	"github.com/your-moon/mn_compiler_go_version/symbols"
 	"github.com/your-moon/mn_compiler_go_version/util/unique"
 )
 
 type TackyGen struct {
-	TempCount  uint64
-	LabelCount uint64
-	UniqueGen  unique.UniqueGen
+	TempCount   uint64
+	LabelCount  uint64
+	UniqueGen   unique.UniqueGen
+	SymbolTable *symbols.SymbolTable
 }
 
-func NewTackyGen(uniquegen unique.UniqueGen) TackyGen {
+func NewTackyGen(uniquegen unique.UniqueGen, table *symbols.SymbolTable) TackyGen {
 	return TackyGen{
-		TempCount:  0,
-		LabelCount: 0,
-		UniqueGen:  uniquegen,
+		TempCount:   0,
+		LabelCount:  0,
+		UniqueGen:   uniquegen,
+		SymbolTable: table,
 	}
 }
 
@@ -53,7 +57,7 @@ func (c *TackyGen) EmitTackyFn(node *parser.FnDecl) TackyFn {
 	for _, param := range node.Params {
 		params = append(params, c.EmitTackyParam(&param))
 	}
-	return TackyFn{Name: node.Ident, Instructions: irs, Params: params}
+	return TackyFn{Name: node.Ident, Instructions: irs, Params: params, Global: node.IsPublic, IsExtern: node.IsExtern}
 }
 
 func (c *TackyGen) EmitTackyBlock(node parser.ASTBlock) []Instruction {
@@ -144,7 +148,7 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 
 			endVal, endValIrs := c.EmitExpr(rangeExpr.End)
 			loopVarVal, loopVarValIrs := c.EmitExpr(ast.Var)
-			temp := c.makeTemp()
+			temp := c.makeTemp(ast.Var.GetType())
 			irs = append(irs, Binary{
 				Op:   LessThanEqual,
 				Src1: loopVarVal,
@@ -315,7 +319,7 @@ func (c *TackyGen) EmitAndExpr(expr *parser.ASTBinary) (TackyVal, []Instruction)
 	irs := []Instruction{}
 	falseLabel := c.makeLabel("and_false")
 	endLabel := c.makeLabel("and_end")
-	dst := c.makeTemp()
+	dst := c.makeTemp(&mtypes.IntType{})
 
 	v1, v1Irs := c.EmitExpr(expr.Left)
 	irs = append(irs, v1Irs...)
@@ -356,7 +360,7 @@ func (c *TackyGen) EmitOrExpr(expr *parser.ASTBinary) (TackyVal, []Instruction) 
 	irs := []Instruction{}
 	trueLabel := c.makeLabel("or_true")
 	endLabel := c.makeLabel("or_end")
-	dst := c.makeTemp()
+	dst := c.makeTemp(&mtypes.IntType{})
 
 	left, leftIrs := c.EmitExpr(expr.Left)
 	irs = append(irs, leftIrs...)
@@ -397,7 +401,7 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 	switch expr := node.(type) {
 	case *parser.ASTFnCall:
 		irs := []Instruction{}
-		dst := c.makeTemp()
+		dst := c.makeTemp(expr.Type)
 		args := []TackyVal{}
 		for _, arg := range expr.Args {
 			argVal, argIrs := c.EmitExpr(arg)
@@ -412,7 +416,7 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs = append(irs, startIrs...)
 		end, endIrs := c.EmitExpr(expr.End)
 		irs = append(irs, endIrs...)
-		dst := c.makeTemp()
+		dst := c.makeTemp(&mtypes.IntType{})
 		irs = append(irs, Binary{
 			Op:   Sub,
 			Src1: end,
@@ -431,7 +435,7 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs := []Instruction{}
 		endLabel := c.makeLabel("conditional_end")
 		elseLabel := c.makeLabel("conditional_else")
-		dst := c.makeTemp()
+		dst := c.makeTemp(expr.Type)
 
 		condEval, condIrs := c.EmitExpr(expr.Cond)
 		irs = append(irs, condIrs...)
@@ -476,7 +480,7 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs := []Instruction{}
 		src, srcIrs := c.EmitExpr(expr.Inner)
 		irs = append(irs, srcIrs...)
-		dst := c.makeTemp()
+		dst := c.makeTemp(expr.Type)
 
 		op, err := ToUnaryTackyOp(expr.Op)
 		if err != nil {
@@ -508,7 +512,7 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs = append(irs, v1Irs...)
 		v2, v2Irs := c.EmitExpr(expr.Right)
 		irs = append(irs, v2Irs...)
-		dst := c.makeTemp()
+		dst := c.makeTemp(expr.Type)
 		instr := Binary{
 			Op:   op,
 			Src1: v1,
@@ -540,18 +544,22 @@ func (c *TackyGen) isReturnExistsIn(node *parser.FnDecl) bool {
 }
 
 func (c *TackyGen) PrettyPrint(program TackyProgram) {
-	fmt.Println("\n// Function:", program.FnDefs[0].Name)
-	fmt.Println("// Three-address code:")
-	fmt.Println()
-	for _, instr := range program.FnDefs[0].Instructions {
-		instr.Ir()
+	if len(program.FnDefs) > 0 {
+		fmt.Println("\n// Function:", program.FnDefs[0].Name)
+		fmt.Println("// Three-address code:")
+		fmt.Println()
+		for _, instr := range program.FnDefs[0].Instructions {
+			instr.Ir()
+		}
+		fmt.Println()
 	}
-	fmt.Println()
+
 }
 
-func (c *TackyGen) makeTemp() Var {
+func (c *TackyGen) makeTemp(mtype mtypes.Type) Var {
 	temp := fmt.Sprintf("tmp.%d", c.TempCount)
 	c.TempCount += 1
+	c.SymbolTable.AddVar(mtype, temp)
 	return Var{Name: temp}
 
 }

@@ -11,10 +11,12 @@ import (
 
 	"github.com/your-moon/mn_compiler_go_version/base"
 	codegen "github.com/your-moon/mn_compiler_go_version/code_gen"
+	"github.com/your-moon/mn_compiler_go_version/code_gen/asmsymbol"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 	"github.com/your-moon/mn_compiler_go_version/linker"
 	"github.com/your-moon/mn_compiler_go_version/parser"
 	semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
+	"github.com/your-moon/mn_compiler_go_version/symbols"
 	"github.com/your-moon/mn_compiler_go_version/tackygen"
 	"github.com/your-moon/mn_compiler_go_version/util"
 	"github.com/your-moon/mn_compiler_go_version/util/unique"
@@ -274,7 +276,8 @@ func (c *CLI) runValidate(args []string) error {
 		fmt.Println("AST:", node.PrintAST(0))
 	}
 
-	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen)
+	table := symbols.NewSymbolTable()
+	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen, table)
 
 	resolvedAst, _, err := resolver.Analyze(node)
 	if err != nil {
@@ -301,23 +304,23 @@ func (c *CLI) runTacky(args []string) error {
 		fmt.Println("AST:", node.PrintAST(0))
 	}
 
-	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen)
+	table := symbols.NewSymbolTable()
+	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen, table)
 
 	resolvedAst, _, err := resolver.Analyze(node)
 	if err != nil {
 		return fmt.Errorf("семантик шинжилгээний алдаа: %v", err)
 	}
-	// converter := utfconvert.NewUtfConverter()
-	// resolvedAst = converter.Resolve(resolvedAst)
 
 	fmt.Println("\n---- TACKY IR ҮҮСГЭЖ БАЙНА ----:")
-	compilerx := tackygen.NewTackyGen(uniqueGen)
+	compilerx := tackygen.NewTackyGen(uniqueGen, table)
 	tackyprogram := compilerx.EmitTacky(resolvedAst)
 
 	fmt.Println("---- TACKY IR ЖАГСААЛТ ----:")
 	for _, fn := range tackyprogram.ExternDefs {
 		fn.Ir()
 	}
+
 	for _, fn := range tackyprogram.FnDefs {
 		fmt.Println(fmt.Sprintf("%s:", fn.Name))
 		for _, ir := range fn.Instructions {
@@ -336,14 +339,16 @@ func (c *CLI) runCompiler(args []string) error {
 		return fmt.Errorf("парсингийн алдаа: %v", err)
 	}
 
-	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen)
+	table := symbols.NewSymbolTable()
+	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen, table)
 	resolvedAst, symbolTable, err := resolver.Analyze(node)
 	if err != nil {
 		return fmt.Errorf("семантик шинжилгээний алдаа: %v", err)
 	}
 
 	fmt.Println("\n---- КОМПАЙЛЖ БАЙНА ----:")
-	compilerx := tackygen.NewTackyGen(uniqueGen)
+	compilerx := tackygen.NewTackyGen(uniqueGen, table)
+
 	tackyprogram := compilerx.EmitTacky(resolvedAst)
 
 	fmt.Println("---- TACKY ЖАГСААЛТ ----:")
@@ -354,9 +359,10 @@ func (c *CLI) runCompiler(args []string) error {
 		}
 	}
 
+	asmTable := asmsymbol.NewAsmSymbolTable()
 	fmt.Println("\n---- ASSEMBLY ҮҮСГЭЖ БАЙНА ----:")
 	asmgen := codegen.NewAsmGen()
-	asmast := asmgen.GenASTAsm(tackyprogram, symbolTable)
+	asmast := asmgen.GenASTAsm(tackyprogram, symbolTable, asmTable)
 
 	fmt.Println("---- ASMAST ЖАГСААЛТ ----:")
 	for _, fn := range asmast.AsmFnDef {
@@ -414,7 +420,8 @@ func (c *CLI) runGen(args []string) error {
 		fmt.Println("AST:", node.PrintAST(0))
 	}
 
-	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen)
+	table := symbols.NewSymbolTable()
+	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen, table)
 
 	resolvedAst, symbolTable, err := resolver.Analyze(node)
 	if err != nil {
@@ -426,7 +433,7 @@ func (c *CLI) runGen(args []string) error {
 		fmt.Println(resolvedAst.PrintAST(0))
 	}
 
-	tackyGen := tackygen.NewTackyGen(uniqueGen)
+	tackyGen := tackygen.NewTackyGen(uniqueGen, table)
 	tackyProgram := tackyGen.EmitTacky(resolvedAst)
 
 	if base.Debug {
@@ -434,8 +441,10 @@ func (c *CLI) runGen(args []string) error {
 		tackyGen.PrettyPrint(tackyProgram)
 	}
 
+	asmTable := asmsymbol.NewAsmSymbolTable()
+
 	asmGen := codegen.NewAsmGen()
-	asmProgram := asmGen.GenASTAsm(tackyProgram, symbolTable)
+	asmProgram := asmGen.GenASTAsm(tackyProgram, symbolTable, asmTable)
 
 	asmBuffer := new(bytes.Buffer)
 	asmWriter := codegen.NewGenASM(asmBuffer, util.GetOsType())

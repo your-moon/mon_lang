@@ -1,6 +1,10 @@
 package codegen
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/your-moon/mn_compiler_go_version/code_gen/asmtype"
+)
 
 // cond_code = E | NE | G | GE | L | LE
 type CondCode string
@@ -32,15 +36,16 @@ const (
 type AsmRegister string
 
 const (
-	AX  AsmRegister = "%eax" // rax's lower 32 bits
-	CX  AsmRegister = "%ecx" // rax's lower 32 bits
-	DX  AsmRegister = "%edx"
-	DI  AsmRegister = "%edi"
-	SI  AsmRegister = "%esi"
-	R8  AsmRegister = "%r8d"
-	R9  AsmRegister = "%r9d"
-	R10 AsmRegister = "%r10d" // r10's lower 32 bits
-	R11 AsmRegister = "%r11d"
+	AX  AsmRegister = "ax"
+	CX  AsmRegister = "cx"
+	DX  AsmRegister = "dx"
+	DI  AsmRegister = "di"
+	SI  AsmRegister = "si"
+	R8  AsmRegister = "r8"
+	R9  AsmRegister = "r9"
+	R10 AsmRegister = "r10"
+	R11 AsmRegister = "r11"
+	SP  AsmRegister = "sp"
 )
 
 func (a AsmRegister) String() string {
@@ -52,7 +57,7 @@ type AsmOperand interface {
 }
 
 type Imm struct {
-	Value int
+	Value int64
 }
 
 func (a Imm) Op() string {
@@ -163,9 +168,10 @@ func (a Label) Ir() string {
 }
 
 type AsmBinary struct {
-	Op  AsmAstBinaryOp
-	Src AsmOperand
-	Dst AsmOperand
+	Op   AsmAstBinaryOp
+	Type asmtype.AsmType
+	Src  AsmOperand
+	Dst  AsmOperand
 }
 
 func (a AsmBinary) Ir() string {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/your-moon/mn_compiler_go_version/errors"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
+	"github.com/your-moon/mn_compiler_go_version/mtypes"
 )
 
 type Parser struct {
@@ -304,16 +305,16 @@ func (p *Parser) parseParams() ([]Param, error) {
 	return params, nil
 }
 
-func (p *Parser) parseType() (Type, error) {
+func (p *Parser) parseType() (mtypes.Type, error) {
 	switch p.peekToken.Type {
 	case lexer.INT_TYPE:
-		return &IntType{}, nil
+		return &mtypes.IntType{}, nil
 	case lexer.LONG:
-		return &LongType{}, nil
+		return &mtypes.LongType{}, nil
 	case lexer.VOID:
-		return &VoidType{}, nil
+		return &mtypes.VoidType{}, nil
 	default:
-		return &VoidType{}, errors.New(ErrMissingIntType, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
+		return &mtypes.VoidType{}, errors.New(ErrMissingIntType, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
 	}
 }
 
@@ -711,6 +712,7 @@ func (p *Parser) parseFnCall() ASTExpression {
 		Token: cur,
 		Ident: *cur.Value,
 		Args:  args,
+		Type:  &mtypes.FnType{},
 	}
 }
 func (p *Parser) parseIdent() ASTExpression {

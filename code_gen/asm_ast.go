@@ -125,8 +125,9 @@ func (a Call) Ir() string {
 }
 
 type Cmp struct {
-	Src AsmOperand
-	Dst AsmOperand
+	Type asmtype.AsmType
+	Src  AsmOperand
+	Dst  AsmOperand
 }
 
 func (a Cmp) Ir() string {
@@ -179,7 +180,8 @@ func (a AsmBinary) Ir() string {
 }
 
 type Idiv struct {
-	Src AsmOperand
+	Type asmtype.AsmType
+	Src  AsmOperand
 }
 
 func (a Idiv) Ir() string {
@@ -187,15 +189,26 @@ func (a Idiv) Ir() string {
 }
 
 type Cdq struct {
+	Type asmtype.AsmType
 }
 
 func (a Cdq) Ir() string {
 	return "cdq"
 }
 
-type AsmMov struct {
+type AsmMovSx struct {
 	Src AsmOperand
 	Dst AsmOperand
+}
+
+func (a AsmMovSx) Ir() string {
+	return fmt.Sprintf("movsx %s, %s", a.Src.Op(), a.Dst.Op())
+}
+
+type AsmMov struct {
+	Type asmtype.AsmType
+	Src  AsmOperand
+	Dst  AsmOperand
 }
 
 func (a AsmMov) Ir() string {
@@ -203,8 +216,9 @@ func (a AsmMov) Ir() string {
 }
 
 type Unary struct {
-	Op  AsmUnaryOperator
-	Dst AsmOperand
+	Type asmtype.AsmType
+	Op   AsmUnaryOperator
+	Dst  AsmOperand
 }
 
 func (a Unary) Ir() string {

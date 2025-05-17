@@ -17,6 +17,7 @@ func NewFixUpPassGen(symbolTable *symbols.SymbolTable) FixUpPassGen {
 
 // in golang if you give array to param, its call by ref that means instructions is mutable
 func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction {
+	//TODO: LONG INT SUPPORT
 	switch ast := instr.(type) {
 	case Cmp:
 		srcstack, isit := ast.Src.(Stack)

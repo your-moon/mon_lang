@@ -3,7 +3,7 @@ package tackygen
 import (
 	"fmt"
 
-	"github.com/your-moon/mn_compiler_go_version/constant"
+	"github.com/your-moon/mn_compiler_go_version/mconstant"
 )
 
 type TackyBinaryOp string
@@ -19,7 +19,7 @@ const (
 	LessThanEqual    TackyBinaryOp = "<="
 	GreaterThan      TackyBinaryOp = ">"
 	GreaterThanEqual TackyBinaryOp = ">="
-	Remainder        TackyBinaryOp = "remainder"
+	Modulo           TackyBinaryOp = "remainder"
 )
 
 type UnaryOperator string
@@ -36,7 +36,7 @@ type TackyVal interface {
 }
 
 type Constant struct {
-	Value constant.Const
+	Value mconstant.Const
 }
 
 func (c Constant) val() string {

@@ -1,4 +1,4 @@
-package constant
+package mconstant
 
 var IntZero = Int32{
 	Value: 0,

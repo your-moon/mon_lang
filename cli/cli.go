@@ -361,7 +361,7 @@ func (c *CLI) runCompiler(args []string) error {
 
 	asmTable := asmsymbol.NewAsmSymbolTable()
 	fmt.Println("\n---- ASSEMBLY ҮҮСГЭЖ БАЙНА ----:")
-	asmgen := codegen.NewAsmGen()
+	asmgen := codegen.NewAsmGen(table)
 	asmast := asmgen.GenASTAsm(tackyprogram, symbolTable, asmTable)
 
 	fmt.Println("---- ASMAST ЖАГСААЛТ ----:")
@@ -443,7 +443,7 @@ func (c *CLI) runGen(args []string) error {
 
 	asmTable := asmsymbol.NewAsmSymbolTable()
 
-	asmGen := codegen.NewAsmGen()
+	asmGen := codegen.NewAsmGen(table)
 	asmProgram := asmGen.GenASTAsm(tackyProgram, symbolTable, asmTable)
 
 	asmBuffer := new(bytes.Buffer)

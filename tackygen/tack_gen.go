@@ -3,8 +3,8 @@ package tackygen
 import (
 	"fmt"
 
-	"github.com/your-moon/mn_compiler_go_version/constant"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
+	"github.com/your-moon/mn_compiler_go_version/mconstant"
 	"github.com/your-moon/mn_compiler_go_version/mtypes"
 	"github.com/your-moon/mn_compiler_go_version/parser"
 	"github.com/your-moon/mn_compiler_go_version/symbols"
@@ -50,7 +50,7 @@ func (c *TackyGen) EmitTackyFn(node *parser.FnDecl) TackyFn {
 	}
 
 	if !c.isReturnExistsIn(node) {
-		irs = append(irs, Return{Value: Constant{Value: &constant.IntZero}})
+		irs = append(irs, Return{Value: Constant{Value: &mconstant.IntZero}})
 	}
 
 	params := []TackyVal{}
@@ -170,7 +170,7 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 			irs = append(irs, Binary{
 				Op:   Add,
 				Src1: Var{Name: loopVar.Ident},
-				Src2: Constant{Value: &constant.IntOne},
+				Src2: Constant{Value: &mconstant.IntOne},
 				Dst:  Var{Name: loopVar.Ident},
 			})
 
@@ -245,7 +245,7 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 			irs = append(irs, valIrs...)
 			irs = append(irs, Return{Value: val})
 		} else {
-			irs = append(irs, Return{Value: Constant{Value: &constant.IntZero}})
+			irs = append(irs, Return{Value: Constant{Value: &mconstant.IntZero}})
 		}
 		return irs
 	case *parser.ExpressionStmt:
@@ -335,7 +335,7 @@ func (c *TackyGen) EmitAndExpr(expr *parser.ASTBinary) (TackyVal, []Instruction)
 			Ident: falseLabel.Name,
 		},
 		Copy{
-			Src: Constant{Value: &constant.IntOne},
+			Src: Constant{Value: &mconstant.IntOne},
 			Dst: dst,
 		},
 		Jump{
@@ -345,7 +345,7 @@ func (c *TackyGen) EmitAndExpr(expr *parser.ASTBinary) (TackyVal, []Instruction)
 			Ident: falseLabel.Name,
 		},
 		Copy{
-			Src: Constant{Value: &constant.IntZero},
+			Src: Constant{Value: &mconstant.IntZero},
 			Dst: dst,
 		},
 		Label{
@@ -376,7 +376,7 @@ func (c *TackyGen) EmitOrExpr(expr *parser.ASTBinary) (TackyVal, []Instruction) 
 			Ident: trueLabel.Name,
 		},
 		Copy{
-			Src: Constant{Value: &constant.IntZero},
+			Src: Constant{Value: &mconstant.IntZero},
 			Dst: dst,
 		},
 		Jump{
@@ -386,7 +386,7 @@ func (c *TackyGen) EmitOrExpr(expr *parser.ASTBinary) (TackyVal, []Instruction) 
 			Ident: trueLabel.Name,
 		},
 		Copy{
-			Src: Constant{Value: &constant.IntOne},
+			Src: Constant{Value: &mconstant.IntOne},
 			Dst: dst,
 		},
 		Label{
@@ -426,7 +426,7 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs = append(irs, Binary{
 			Op:   Add,
 			Src1: dst,
-			Src2: Constant{Value: &constant.IntOne},
+			Src2: Constant{Value: &mconstant.IntOne},
 			Dst:  dst,
 		})
 		return dst, irs
@@ -468,9 +468,9 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 	case parser.ASTConst:
 		switch consttype := expr.(type) {
 		case *parser.ASTConstInt:
-			return Constant{Value: constant.Int32{Value: int32(consttype.Value)}}, []Instruction{}
+			return Constant{Value: mconstant.Int32{Value: int32(consttype.Value)}}, []Instruction{}
 		case *parser.ASTConstLong:
-			return Constant{Value: constant.Int64{Value: consttype.Value}}, []Instruction{}
+			return Constant{Value: mconstant.Int64{Value: consttype.Value}}, []Instruction{}
 		default:
 			panic("unimplemented type")
 

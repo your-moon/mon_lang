@@ -6,6 +6,7 @@ import (
 	"github.com/your-moon/mn_compiler_go_version/base"
 	"github.com/your-moon/mn_compiler_go_version/code_gen/asmsymbol"
 	"github.com/your-moon/mn_compiler_go_version/code_gen/asmtype"
+	"github.com/your-moon/mn_compiler_go_version/mconstant"
 	"github.com/your-moon/mn_compiler_go_version/mtypes"
 	"github.com/your-moon/mn_compiler_go_version/symbols"
 	"github.com/your-moon/mn_compiler_go_version/tackygen"
@@ -20,12 +21,14 @@ type Emitter interface {
 }
 
 type AsmASTGen struct {
-	Registers []AsmRegister
+	Registers   []AsmRegister
+	SymbolTable *symbols.SymbolTable
 }
 
-func NewAsmGen() AsmASTGen {
+func NewAsmGen(table *symbols.SymbolTable) AsmASTGen {
 	return AsmASTGen{
-		Registers: []AsmRegister{DI, SI, DX, CX, R8, R9},
+		Registers:   []AsmRegister{DI, SI, DX, CX, R8, R9},
+		SymbolTable: table,
 	}
 }
 
@@ -114,9 +117,11 @@ func (a *AsmASTGen) passInStack(param tackygen.TackyVal) []AsmInstruction {
 			}
 			return []AsmInstruction{push}
 		default:
+			pType := a.AsmType(param)
 			mov := AsmMov{
-				Src: asmArg,
-				Dst: Register{Reg: AX},
+				Type: pType,
+				Src:  asmArg,
+				Dst:  Register{Reg: AX},
 			}
 			push := Push{
 				Op: Register{Reg: AX},
@@ -127,6 +132,26 @@ func (a *AsmASTGen) passInStack(param tackygen.TackyVal) []AsmInstruction {
 	return []AsmInstruction{}
 }
 
+func (a *AsmASTGen) AsmType(val tackygen.TackyVal) asmtype.AsmType {
+	switch valtype := val.(type) {
+	case tackygen.Constant:
+		switch valtype.Value.(type) {
+		case mconstant.Int64:
+			return &asmtype.QuadWord{}
+		case mconstant.Int32:
+			return &asmtype.LongWord{}
+		default:
+			panic("unimplemented")
+		}
+	case *tackygen.Var:
+		vtype := a.SymbolTable.Get(valtype.Name)
+		valType := a.ConvType(vtype.Type)
+		return valType
+	default:
+		panic("unimplemented")
+	}
+}
+
 func (a *AsmASTGen) passInRegisters(paramIdx int, param tackygen.TackyVal) []AsmInstruction {
 	passRegister := ""
 	for _, register := range a.Registers {
@@ -135,12 +160,16 @@ func (a *AsmASTGen) passInRegisters(paramIdx int, param tackygen.TackyVal) []Asm
 			break
 		}
 	}
+
 	if passRegister == "" {
 		return []AsmInstruction{}
 	}
+
+	pType := a.AsmType(param)
 	mov := AsmMov{
-		Src: Register{Reg: AsmRegister(passRegister)},
-		Dst: a.GenASTVal(param),
+		Type: pType,
+		Src:  Register{Reg: AsmRegister(passRegister)},
+		Dst:  a.GenASTVal(param),
 	}
 	return []AsmInstruction{mov}
 }
@@ -282,15 +311,19 @@ func (a *AsmASTGen) GenASTInstr(instr tackygen.Instruction) []AsmInstruction {
 		}
 		return []AsmInstruction{lbl}
 	case tackygen.Copy:
+		Type := a.AsmType(ast.Src)
 		mov := AsmMov{
-			Src: a.GenASTVal(ast.Src),
-			Dst: a.GenASTVal(ast.Dst),
+			Type: Type,
+			Src:  a.GenASTVal(ast.Src),
+			Dst:  a.GenASTVal(ast.Dst),
 		}
 		return []AsmInstruction{mov}
 	case tackygen.JumpIfZero:
+		Type := a.AsmType(ast.Val)
 		cmp := Cmp{
-			Src: Imm{Value: 0},
-			Dst: a.GenASTVal(ast.Val),
+			Type: Type,
+			Src:  Imm{Value: 0},
+			Dst:  a.GenASTVal(ast.Val),
 		}
 		jmpcc := JmpCC{
 			CC:    E,
@@ -298,9 +331,11 @@ func (a *AsmASTGen) GenASTInstr(instr tackygen.Instruction) []AsmInstruction {
 		}
 		return []AsmInstruction{cmp, jmpcc}
 	case tackygen.JumpIfNotZero:
+		Type := a.AsmType(ast.Val)
 		cmp := Cmp{
-			Src: Imm{Value: 0},
-			Dst: a.GenASTVal(ast.Val),
+			Type: Type,
+			Src:  Imm{Value: 0},
+			Dst:  a.GenASTVal(ast.Val),
 		}
 		jmpcc := JmpCC{
 			CC:    NE,
@@ -308,9 +343,11 @@ func (a *AsmASTGen) GenASTInstr(instr tackygen.Instruction) []AsmInstruction {
 		}
 		return []AsmInstruction{cmp, jmpcc}
 	case tackygen.Return:
+		Type := a.AsmType(ast.Value)
 		mov := AsmMov{
-			a.GenASTVal(ast.Value),
-			Register{
+			Type: Type,
+			Src:  a.GenASTVal(ast.Value),
+			Dst: Register{
 				Reg: AX,
 			},
 		}
@@ -319,14 +356,18 @@ func (a *AsmASTGen) GenASTInstr(instr tackygen.Instruction) []AsmInstruction {
 	case tackygen.Binary:
 		return a.GenASTBinary(ast)
 	case tackygen.Unary:
+		SrcT := a.AsmType(ast.Src)
+		DstT := a.AsmType(ast.Dst)
 		if ast.Op == tackygen.Not {
 			cmp := Cmp{
-				Src: Imm{Value: 0},
-				Dst: a.GenASTVal(ast.Src),
+				Type: SrcT,
+				Src:  Imm{Value: 0},
+				Dst:  a.GenASTVal(ast.Src),
 			}
 			mov := AsmMov{
-				Src: Imm{Value: 0},
-				Dst: a.GenASTVal(ast.Dst),
+				Type: DstT,
+				Src:  Imm{Value: 0},
+				Dst:  a.GenASTVal(ast.Dst),
 			}
 			setcc := SetCC{
 				CC: E,
@@ -337,12 +378,14 @@ func (a *AsmASTGen) GenASTInstr(instr tackygen.Instruction) []AsmInstruction {
 
 		dst := a.GenASTVal(ast.Dst)
 		mov := AsmMov{
-			Src: a.GenASTVal(ast.Src),
-			Dst: a.GenASTVal(ast.Dst),
+			Type: SrcT,
+			Src:  a.GenASTVal(ast.Src),
+			Dst:  a.GenASTVal(ast.Dst),
 		}
 		unary := Unary{
-			Op:  a.GenASTUnaryOp(ast.Op),
-			Dst: dst,
+			Type: SrcT,
+			Op:   a.GenASTUnaryOp(ast.Op),
+			Dst:  dst,
 		}
 		return []AsmInstruction{mov, unary}
 	default:
@@ -371,15 +414,20 @@ func (a *AsmASTGen) ConvOpToCond(op tackygen.TackyBinaryOp) CondCode {
 }
 
 func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) []AsmInstruction {
+	Src1T := a.AsmType(instr.Src1)
+	DstT := a.AsmType(instr.Dst)
 	//is relational op
 	if instr.Op == tackygen.GreaterThan || instr.Op == tackygen.GreaterThanEqual || instr.Op == tackygen.LessThan || instr.Op == tackygen.LessThanEqual || instr.Op == tackygen.Equal || instr.Op == tackygen.NotEqual {
+
 		cmp := Cmp{
-			Src: a.GenASTVal(instr.Src2),
-			Dst: a.GenASTVal(instr.Src1),
+			Type: Src1T,
+			Src:  a.GenASTVal(instr.Src2),
+			Dst:  a.GenASTVal(instr.Src1),
 		}
 		mov := AsmMov{
-			Src: Imm{Value: 0},
-			Dst: a.GenASTVal(instr.Dst),
+			Type: DstT,
+			Src:  Imm{Value: 0},
+			Dst:  a.GenASTVal(instr.Dst),
 		}
 		setcc := SetCC{
 			CC: a.ConvOpToCond(instr.Op),
@@ -387,16 +435,22 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) []AsmInstruction {
 		}
 		return []AsmInstruction{cmp, mov, setcc}
 	}
-	if instr.Op == tackygen.Remainder {
+	if instr.Op == tackygen.Modulo {
+
 		mov := AsmMov{
-			Src: a.GenASTVal(instr.Src1),
-			Dst: Register{Reg: AX},
+			Type: Src1T,
+			Src:  a.GenASTVal(instr.Src1),
+			Dst:  Register{Reg: AX},
 		}
-		cdq := Cdq{}
+		cdq := Cdq{
+			Type: Src1T,
+		}
 		idiv := Idiv{
-			Src: a.GenASTVal(instr.Src2),
+			Type: Src1T,
+			Src:  a.GenASTVal(instr.Src2),
 		}
 		mov2 := AsmMov{
+			Type: Src1T,
 			Src: Register{
 				Reg: DX,
 			},
@@ -406,14 +460,20 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) []AsmInstruction {
 		return []AsmInstruction{mov, cdq, idiv, mov2}
 	} else if instr.Op == tackygen.Div {
 		mov := AsmMov{
-			Src: a.GenASTVal(instr.Src1),
-			Dst: Register{Reg: AX},
+			Type: Src1T,
+			Src:  a.GenASTVal(instr.Src1),
+			Dst:  Register{Reg: AX},
 		}
-		cdq := Cdq{}
+		cdq := Cdq{
+
+			Type: Src1T,
+		}
 		idiv := Idiv{
-			Src: a.GenASTVal(instr.Src2),
+			Type: Src1T,
+			Src:  a.GenASTVal(instr.Src2),
 		}
 		mov2 := AsmMov{
+			Type: Src1T,
 			Src: Register{
 				Reg: AX,
 			},
@@ -427,9 +487,10 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) []AsmInstruction {
 			Dst: a.GenASTVal(instr.Dst),
 		}
 		binary := AsmBinary{
-			Op:  a.GenASTBinaryOp(instr.Op),
-			Src: a.GenASTVal(instr.Src2),
-			Dst: a.GenASTVal(instr.Dst),
+			Type: Src1T,
+			Op:   a.GenASTBinaryOp(instr.Op),
+			Src:  a.GenASTVal(instr.Src2),
+			Dst:  a.GenASTVal(instr.Dst),
 		}
 		return []AsmInstruction{mov, binary}
 	}

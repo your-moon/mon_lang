@@ -3,6 +3,7 @@ package tackygen
 import (
 	"fmt"
 
+	"github.com/your-moon/mn_compiler_go_version/constant"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
 	"github.com/your-moon/mn_compiler_go_version/parser"
 	"github.com/your-moon/mn_compiler_go_version/util/unique"
@@ -22,78 +23,22 @@ func NewTackyGen(uniquegen unique.UniqueGen) TackyGen {
 	}
 }
 
-func (c *TackyGen) makeTemp() Var {
-	temp := fmt.Sprintf("tmp.%d", c.TempCount)
-	c.TempCount += 1
-	return Var{Name: temp}
-
-}
-
-func (c *TackyGen) continueLabel(id string) Var {
-	temp := fmt.Sprintf("continue.%s", id)
-	c.LabelCount += 1
-	return Var{Name: temp}
-
-}
-
-func (c *TackyGen) breakLabel(id string) Var {
-	temp := fmt.Sprintf("break.%s", id)
-	c.LabelCount += 1
-	return Var{Name: temp}
-
-}
-
-func (c *TackyGen) makeLabel(prefix string) Var {
-	temp := fmt.Sprintf("%s.%d", prefix, c.LabelCount)
-	c.LabelCount += 1
-	return Var{Name: temp}
-
-}
-
 func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	program := TackyProgram{}
 
 	for _, stmt := range node.Decls {
 		switch stmttype := stmt.(type) {
 		case *parser.FnDecl:
-			program.FnDefs = append(program.FnDefs, c.EmitTackyFn(stmttype))
-			// case *parser.ASTExtern:
-			// 	program.ExternDefs = append(program.ExternDefs, c.EmitTackyExtern(stmttype))
+			if !stmttype.IsExtern {
+				program.FnDefs = append(program.FnDefs, c.EmitTackyFn(stmttype))
+			} else {
+				program.ExternDefs = append(program.ExternDefs, c.EmitTackyFn(stmttype))
+			}
 		}
 	}
 
 	return program
 }
-
-// func (c *TackyGen) EmitTackyExtern(node *parser.ASTExtern) TackyExternFn {
-// 	return c.EmitTackyExternFn(node)
-// }
-
-// func (c *TackyGen) EmitTackyExternFn(node *parser.ASTExtern) TackyExternFn {
-// 	params := []TackyVal{}
-// 	for _, param := range node.FnDecl.Params {
-// 		params = append(params, c.EmitTackyParam(&param))
-// 	}
-// 	return TackyExternFn{Name: node.FnDecl.Ident, Params: params}
-// }
-
-func (c *TackyGen) EmitTackyParam(node *parser.Param) TackyVal {
-	return Var{Name: node.Ident}
-}
-
-func (c *TackyGen) isReturnExistsIn(node *parser.FnDecl) bool {
-	if node.Body == nil {
-		return false
-	}
-	for _, stmt := range node.Body.BlockItems {
-		switch stmt.(type) {
-		case *parser.ASTReturnStmt:
-			return true
-		}
-	}
-	return false
-}
-
 func (c *TackyGen) EmitTackyFn(node *parser.FnDecl) TackyFn {
 	irs := []Instruction{}
 	if node.Body != nil {
@@ -101,7 +46,7 @@ func (c *TackyGen) EmitTackyFn(node *parser.FnDecl) TackyFn {
 	}
 
 	if !c.isReturnExistsIn(node) {
-		irs = append(irs, Return{Value: Constant{Value: 0}})
+		irs = append(irs, Return{Value: Constant{Value: &constant.IntZero}})
 	}
 
 	params := []TackyVal{}
@@ -132,7 +77,7 @@ func (c *TackyGen) EmitTackyBlockItem(node parser.BlockItem) []Instruction {
 func (c *TackyGen) EmitTackyLocalDecl(node parser.ASTDecl) []Instruction {
 	switch ast := node.(type) {
 	case *parser.FnDecl:
-		return []Instruction{}
+		panic("can't decl the fn in local")
 	case *parser.VarDecl:
 		return c.EmitVarDecl(ast)
 	}
@@ -221,7 +166,7 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 			irs = append(irs, Binary{
 				Op:   Add,
 				Src1: Var{Name: loopVar.Ident},
-				Src2: Constant{Value: 1},
+				Src2: Constant{Value: &constant.IntOne},
 				Dst:  Var{Name: loopVar.Ident},
 			})
 
@@ -296,7 +241,7 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 			irs = append(irs, valIrs...)
 			irs = append(irs, Return{Value: val})
 		} else {
-			irs = append(irs, Return{Value: Constant{Value: 0}})
+			irs = append(irs, Return{Value: Constant{Value: &constant.IntZero}})
 		}
 		return irs
 	case *parser.ExpressionStmt:
@@ -386,7 +331,7 @@ func (c *TackyGen) EmitAndExpr(expr *parser.ASTBinary) (TackyVal, []Instruction)
 			Ident: falseLabel.Name,
 		},
 		Copy{
-			Src: Constant{Value: 1},
+			Src: Constant{Value: &constant.IntOne},
 			Dst: dst,
 		},
 		Jump{
@@ -396,7 +341,7 @@ func (c *TackyGen) EmitAndExpr(expr *parser.ASTBinary) (TackyVal, []Instruction)
 			Ident: falseLabel.Name,
 		},
 		Copy{
-			Src: Constant{Value: 0},
+			Src: Constant{Value: &constant.IntZero},
 			Dst: dst,
 		},
 		Label{
@@ -427,7 +372,7 @@ func (c *TackyGen) EmitOrExpr(expr *parser.ASTBinary) (TackyVal, []Instruction) 
 			Ident: trueLabel.Name,
 		},
 		Copy{
-			Src: Constant{Value: 0},
+			Src: Constant{Value: &constant.IntZero},
 			Dst: dst,
 		},
 		Jump{
@@ -437,7 +382,7 @@ func (c *TackyGen) EmitOrExpr(expr *parser.ASTBinary) (TackyVal, []Instruction) 
 			Ident: trueLabel.Name,
 		},
 		Copy{
-			Src: Constant{Value: 1},
+			Src: Constant{Value: &constant.IntOne},
 			Dst: dst,
 		},
 		Label{
@@ -477,7 +422,7 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs = append(irs, Binary{
 			Op:   Add,
 			Src1: dst,
-			Src2: Constant{Value: 1},
+			Src2: Constant{Value: &constant.IntOne},
 			Dst:  dst,
 		})
 		return dst, irs
@@ -519,9 +464,9 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 	case parser.ASTConst:
 		switch consttype := expr.(type) {
 		case *parser.ASTConstInt:
-			return Constant{Value: int(consttype.Value)}, []Instruction{}
+			return Constant{Value: constant.Int32{Value: int32(consttype.Value)}}, []Instruction{}
 		case *parser.ASTConstLong:
-			return Constant{Value: int(consttype.Value)}, []Instruction{}
+			return Constant{Value: constant.Int64{Value: consttype.Value}}, []Instruction{}
 		default:
 			panic("unimplemented type")
 
@@ -577,6 +522,23 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 	}
 }
 
+func (c *TackyGen) EmitTackyParam(node *parser.Param) TackyVal {
+	return Var{Name: node.Ident}
+}
+
+func (c *TackyGen) isReturnExistsIn(node *parser.FnDecl) bool {
+	if node.Body == nil {
+		return false
+	}
+	for _, stmt := range node.Body.BlockItems {
+		switch stmt.(type) {
+		case *parser.ASTReturnStmt:
+			return true
+		}
+	}
+	return false
+}
+
 func (c *TackyGen) PrettyPrint(program TackyProgram) {
 	fmt.Println("\n// Function:", program.FnDefs[0].Name)
 	fmt.Println("// Three-address code:")
@@ -585,4 +547,31 @@ func (c *TackyGen) PrettyPrint(program TackyProgram) {
 		instr.Ir()
 	}
 	fmt.Println()
+}
+
+func (c *TackyGen) makeTemp() Var {
+	temp := fmt.Sprintf("tmp.%d", c.TempCount)
+	c.TempCount += 1
+	return Var{Name: temp}
+
+}
+
+func (c *TackyGen) continueLabel(id string) Var {
+	temp := fmt.Sprintf("continue.%s", id)
+	c.LabelCount += 1
+	return Var{Name: temp}
+
+}
+
+func (c *TackyGen) breakLabel(id string) Var {
+	temp := fmt.Sprintf("break.%s", id)
+	c.LabelCount += 1
+	return Var{Name: temp}
+
+}
+
+func (c *TackyGen) makeLabel(prefix string) Var {
+	temp := fmt.Sprintf("%s.%d", prefix, c.LabelCount)
+	c.LabelCount += 1
+	return Var{Name: temp}
 }

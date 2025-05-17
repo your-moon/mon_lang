@@ -1,6 +1,10 @@
 package tackygen
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/your-moon/mn_compiler_go_version/constant"
+)
 
 type TackyBinaryOp string
 
@@ -32,7 +36,7 @@ type TackyVal interface {
 }
 
 type Constant struct {
-	Value int
+	Value constant.Const
 }
 
 func (c Constant) val() string {
@@ -180,7 +184,7 @@ func (f TackyFn) Ir() {
 
 type TackyProgram struct {
 	FnDefs     []TackyFn
-	ExternDefs []TackyExternFn
+	ExternDefs []TackyFn
 }
 
 func (p TackyProgram) Ir() {

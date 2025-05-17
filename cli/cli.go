@@ -307,6 +307,8 @@ func (c *CLI) runTacky(args []string) error {
 	if err != nil {
 		return fmt.Errorf("семантик шинжилгээний алдаа: %v", err)
 	}
+	// converter := utfconvert.NewUtfConverter()
+	// resolvedAst = converter.Resolve(resolvedAst)
 
 	fmt.Println("\n---- TACKY IR ҮҮСГЭЖ БАЙНА ----:")
 	compilerx := tackygen.NewTackyGen(uniqueGen)

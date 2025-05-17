@@ -2,11 +2,11 @@ package parser
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/your-moon/mn_compiler_go_version/errors"
 	"github.com/your-moon/mn_compiler_go_version/lexer"
-	"github.com/your-moon/mn_compiler_go_version/util/utfconvert"
 )
 
 type Parser struct {
@@ -231,8 +231,7 @@ func (p *Parser) parseFnDecl(isPublic bool, isExtern bool) *FnDecl {
 		p.appendError(ErrMissingIdentifier)
 		return nil
 	}
-
-	ast.Ident = utfconvert.UtfConvert(*p.peekToken.Value)
+	ast.Ident = *p.peekToken.Value
 	p.nextToken()
 
 	if !p.expect(lexer.OPEN_PAREN) {
@@ -708,11 +707,9 @@ func (p *Parser) parseFnCall() ASTExpression {
 		return nil
 	}
 
-	ident := utfconvert.UtfConvert(*cur.Value)
-
 	return &ASTFnCall{
 		Token: cur,
-		Ident: ident,
+		Ident: *cur.Value,
 		Args:  args,
 	}
 }
@@ -734,17 +731,18 @@ func (p *Parser) parseConst() ASTConst {
 	next := p.peekToken
 	p.nextToken()
 
-	intVal, err := strconv.ParseInt(*next.Value, 0, 64)
+	intVal, err := strconv.ParseInt(*next.Value, 10, 64)
 	if err != nil {
-		p.appendError("cant parse number")
+		p.appendError("cannot parse number")
 		return nil
 	}
 
-	intVal, err = strconv.ParseInt(*next.Value, 0, 32)
-	if err != nil {
+	// If the number is larger than int32, use ASTConstLong
+	if intVal > math.MaxInt32 || intVal < math.MinInt32 {
 		return &ASTConstLong{Token: next, Value: intVal}
 	}
 
+	// Otherwise use ASTConstInt for 32-bit numbers
 	return &ASTConstInt{Token: next, Value: intVal}
 }
 

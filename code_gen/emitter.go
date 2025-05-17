@@ -66,6 +66,9 @@ func (a *AsmASTGen) GenASTAsm(program tackygen.TackyProgram, symbolTable *semant
 	pass2 := NewFixUpPassGen(symbolTable)
 	asmprogram = pass2.FixUpProgram(asmprogram)
 
+	pass3 := NewTranslatePass()
+	asmprogram = pass3.TranslateProgram(asmprogram)
+
 	if base.Debug {
 		fmt.Println("---- ASMAST AFTER FIXUP ----:")
 		for _, fn := range asmprogram.AsmFnDef {
@@ -78,7 +81,7 @@ func (a *AsmASTGen) GenASTAsm(program tackygen.TackyProgram, symbolTable *semant
 	return asmprogram
 }
 
-func (a *AsmASTGen) GenASTExternFn(fn tackygen.TackyExternFn) AsmExternFn {
+func (a *AsmASTGen) GenASTExternFn(fn tackygen.TackyFn) AsmExternFn {
 	asmfn := AsmExternFn{
 		Name: fn.Name,
 	}
@@ -329,7 +332,6 @@ func (a *AsmASTGen) GenASTInstr(instr tackygen.Instruction) []AsmInstruction {
 	default:
 		panic("unimplemented tacky instruction on asm gen")
 	}
-	return []AsmInstruction{}
 }
 
 func (a *AsmASTGen) ConvOpToCond(op tackygen.TackyBinaryOp) CondCode {
@@ -443,7 +445,7 @@ func (a *AsmASTGen) GenASTUnaryOp(op tackygen.UnaryOperator) AsmUnaryOperator {
 func (a *AsmASTGen) GenASTVal(val tackygen.TackyVal) AsmOperand {
 	switch ast := val.(type) {
 	case tackygen.Constant:
-		return Imm{Value: ast.Value}
+		return Imm{Value: int(ast.Value.GetValue())}
 	case tackygen.Var:
 		return Pseudo{Ident: ast.Name}
 	}

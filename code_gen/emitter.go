@@ -136,19 +136,19 @@ func (a *AsmASTGen) AsmType(val tackygen.TackyVal) asmtype.AsmType {
 	switch valtype := val.(type) {
 	case tackygen.Constant:
 		switch valtype.Value.(type) {
-		case mconstant.Int64:
+		case *mconstant.Int64:
 			return &asmtype.QuadWord{}
-		case mconstant.Int32:
+		case *mconstant.Int32:
 			return &asmtype.LongWord{}
 		default:
-			panic("unimplemented")
+			panic("unimplemented const")
 		}
-	case *tackygen.Var:
+	case tackygen.Var:
 		vtype := a.SymbolTable.Get(valtype.Name)
 		valType := a.ConvType(vtype.Type)
 		return valType
 	default:
-		panic("unimplemented")
+		panic("unimplemented val")
 	}
 }
 
@@ -311,7 +311,7 @@ func (a *AsmASTGen) GenASTInstr(instr tackygen.Instruction) []AsmInstruction {
 		}
 		return []AsmInstruction{lbl}
 	case tackygen.Copy:
-		Type := a.AsmType(ast.Src)
+		Type := a.AsmType(ast.Dst)
 		mov := AsmMov{
 			Type: Type,
 			Src:  a.GenASTVal(ast.Src),
@@ -538,7 +538,7 @@ func (a *AsmASTGen) ConvType(val mtypes.Type) asmtype.AsmType {
 		return &asmtype.QuadWord{}
 	case *mtypes.FnType:
 		panic("fn type should not be here")
+	default:
+		panic(fmt.Sprintf("unimplemented type: %v", val))
 	}
-
-	return nil
 }

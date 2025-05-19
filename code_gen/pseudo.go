@@ -1,6 +1,8 @@
 package codegen
 
 import (
+	"fmt"
+
 	"github.com/your-moon/mn_compiler_go_version/symbols"
 	"github.com/your-moon/mn_compiler_go_version/util"
 )
@@ -46,47 +48,59 @@ func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction, s
 			CC: ast.CC,
 		}
 	case Cmp:
+		fmt.Printf("[debug] Cmp before replacement - Type: %v\n", ast.Type)
 		replacedState, src := r.ReplaceOperand(ast.Src, state)
 		replacedState, dst := r.ReplaceOperand(ast.Dst, replacedState)
 		return replacedState, Cmp{
-			Src: src,
-			Dst: dst,
+			Type: ast.Type,
+			Src:  src,
+			Dst:  dst,
 		}
 	case AsmMov:
+		fmt.Printf("[debug] AsmMov before replacement - Type: %v\n", ast.Type)
 		replacedState, src := r.ReplaceOperand(ast.Src, state)
 		replacedState, dst := r.ReplaceOperand(ast.Dst, replacedState)
 		return replacedState, AsmMov{
-			Src: src,
-			Dst: dst,
+			Type: ast.Type,
+			Src:  src,
+			Dst:  dst,
 		}
 	case Unary:
+		fmt.Printf("[debug] Unary before replacement - Type: %v\n", ast.Type)
 		replacedState, dst := r.ReplaceOperand(ast.Dst, state)
 		return replacedState, Unary{
-			Dst: dst,
-			Op:  ast.Op,
+			Type: ast.Type,
+			Dst:  dst,
+			Op:   ast.Op,
 		}
 	case AsmBinary:
+		fmt.Printf("[debug] AsmBinary before replacement - Type: %v\n", ast.Type)
 		replacedState, src := r.ReplaceOperand(ast.Src, state)
 		replacedState, dst := r.ReplaceOperand(ast.Dst, replacedState)
 		return replacedState, AsmBinary{
-			Src: src,
-			Dst: dst,
-			Op:  ast.Op,
+			Type: ast.Type,
+			Src:  src,
+			Dst:  dst,
+			Op:   ast.Op,
 		}
 	case Idiv:
+		fmt.Printf("[debug] Idiv before replacement - Type: %v\n", ast.Type)
 		replacedState, src := r.ReplaceOperand(ast.Src, state)
 		return replacedState, Idiv{
-			Src: src,
+			Type: ast.Type,
+			Src:  src,
 		}
 	case Return:
 		return state, instr
 	case Cdq:
-		return state, instr
+		fmt.Printf("[debug] Cdq before replacement - Type: %v\n", ast.Type)
+		return state, Cdq{
+			Type: ast.Type,
+		}
 	case AllocateStack:
 		panic("you are not belong to us")
 	default:
 		return state, instr
-		// panic("unimplemented pseudo ininstruction")
 	}
 }
 

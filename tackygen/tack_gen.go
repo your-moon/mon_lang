@@ -43,6 +43,7 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 
 	return program
 }
+
 func (c *TackyGen) EmitTackyFn(node *parser.FnDecl) TackyFn {
 	irs := []Instruction{}
 	if node.Body != nil {
@@ -468,9 +469,9 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 	case parser.ASTConst:
 		switch consttype := expr.(type) {
 		case *parser.ASTConstInt:
-			return Constant{Value: mconstant.Int32{Value: int32(consttype.Value)}}, []Instruction{}
+			return Constant{Value: &mconstant.Int32{Value: int32(consttype.Value)}}, []Instruction{}
 		case *parser.ASTConstLong:
-			return Constant{Value: mconstant.Int64{Value: consttype.Value}}, []Instruction{}
+			return Constant{Value: &mconstant.Int64{Value: consttype.Value}}, []Instruction{}
 		default:
 			panic("unimplemented type")
 

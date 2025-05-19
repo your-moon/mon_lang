@@ -69,7 +69,34 @@ type Register struct {
 }
 
 func (a Register) Op() string {
-	return string(a.Reg)
+	return a.Reg.Asm32()
+}
+
+func (a AsmRegister) Asm32() string {
+	switch a {
+	case AX:
+		return "%eax"
+	case CX:
+		return "%ecx"
+	case DX:
+		return "%edx"
+	case DI:
+		return "%edi"
+	case SI:
+		return "%esi"
+	case R8:
+		return "%r8d"
+	case R9:
+		return "%r9d"
+	case R10:
+		return "%r10d"
+	case R11:
+		return "%r11d"
+	case SP:
+		return "%rsp" //rsp must be 64bit
+	default:
+		panic(fmt.Sprintf("unimplemented register %s", a))
+	}
 }
 
 type Pseudo struct {

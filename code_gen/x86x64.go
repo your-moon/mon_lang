@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/your-moon/mn_compiler_go_version/base"
 	"github.com/your-moon/mn_compiler_go_version/code_gen/asmtype"
+	"github.com/your-moon/mn_compiler_go_version/stringpool"
 	"github.com/your-moon/mn_compiler_go_version/util"
 )
 
@@ -15,12 +17,10 @@ const (
 	Aarch64 OsType = "arch64"
 )
 
-// Comment represents an assembly comment
 type Comment struct {
 	Text string
 }
 
-// Ir returns the IR representation of a comment
 func (a Comment) Ir() string {
 	return fmt.Sprintf("# %s", a.Text)
 }
@@ -41,7 +41,53 @@ func NewGenASM(writer io.Writer, osType util.OsType) AsmGen {
 	}
 }
 
+func (a *AsmGen) AddString(value string) string {
+	if base.Debug {
+		fmt.Printf("[DEBUG] AddString: '%s'\n", value)
+		fmt.Printf("[DEBUG] AddString Raw runes: ")
+		for _, r := range value {
+			fmt.Printf("%d ", r)
+		}
+		fmt.Println()
+	}
+
+	label := stringpool.GetLabel(value)
+
+	return label
+}
+
+func (a *AsmGen) GenStringData() {
+	strings := stringpool.GetAllStrings()
+
+	if len(strings) > 0 {
+		a.Write(".data")
+		for str, id := range strings {
+			label := fmt.Sprintf(".LC%d", id)
+			a.Write(fmt.Sprintf("%s:", label))
+			a.Write(fmt.Sprintf(".string \"%s\"", str))
+		}
+		a.Write("")
+	}
+}
+
 func (a *AsmGen) GenAsm(program AsmProgram) {
+	for _, fn := range program.AsmFnDef {
+		for _, instr := range fn.Irs {
+			switch ast := instr.(type) {
+			case StringLiteral:
+				a.AddString(ast.Value)
+			case AsmMov:
+				if strLit, isStrLit := ast.Src.(StringLiteral); isStrLit {
+					a.AddString(strLit.Value)
+				}
+			}
+		}
+	}
+
+	a.GenStringData()
+
+	a.Write(".text")
+
 	for _, fn := range program.AsmExternFn {
 		if a.ostype == util.Linux {
 			a.Write(fmt.Sprintf(".extern %s", fn.Name))
@@ -55,18 +101,18 @@ func (a *AsmGen) GenAsm(program AsmProgram) {
 		a.Write("main:")
 
 	} else if a.ostype == util.Darwin {
-		a.Write(".globl _start")
-		a.Write("_start:")
+		a.Write(".globl _main")
+		a.Write("_main:")
 	}
 
 	if a.ostype == util.Linux {
 		a.Write("    call wndsen")
-		a.Write("    movq %rax, %rdi") // Move return value to %rdi for syscall
-		a.Write("    movq $60, %rax")  // Exit syscall number
-		a.Write("    syscall")         // Make the syscall
+		a.Write("    movq %rax, %rdi")
+		a.Write("    movq $60, %rax")
+		a.Write("    syscall")
 	} else if a.ostype == util.Darwin {
 		a.Write("    call _wndsen")
-		a.Write("    ret") // Return value is already in %rax
+		a.Write("    ret")
 	}
 
 	for _, fn := range program.AsmFnDef {
@@ -94,6 +140,10 @@ func (a *AsmGen) GenFn(fn AsmFnDef) {
 
 func (a *AsmGen) GenInstr(instr AsmInstruction) {
 	switch ast := instr.(type) {
+	case StringLiteral:
+		label := a.AddString(ast.Value)
+		a.Write(fmt.Sprintf("    leaq %s(%%rip), %%rax", label))
+		return
 	case Push:
 		a.Write(fmt.Sprintf("    pushq %s", a.GenOperand(ast.Op, &asmtype.QuadWord{})))
 	case Call:
@@ -131,7 +181,15 @@ func (a *AsmGen) GenInstr(instr AsmInstruction) {
 	case Idiv:
 		a.Write(fmt.Sprintf("    idiv%s %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type)))
 	case AsmMov:
-		a.Write(fmt.Sprintf("    mov%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
+		if strLit, isStrLit := ast.Src.(StringLiteral); isStrLit {
+			label := a.AddString(strLit.Value)
+			a.Write(fmt.Sprintf("    leaq %s(%%rip), %%rax", label))
+			if reg, isReg := ast.Dst.(Register); !isReg || reg.Reg != AX {
+				a.Write(fmt.Sprintf("    mov%s %%rax, %s", a.GenType(ast.Type), a.GenOperand(ast.Dst, ast.Type)))
+			}
+		} else {
+			a.Write(fmt.Sprintf("    mov%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
+		}
 	case Return:
 		a.Write("    movq %rbp, %rsp")
 		a.Write("    popq %rbp")
@@ -150,6 +208,8 @@ func (a *AsmGen) GenType(ksmtype asmtype.AsmType) string {
 		return "q"
 	case *asmtype.LongWord:
 		return "l"
+	case *asmtype.StringType:
+		return "q"
 	default:
 		panic(fmt.Sprintf("unimplemented gentype: %v, on idx: %d, fn:%s", ksmtype, a.currentInstrIdx, a.currentFn))
 	}
@@ -157,15 +217,21 @@ func (a *AsmGen) GenType(ksmtype asmtype.AsmType) string {
 
 func (a *AsmGen) GenOperand(op AsmOperand, asmType asmtype.AsmType) string {
 	if asmType == nil {
-		asmType = &asmtype.QuadWord{} // Default to QuadWord if type not specified
+		asmType = &asmtype.QuadWord{}
 	}
 	switch ast := op.(type) {
 	case Register:
 		return a.RegisterShow(ast, asmType)
 	case Imm:
+		if _, ok := asmType.(*asmtype.StringType); ok {
+			return fmt.Sprintf("$_str_%d", ast.Value)
+		}
 		return fmt.Sprintf("$%d", ast.Value)
 	case Stack:
 		return fmt.Sprintf("%d(%%rbp)", ast.Value)
+	case StringLiteral:
+		label := a.AddString(ast.Value)
+		return fmt.Sprintf("%s(%%rip)", label)
 	default:
 		panic("unimplemented operand")
 	}
@@ -173,7 +239,7 @@ func (a *AsmGen) GenOperand(op AsmOperand, asmType asmtype.AsmType) string {
 
 func (a *AsmGen) RegisterShow(reg Register, asmType asmtype.AsmType) string {
 	switch asmType.(type) {
-	case *asmtype.QuadWord:
+	case *asmtype.QuadWord, *asmtype.StringType:
 		if reg.Reg == R10 || reg.Reg == R11 {
 			return "%" + string(reg.Reg)
 		}

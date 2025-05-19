@@ -478,6 +478,9 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 			panic("unimplemented type")
 
 		}
+	case *parser.ASTStringExpression:
+		// Handle string literals
+		return StringConstant{Value: expr.Value}, []Instruction{}
 
 	case *parser.ASTUnary:
 		irs := []Instruction{}

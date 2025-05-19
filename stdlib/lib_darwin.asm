@@ -2,7 +2,7 @@
 _khevle:
     pushq %rbp
     movq %rsp, %rbp
-    subq $48, %rsp        # Allocate local space
+    subq $256, %rsp       # Allocate larger local space for big numbers
 
     pushq %rbx
     pushq %r12
@@ -11,7 +11,7 @@ _khevle:
     pushq %r15
 
     movq %rdi, -8(%rbp)   # Store input number (64-bit)
-    leaq -32(%rbp), %r12  # Buffer pointer (use r12 instead of rdi)
+    leaq -128(%rbp), %r12  # Buffer pointer (use r12 instead of rdi) - moved further down in stack
     movq $0, -16(%rbp)    # Initialize digit count
     movq -8(%rbp), %rax   # Copy input to rax for processing
     movq %rax, -24(%rbp)  # Store working copy
@@ -31,12 +31,14 @@ convert_loop:
     addb $'0', %dl        # Convert remainder to ASCII
     movb %dl, (%r12)      # Store digit
     incq %r12             # Move buffer pointer forward
+    cmpq $100, -16(%rbp)   # Check if we're about to overflow (leave space for null terminator)
+    jge write_number       # If too many digits, stop and print what we have
     incq -16(%rbp)        # Increment digit count
     cmpq $0, -24(%rbp)     # Check if quotient is zero
     jne convert_loop
 
     # Now reverse digits
-    leaq -32(%rbp), %r13  # Start of buffer
+    leaq -128(%rbp), %r13  # Start of buffer
     movq %r12, %r14       # End of buffer pointer
     decq %r14             # Point to last digit
 
@@ -57,11 +59,11 @@ write_number:
 
     movq $0x2000004, %rax # sys_write
     movq $1, %rdi         # stdout
-    leaq -32(%rbp), %rsi  # buffer
+    leaq -128(%rbp), %rsi  # buffer
     movq -16(%rbp), %rdx  # length
     syscall
 
-    # Return original input value (lower 32 bits)
+    # Return original input value
     movq -8(%rbp), %rax
 
     popq %r15
@@ -140,3 +142,76 @@ invalid_input:
     movq %rbp, %rsp
     popq %rbp
     ret
+
+.globl _khevle_mqr
+_khevle_mqr:
+    pushq %rbp
+    movq %rsp, %rbp
+    
+    # Save registers
+    pushq %rbx
+    pushq %r12
+    pushq %r13
+    pushq %r14
+    pushq %r15
+    
+    # RDI contains the pointer to the string
+    movq %rdi, %r12       # Store string pointer in r12
+    
+    # Calculate string length
+    movq %r12, %rdi
+    call _strlen
+    movq %rax, %r13       # Store string length in r13
+    
+    # Add newline to the end
+    movq %r12, %rsi       # Source pointer
+    movq %r13, %rdx       # Length
+    
+    # Write the string to stdout
+    movq $0x2000004, %rax # sys_write
+    movq $1, %rdi         # stdout
+    movq %r12, %rsi       # buffer
+    movq %r13, %rdx       # length
+    syscall
+    
+    # Write newline
+    movq $0x2000004, %rax # sys_write
+    movq $1, %rdi         # stdout
+    leaq newline(%rip), %rsi # newline character
+    movq $1, %rdx         # length 1
+    syscall
+    
+    # Restore registers
+    popq %r15
+    popq %r14
+    popq %r13
+    popq %r12
+    popq %rbx
+    
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+# Helper function to calculate string length
+_strlen:
+    pushq %rbp
+    movq %rsp, %rbp
+    
+    movq %rdi, %rcx       # String pointer
+    movq $0, %rax         # Length counter
+    
+_strlen_loop:
+    cmpb $0, (%rcx)       # Check for null terminator
+    je _strlen_done
+    incq %rax             # Increment length
+    incq %rcx             # Move to next character
+    jmp _strlen_loop
+    
+_strlen_done:
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+# Data section
+.data
+newline: .byte 10        # Newline character

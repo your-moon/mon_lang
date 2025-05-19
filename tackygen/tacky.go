@@ -43,6 +43,14 @@ func (c Constant) val() string {
 	return fmt.Sprintf("%d", c.Value)
 }
 
+type StringConstant struct {
+	Value string
+}
+
+func (s StringConstant) val() string {
+	return fmt.Sprintf("\"%s\"", s.Value)
+}
+
 type Var struct {
 	Name string
 }

@@ -156,7 +156,6 @@ func (r *Resolver) ResolveFnDecl(fndecl *parser.FnDecl, innerMap IdMap) (IdMap, 
 	return solvedInnerMap, fndecl, nil
 }
 
-// resolveLocalVarHelper is used to resolve local variables in a function
 func (r *Resolver) resolveLocalVarHelper(innerMap map[string]VarEntry, varDecl *parser.VarDecl) (map[string]VarEntry, string, error) {
 	if existVar, exists := innerMap[varDecl.Ident]; exists && innerMap[varDecl.Ident].fromCurrentScope {
 		_, extrclass := existVar.StorageClass.(*parser.Extern)
@@ -491,6 +490,9 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression, innerMap IdMap) (pa
 		}, nil
 
 	case parser.ASTConst:
+		return nodetype, nil
+
+	case *parser.ASTStringExpression:
 		return nodetype, nil
 
 		// case *parser.ASTIdent:

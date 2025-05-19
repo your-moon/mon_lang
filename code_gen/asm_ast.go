@@ -296,6 +296,20 @@ type AsmFnDef struct {
 	Irs   []AsmInstruction
 }
 
+type StringLiteral struct {
+	Value string
+}
+
+func (s StringLiteral) Ir() string {
+	return fmt.Sprintf("# string literal: %s", s.Value)
+}
+
+func (s StringLiteral) Op() string {
+	return fmt.Sprintf("$%s", s.Value)
+}
+
+var _ AsmInstruction = StringLiteral{} // Ensure StringLiteral implements AsmInstruction
+
 type AsmProgram struct {
 	AsmFnDef    []AsmFnDef
 	AsmExternFn []AsmExternFn

@@ -2,6 +2,9 @@ package lexer
 
 import (
 	"fmt"
+
+	"github.com/your-moon/mn_compiler_go_version/base"
+	"github.com/your-moon/mn_compiler_go_version/stringpool"
 )
 
 type Scanner struct {
@@ -91,7 +94,7 @@ func (s *Scanner) Peek() int32 {
 }
 
 func (s *Scanner) BuildToken(ttype TokenType) Token {
-	if ttype == IDENT || ttype == NUMBER {
+	if ttype == IDENT || ttype == NUMBER || ttype == STRING {
 		str := string(s.Source[s.Start:s.Cursor])
 		return BuildToken(ttype, &str, int(s.Line), int(s.Start), int(s.Cursor))
 	}
@@ -160,6 +163,9 @@ func (s *Scanner) ToKeyword() (Token, bool) {
 	}
 	if str == string(KeywordInt) {
 		return s.BuildToken(INT_TYPE), true
+	}
+	if str == string(KeywordString) {
+		return s.BuildToken(STRING_TYPE), true
 	}
 	if str == string(KeywordVoid) {
 		return s.BuildToken(VOID), true
@@ -242,8 +248,43 @@ func (s *Scanner) Skip() {
 		break
 	}
 }
-func (s *Scanner) Scan() (Token, error) {
+func (s *Scanner) BuildString() (Token, error) {
+	tokenStart := s.Start
+	s.Next()
+	for s.Peek() != '"' && !s.isAtEnd() {
+		if s.Peek() == '\n' {
+			s.Line++
+		}
+		s.Next()
+	}
 
+	if s.isAtEnd() {
+		return Token{}, fmt.Errorf("unterminated string at line %d", s.Line)
+	}
+
+	strRunes := s.Source[tokenStart+1 : s.Cursor]
+	strValue := string(strRunes)
+
+	if base.Debug {
+		fmt.Printf("[DEBUG] String literal: '%s'\n", strValue)
+
+		fmt.Printf("[DEBUG] Raw runes: ")
+		for _, r := range strValue {
+			fmt.Printf("%d ", r)
+		}
+		fmt.Println()
+	}
+
+	stringpool.Intern(strValue)
+
+	s.Next()
+	s.Start = tokenStart
+	token := s.BuildToken(STRING)
+	token.Value = &strValue
+	return token, nil
+}
+
+func (s *Scanner) Scan() (Token, error) {
 	s.Skip() //skip whitespace and incr line
 	if s.isAtEnd() {
 		return s.BuildToken(EOF), nil
@@ -251,6 +292,10 @@ func (s *Scanner) Scan() (Token, error) {
 
 	s.Start = s.Cursor
 	c := s.Next()
+
+	if c == '"' {
+		return s.BuildString()
+	}
 
 	for s.isAlpha(c) {
 		return s.BuildIdent()

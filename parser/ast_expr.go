@@ -174,7 +174,10 @@ func (a *ASTStringExpression) expressionNode()      {}
 func (a *ASTStringExpression) TokenLiteral() string { return string(a.Token.Type) }
 func (a *ASTStringExpression) GetType() mtypes.Type { return a.Type }
 func (a *ASTStringExpression) PrintAST(depth int) string {
-	return fmt.Sprintf("%s└─ String: %s", indent(depth), *a.Token.Value)
+	if a.Token.Value != nil {
+		return fmt.Sprintf("%s└─ String: %s", indent(depth), *a.Token.Value)
+	}
+	return fmt.Sprintf("%s└─ String: %s", indent(depth), a.Value)
 }
 
 type ASTPrefixExpression struct {

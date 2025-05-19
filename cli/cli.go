@@ -377,19 +377,19 @@ func (c *CLI) runCompiler(args []string) error {
 		fmt.Println("Failed to write debug_out.asm:", err)
 	}
 
-	linker := linker.NewLinker("out")
-	linker.SetAssemblyContent(asmBuffer.String())
-	if err := linker.Link(); err != nil {
-		fmt.Println("Error linking:", err)
-		os.Exit(1)
-	}
+	// linker := linker.NewLinker("out")
+	// linker.SetAssemblyContent(asmBuffer.String())
+	// if err := linker.Link(); err != nil {
+	// 	fmt.Println("Error linking:", err)
+	// 	os.Exit(1)
+	// }
 
-	if err := linker.MakeExecutable(); err != nil {
-		fmt.Println("Error making executable:", err)
-		os.Exit(1)
-	}
+	// if err := linker.MakeExecutable(); err != nil {
+	// 	fmt.Println("Error making executable:", err)
+	// 	os.Exit(1)
+	// }
 
-	fmt.Println("Created executable: out")
+	// fmt.Println("Created executable: out")
 	return nil
 }
 

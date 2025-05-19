@@ -95,7 +95,7 @@ func (l *Linker) Link() error {
 
 	var linkCmd *exec.Cmd
 	if l.osType == "darwin" {
-		linkCmd = exec.Command("ld", "-arch", "x86_64", "-o", l.outputFile, objFile, stdlibObj, "-e", "_start", "-no_pie", "-lSystem", "-syslibroot", "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk")
+		linkCmd = exec.Command("ld", "-arch", "x86_64", "-o", l.outputFile, objFile, stdlibObj, "-e", "_main", "-no_pie", "-lSystem", "-syslibroot", "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk")
 	} else {
 		linkCmd = exec.Command("ld", "-o", l.outputFile, objFile, stdlibObj)
 	}

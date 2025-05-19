@@ -271,6 +271,9 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 			extype.Type = &mtypes.Int64Type{}
 		}
 		return expr, nil
+	case *parser.ASTStringExpression:
+		expr.Type = &mtypes.StringType{}
+		return expr, nil
 	case *parser.ASTBinary:
 		left, err := c.checkExpr(expr.Left)
 		if err != nil {

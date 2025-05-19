@@ -317,6 +317,8 @@ func (p *Parser) parseType() (mtypes.Type, error) {
 		return &mtypes.Int32Type{}, nil
 	case lexer.LONG:
 		return &mtypes.Int64Type{}, nil
+	case lexer.STRING_TYPE:
+		return &mtypes.StringType{}, nil
 	case lexer.VOID:
 		return &mtypes.VoidType{}, nil
 	default:
@@ -478,6 +480,8 @@ func (p *Parser) parseFactor() ASTExpression {
 		return p.parseIdent()
 	case lexer.NUMBER:
 		return p.parseConst()
+	case lexer.STRING:
+		return p.parseString()
 	case lexer.MINUS, lexer.TILDE, lexer.NOT:
 		return p.parseUnary(next.Type)
 	case lexer.OPEN_PAREN:
@@ -790,6 +794,23 @@ func (p *Parser) expect(expected lexer.TokenType) bool {
 
 func (p *Parser) peekIs(expected lexer.TokenType) bool {
 	return p.peekToken.Type == expected
+}
+
+func (p *Parser) parseString() *ASTStringExpression {
+	next := p.peekToken
+	p.nextToken()
+	
+	// Make sure we have a valid string value
+	value := ""
+	if next.Value != nil {
+		value = *next.Value
+	}
+	
+	return &ASTStringExpression{
+		Token: next,
+		Value: value,
+		Type:  &mtypes.StringType{},
+	}
 }
 
 func (p *Parser) appendError(message string) {

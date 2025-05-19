@@ -11,3 +11,7 @@ func (l *LongWord) asmtype() {}
 type QuadWord struct{}
 
 func (l *QuadWord) asmtype() {}
+
+type StringType struct{}
+
+func (s *StringType) asmtype() {}

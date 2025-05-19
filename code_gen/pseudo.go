@@ -106,6 +106,8 @@ func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction, s
 		return state, Cdq{
 			Type: ast.Type,
 		}
+	case StringLiteral:
+		return state, ast
 	case AllocateStack:
 		panic("you are not belong to us")
 	default:

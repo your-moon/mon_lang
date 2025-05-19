@@ -23,6 +23,9 @@ func isLarge(i int64) bool {
 
 func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction {
 	switch ast := instr.(type) {
+	case StringLiteral:
+		// StringLiteral is already properly handled
+		return []AsmInstruction{ast}
 	case AsmMov:
 		// Handle quadword immediate to register
 		if _, isQuadWord := ast.Type.(*asmtype.QuadWord); isQuadWord {

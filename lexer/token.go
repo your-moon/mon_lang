@@ -49,6 +49,7 @@ const (
 	IDENT       TokenType = "IDENT"
 	NUMBER      TokenType = "NUMBER"
 	LONG        TokenType = "LONG"
+	STRING      TokenType = "STRING"
 	FN          TokenType = "FN"
 	VAR_DECL    TokenType = "DECL"
 	OPEN_PAREN  TokenType = "OPEN_PAREN"
@@ -61,9 +62,10 @@ const (
 	TILDE       TokenType = "TILDE"
 	EOF         TokenType = "EOF"
 
-	INT_TYPE TokenType = "INT_TYPE"
-	VOID     TokenType = "VOID"
-	ERROR    TokenType = "ERROR"
+	INT_TYPE    TokenType = "INT_TYPE"
+	STRING_TYPE TokenType = "STRING_TYPE"
+	VOID        TokenType = "VOID"
+	ERROR       TokenType = "ERROR"
 )
 
 type Token struct {

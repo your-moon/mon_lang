@@ -90,6 +90,8 @@ func (s *SymbolTable) GetSize(name string) (int, error) {
 		return 4, nil
 	case *asmtype.QuadWord:
 		return 8, nil
+	case *asmtype.StringType:
+		return 8, nil // Strings are pointers, so they're 8 bytes on 64-bit systems
 	default:
 		return 0, fmt.Errorf("internal error: unknown asm type for %q", name)
 	}
@@ -109,6 +111,8 @@ func (s *SymbolTable) GetAlignment(name string) (int, error) {
 		return 4, nil
 	case *asmtype.QuadWord:
 		return 8, nil
+	case *asmtype.StringType:
+		return 8, nil // Strings are pointers, so they're 8 bytes on 64-bit systems
 	default:
 		return 0, fmt.Errorf("internal error: unknown asm type for %q", name)
 	}

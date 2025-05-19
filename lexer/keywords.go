@@ -3,7 +3,6 @@ package lexer
 type Keyword string
 
 const (
-	//for compiler its english
 	KeywordExtern Keyword = "extern"
 	KeywordStatic Keyword = "статик"
 
@@ -23,7 +22,8 @@ const (
 	KeywordIs     Keyword = "бол"
 	KeywordNot    Keyword = "үгүй"
 	//type
-	KeywordInt  Keyword = "тоо"
-	KeywordLong Keyword = "тоо64"
-	KeywordVoid Keyword = "хоосон"
+	KeywordInt    Keyword = "тоо"
+	KeywordLong   Keyword = "тоо64"
+	KeywordVoid   Keyword = "хоосон"
+	KeywordString Keyword = "мөр"
 )

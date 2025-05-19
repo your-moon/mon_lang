@@ -16,6 +16,10 @@ type Int32Type struct{}
 
 func (t *Int32Type) typecheck() {}
 
+type StringType struct{}
+
+func (t *StringType) typecheck() {}
+
 type FnType struct {
 	ParamTypes []Type
 	RetType    Type

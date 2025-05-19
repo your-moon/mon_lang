@@ -148,6 +148,8 @@ func (a *AsmASTGen) AsmType(val tackygen.TackyVal) asmtype.AsmType {
 		vtype := a.SymbolTable.Get(valtype.Name)
 		valType := a.ConvType(vtype.Type)
 		return valType
+	case tackygen.StringConstant:
+		return &asmtype.StringType{}
 	default:
 		panic("unimplemented val")
 	}
@@ -532,6 +534,8 @@ func (a *AsmASTGen) GenASTVal(val tackygen.TackyVal) AsmOperand {
 		return Imm{Value: ast.Value.GetValue()}
 	case tackygen.Var:
 		return Pseudo{Ident: ast.Name}
+	case tackygen.StringConstant:
+		return StringLiteral{Value: ast.Value}
 	}
 
 	return nil
@@ -545,6 +549,8 @@ func (a *AsmASTGen) ConvType(val mtypes.Type) asmtype.AsmType {
 		return &asmtype.QuadWord{}
 	case *mtypes.VoidType:
 		return &asmtype.LongWord{}
+	case *mtypes.StringType:
+		return &asmtype.StringType{}
 	case *mtypes.FnType:
 		panic("fn type should not be here")
 	default:

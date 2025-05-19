@@ -238,7 +238,6 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 			irs = append(irs, Label{Ident: endLabel.Name})
 			return irs
 		}
-
 	case *parser.ASTReturnStmt:
 		irs := []Instruction{}
 		if ast.ReturnValue != nil {
@@ -274,6 +273,9 @@ func ToUnaryTackyOp(op lexer.TokenType) (UnaryOperator, error) {
 }
 
 func ToTackyOp(op parser.ASTBinOp) (TackyBinaryOp, error) {
+	if op == parser.ASTBinOp(parser.A_MOD) {
+		return Modulo, nil
+	}
 	if op == parser.ASTBinOp(parser.A_PLUS) {
 		return Add, nil
 	}
@@ -320,7 +322,7 @@ func (c *TackyGen) EmitAndExpr(expr *parser.ASTBinary) (TackyVal, []Instruction)
 	irs := []Instruction{}
 	falseLabel := c.makeLabel("and_false")
 	endLabel := c.makeLabel("and_end")
-	dst := c.makeTemp(&mtypes.IntType{})
+	dst := c.makeTemp(&mtypes.Int32Type{})
 
 	v1, v1Irs := c.EmitExpr(expr.Left)
 	irs = append(irs, v1Irs...)
@@ -361,7 +363,7 @@ func (c *TackyGen) EmitOrExpr(expr *parser.ASTBinary) (TackyVal, []Instruction) 
 	irs := []Instruction{}
 	trueLabel := c.makeLabel("or_true")
 	endLabel := c.makeLabel("or_end")
-	dst := c.makeTemp(&mtypes.IntType{})
+	dst := c.makeTemp(&mtypes.Int32Type{})
 
 	left, leftIrs := c.EmitExpr(expr.Left)
 	irs = append(irs, leftIrs...)
@@ -417,7 +419,7 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs = append(irs, startIrs...)
 		end, endIrs := c.EmitExpr(expr.End)
 		irs = append(irs, endIrs...)
-		dst := c.makeTemp(&mtypes.IntType{})
+		dst := c.makeTemp(&mtypes.Int32Type{})
 		irs = append(irs, Binary{
 			Op:   Sub,
 			Src1: end,
@@ -499,29 +501,28 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs := []Instruction{}
 		if expr.Op == parser.ASTBinOp(parser.A_AND) {
 			return c.EmitAndExpr(expr)
-		}
-		if expr.Op == parser.ASTBinOp(parser.A_OR) {
+		} else if expr.Op == parser.ASTBinOp(parser.A_OR) {
 			return c.EmitOrExpr(expr)
-		}
+		} else {
+			op, err := ToTackyOp(expr.Op)
+			if err != nil {
+				panic(err)
+			}
 
-		op, err := ToTackyOp(expr.Op)
-		if err != nil {
-			panic(err)
+			v1, v1Irs := c.EmitExpr(expr.Left)
+			irs = append(irs, v1Irs...)
+			v2, v2Irs := c.EmitExpr(expr.Right)
+			irs = append(irs, v2Irs...)
+			dst := c.makeTemp(expr.Type)
+			instr := Binary{
+				Op:   op,
+				Src1: v1,
+				Src2: v2,
+				Dst:  dst,
+			}
+			irs = append(irs, instr)
+			return dst, irs
 		}
-
-		v1, v1Irs := c.EmitExpr(expr.Left)
-		irs = append(irs, v1Irs...)
-		v2, v2Irs := c.EmitExpr(expr.Right)
-		irs = append(irs, v2Irs...)
-		dst := c.makeTemp(expr.Type)
-		instr := Binary{
-			Op:   op,
-			Src1: v1,
-			Src2: v2,
-			Dst:  dst,
-		}
-		irs = append(irs, instr)
-		return dst, irs
 	default:
 		panic(fmt.Sprintf("unimplemented expr: %s", node.TokenLiteral()))
 	}
@@ -545,16 +546,13 @@ func (c *TackyGen) isReturnExistsIn(node *parser.FnDecl) bool {
 }
 
 func (c *TackyGen) PrettyPrint(program TackyProgram) {
-	if len(program.FnDefs) > 0 {
-		fmt.Println("\n// Function:", program.FnDefs[0].Name)
-		fmt.Println("// Three-address code:")
-		fmt.Println()
-		for _, instr := range program.FnDefs[0].Instructions {
+	for _, fn := range program.FnDefs {
+		fmt.Println(fn.Name + ":")
+		for _, instr := range fn.Instructions {
 			instr.Ir()
 		}
 		fmt.Println()
 	}
-
 }
 
 func (c *TackyGen) makeTemp(mtype mtypes.Type) Var {

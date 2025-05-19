@@ -75,23 +75,23 @@ func (a Register) Op() string {
 func (a AsmRegister) Asm32() string {
 	switch a {
 	case AX:
-		return "%eax"
+		return "ax"
 	case CX:
-		return "%ecx"
+		return "cx"
 	case DX:
-		return "%edx"
+		return "dx"
 	case DI:
-		return "%edi"
+		return "di"
 	case SI:
-		return "%esi"
+		return "si"
 	case R8:
-		return "%r8d"
+		return "r8"
 	case R9:
-		return "%r9d"
+		return "r9"
 	case R10:
-		return "%r10d"
+		return "r10"
 	case R11:
-		return "%r11d"
+		return "r11"
 	case SP:
 		return "%rsp" //rsp must be 64bit
 	default:
@@ -158,7 +158,11 @@ type Cmp struct {
 }
 
 func (a Cmp) Ir() string {
-	return fmt.Sprintf("cmp %s, %s", a.Src.Op(), a.Dst.Op())
+	typeStr := "LongType"
+	if _, ok := a.Type.(*asmtype.QuadWord); ok {
+		typeStr = "QuadType"
+	}
+	return fmt.Sprintf("cmp %s, %s, %s", a.Src.Op(), a.Dst.Op(), typeStr)
 }
 
 type Jmp struct {
@@ -203,7 +207,11 @@ type AsmBinary struct {
 }
 
 func (a AsmBinary) Ir() string {
-	return fmt.Sprintf("%s %s, %s", a.Op, a.Src.Op(), a.Dst.Op())
+	typeStr := "LongType"
+	if _, ok := a.Type.(*asmtype.QuadWord); ok {
+		typeStr = "QuadType"
+	}
+	return fmt.Sprintf("%s %s, %s, %s", a.Op, a.Src.Op(), a.Dst.Op(), typeStr)
 }
 
 type Idiv struct {
@@ -212,7 +220,11 @@ type Idiv struct {
 }
 
 func (a Idiv) Ir() string {
-	return fmt.Sprintf("idiv %s", a.Src.Op())
+	typeStr := "LongType"
+	if _, ok := a.Type.(*asmtype.QuadWord); ok {
+		typeStr = "QuadType"
+	}
+	return fmt.Sprintf("idiv %s, %s", a.Src.Op(), typeStr)
 }
 
 type Cdq struct {
@@ -220,7 +232,11 @@ type Cdq struct {
 }
 
 func (a Cdq) Ir() string {
-	return "cdq"
+	typeStr := "LongType"
+	if _, ok := a.Type.(*asmtype.QuadWord); ok {
+		typeStr = "QuadType"
+	}
+	return fmt.Sprintf("cdq %s", typeStr)
 }
 
 type AsmMovSx struct {
@@ -239,7 +255,11 @@ type AsmMov struct {
 }
 
 func (a AsmMov) Ir() string {
-	return fmt.Sprintf("mov %s, %s", a.Src.Op(), a.Dst.Op())
+	typeStr := "LongType"
+	if _, ok := a.Type.(*asmtype.QuadWord); ok {
+		typeStr = "QuadType"
+	}
+	return fmt.Sprintf("mov %s, %s, %s", a.Src.Op(), a.Dst.Op(), typeStr)
 }
 
 type Unary struct {
@@ -249,7 +269,11 @@ type Unary struct {
 }
 
 func (a Unary) Ir() string {
-	return fmt.Sprintf("%s %s", a.Op, a.Dst.Op())
+	typeStr := "LongType"
+	if _, ok := a.Type.(*asmtype.QuadWord); ok {
+		typeStr = "QuadType"
+	}
+	return fmt.Sprintf("%s %s, %s", a.Op, a.Dst.Op(), typeStr)
 }
 
 // for prologue subq $n, %rsp that how much stack we need to allocate

@@ -26,14 +26,18 @@ func (a Comment) Ir() string {
 }
 
 type AsmGen struct {
-	writer io.Writer
-	ostype util.OsType
+	writer          io.Writer
+	ostype          util.OsType
+	currentInstrIdx int
+	currentFn       string
 }
 
 func NewGenASM(writer io.Writer, osType util.OsType) AsmGen {
 	return AsmGen{
-		writer: writer,
-		ostype: osType,
+		writer:          writer,
+		ostype:          osType,
+		currentInstrIdx: 0,
+		currentFn:       "",
 	}
 }
 
@@ -66,6 +70,7 @@ func (a *AsmGen) GenAsm(program AsmProgram) {
 	}
 
 	for _, fn := range program.AsmFnDef {
+		a.currentFn = fn.Ident
 		a.GenFn(fn)
 	}
 	if a.ostype == util.Linux {
@@ -83,15 +88,14 @@ func (a *AsmGen) GenFn(fn AsmFnDef) {
 	a.Write("    movq %rsp, %rbp")
 	for _, instr := range fn.Irs {
 		a.GenInstr(instr)
+		a.currentInstrIdx += 1
 	}
 }
 
 func (a *AsmGen) GenInstr(instr AsmInstruction) {
 	switch ast := instr.(type) {
 	case Push:
-		a.Write(fmt.Sprintf("    pushq %s", a.GenOperand(ast.Op)))
-	case DeallocateStack:
-		a.Write(fmt.Sprintf("    addq $%d, %%rsp", ast.Value))
+		a.Write(fmt.Sprintf("    pushq %s", a.GenOperand(ast.Op, &asmtype.QuadWord{})))
 	case Call:
 		if a.ostype == util.Linux {
 			a.Write(fmt.Sprintf("    call %s", ast.Ident))
@@ -101,39 +105,39 @@ func (a *AsmGen) GenInstr(instr AsmInstruction) {
 	case Label:
 		a.Write(fmt.Sprintf(".L%s:", ast.Ident))
 	case SetCC:
-		a.Write(fmt.Sprintf("    set%s %s", ast.CC, a.GenOperand(ast.Op)))
+		a.Write(fmt.Sprintf("    set%s %s", ast.CC, a.GenOperand(ast.Op, nil)))
 	case JmpCC:
 		a.Write(fmt.Sprintf("    j%s .L%s", ast.CC, ast.Ident))
 	case Jmp:
 		a.Write(fmt.Sprintf("    jmp .L%s", ast.Ident))
 	case Cmp:
-		fmt.Printf("[debug] Cmp type: %v\n", ast.Type)
-		a.Write(fmt.Sprintf("    cmp%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src), a.GenOperand(ast.Dst)))
+		a.Write(fmt.Sprintf("    cmp%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
 	case AsmBinary:
-		fmt.Printf("[debug] AsmBinary type: %v\n", ast.Type)
 		if ast.Op == Mult {
-			a.Write(fmt.Sprintf("    imul%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src), a.GenOperand(ast.Dst)))
+			a.Write(fmt.Sprintf("    imul%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
 		} else if ast.Op == Add {
-			a.Write(fmt.Sprintf("    add%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src), a.GenOperand(ast.Dst)))
+			a.Write(fmt.Sprintf("    add%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
 		} else if ast.Op == Sub {
-			a.Write(fmt.Sprintf("    sub%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src), a.GenOperand(ast.Dst)))
+			a.Write(fmt.Sprintf("    sub%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
 		}
 	case Cdq:
-		fmt.Printf("[debug] Cdq type: %v\n", ast.Type)
-		a.Write("    cdq")
+		switch ast.Type.(type) {
+		case *asmtype.QuadWord:
+			a.Write("    cqo")
+		case *asmtype.LongWord:
+			a.Write("    cdq")
+
+		}
 	case Idiv:
-		fmt.Printf("[debug] Idiv type: %v\n", ast.Type)
-		a.Write(fmt.Sprintf("    idiv%s %s", a.GenType(ast.Type), a.GenOperand(ast.Src)))
+		a.Write(fmt.Sprintf("    idiv%s %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type)))
 	case AsmMov:
-		fmt.Printf("[debug] AsmMov type: %v\n", ast.Type)
-		a.Write(fmt.Sprintf("    mov%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src), a.GenOperand(ast.Dst)))
+		a.Write(fmt.Sprintf("    mov%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
 	case Return:
 		a.Write("    movq %rbp, %rsp")
 		a.Write("    popq %rbp")
 		a.Write("    ret")
 	case Unary:
-		fmt.Printf("[debug] Unary type: %v\n", ast.Type)
-		a.Write(fmt.Sprintf("    %s%s %s", string(ast.Op), a.GenType(ast.Type), a.GenOperand(ast.Dst)))
+		a.Write(fmt.Sprintf("    %s%s %s", string(ast.Op), a.GenType(ast.Type), a.GenOperand(ast.Dst, ast.Type)))
 	case AllocateStack:
 		a.Write(fmt.Sprintf("    subq $%d, %%rsp", ast.Value))
 		a.Write("")
@@ -147,20 +151,46 @@ func (a *AsmGen) GenType(ksmtype asmtype.AsmType) string {
 	case *asmtype.LongWord:
 		return "l"
 	default:
-		panic(fmt.Sprintf("unimplemented gentype: %v", ksmtype))
+		panic(fmt.Sprintf("unimplemented gentype: %v, on idx: %d, fn:%s", ksmtype, a.currentInstrIdx, a.currentFn))
 	}
 }
 
-func (a *AsmGen) GenOperand(op AsmOperand) string {
+func (a *AsmGen) GenOperand(op AsmOperand, asmType asmtype.AsmType) string {
+	if asmType == nil {
+		asmType = &asmtype.QuadWord{} // Default to QuadWord if type not specified
+	}
 	switch ast := op.(type) {
 	case Register:
-		return ast.Op()
+		return a.RegisterShow(ast, asmType)
 	case Imm:
 		return fmt.Sprintf("$%d", ast.Value)
 	case Stack:
 		return fmt.Sprintf("%d(%%rbp)", ast.Value)
 	default:
 		panic("unimplemented operand")
+	}
+}
+
+func (a *AsmGen) RegisterShow(reg Register, asmType asmtype.AsmType) string {
+	switch asmType.(type) {
+	case *asmtype.QuadWord:
+		if reg.Reg == R10 || reg.Reg == R11 {
+			return "%" + string(reg.Reg)
+		}
+		if reg.Reg == SP {
+			return "%rsp"
+		}
+		return "%r" + string(reg.Reg)
+	case *asmtype.LongWord:
+		if reg.Reg == R10 || reg.Reg == R11 {
+			return "%" + string(reg.Reg) + "d"
+		}
+		if reg.Reg == SP {
+			return "%esp"
+		}
+		return "%e" + string(reg.Reg)
+	default:
+		panic(fmt.Sprintf("unimplemented register type: %v", asmType))
 	}
 }
 

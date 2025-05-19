@@ -1,74 +1,117 @@
-.globl start
-start:
-    movl $15, %edi
-    call khevle
-
-    movq $60, %rax        # System call number for exit (Linux)
-    movq $0, %rdi         # Exit code 0
-    syscall
-
-
 .globl khevle
 khevle:
     pushq %rbp
     movq %rsp, %rbp
-    subq $32, %rsp        # Allocate space for local variables
+    subq $64, %rsp           # Allocate space for buffer + vars
 
-    movl %edi, -4(%rbp)   # Store input number
-    leaq -16(%rbp), %rdi  # Buffer position
-    movq $0, -24(%rbp)    # Initialize digit count
+    movq %rdi, -8(%rbp)      # Save input number (factorial result)
+    leaq -48(%rbp), %rsi     # Pointer to buffer start (write from here)
+    movq %rsi, -16(%rbp)     # Save buffer base for reversal
+    movq $0, -24(%rbp)       # Digit count
 
-    cmpl $0, -4(%rbp)
-    jne convert_loop
-    movb $'0', (%rdi)
+    cmpq $0, -8(%rbp)
+    jne .convert_loop
+
+    # Special case for 0
+    movb $'0', (%rsi)
     incq -24(%rbp)
-    jmp write_number
+    jmp .write_number
 
-convert_loop:
-    movl -4(%rbp), %eax   # Load number
-    movl $10, %ecx        # Divisor for decimal
-    xorl %edx, %edx       # Clear remainder
-    idivl %ecx            # Divide by 10
-    movl %eax, -4(%rbp)   # Store quotient
-    addb $'0', %dl        # Convert remainder to ASCII
-    movb %dl, (%rdi)      # Store digit
-    incq %rdi             # Move buffer pointer
-    incq -24(%rbp)        # Increment digit count
-    cmpl $0, -4(%rbp)     # Check if quotient is 0
-    jne convert_loop      # If not zero, continue loop
+.convert_loop:
+    movq -8(%rbp), %rax
+    movq $10, %rcx
+    xorq %rdx, %rdx
+    divq %rcx                 # Divide rax by 10, remainder in rdx
+    movq %rax, -8(%rbp)       # Store quotient
 
-    leaq -16(%rbp), %rax  # Start of buffer
-    movq %rdi, %rcx       # End of buffer
-    decq %rcx             # Point to last digit
-reverse_loop:
-    cmpq %rax, %rcx       # Compare pointers
-    jle write_number      # If start >= end, we're done
-    movb (%rax), %dl      # Load from start
-    movb (%rcx), %bl      # Load from end
-    movb %bl, (%rax)      # Store end at start
-    movb %dl, (%rcx)      # Store start at end
-    incq %rax             # Move start pointer
-    decq %rcx             # Move end pointer
-    jmp reverse_loop      # Continue until pointers meet
+    addb $'0', %dl
+    movb %dl, (%rsi)          # Store digit
+    incq %rsi                 # Advance buffer pointer
+    incq -24(%rbp)            # Increment digit count
 
-write_number:
-    movb $'\n', (%rdi)    # Store newline
-    incq -24(%rbp)        # Include newline in length
+    cmpq $0, -8(%rbp)
+    jne .convert_loop
 
-    movq $1, %rax         # System call number for write (Linux)
-    movq $1, %rdi         # File descriptor (stdout)
-    leaq -16(%rbp), %rsi  # Buffer address
-    movq -24(%rbp), %rdx  # Length (digits + newline)
+    # Prepare for reverse
+    movq -16(%rbp), %rax      # Start = buffer base
+    movq %rsi, %rcx           # End = current pointer
+    decq %rcx                 # Last digit
+
+.reverse_loop:
+    cmpq %rax, %rcx
+    jle .write_number         # Done if start >= end
+
+    movb (%rax), %dl          # Swap *rax and *rcx
+    movb (%rcx), %bl
+    movb %bl, (%rax)
+    movb %dl, (%rcx)
+
+    incq %rax
+    decq %rcx
+    jmp .reverse_loop
+
+.write_number:
+    movb $'\n', (%rsi)        # Add newline at end
+    incq -24(%rbp)            # Include it in length
+
+    movq $1, %rax             # syscall: write
+    movq $1, %rdi             # stdout
+    movq -16(%rbp), %rsi      # Buffer address
+    movq -24(%rbp), %rdx      # Length
     syscall
 
-    movl -28(%rbp), %eax  # Load saved input number into return register
+    movq %rbp, %rsp
+    popq %rbp
+    ret
 
-    popq %r15
-    popq %r14
-    popq %r13
-    popq %r12
-    popq %rbx
+.globl unsh
+unsh:
+    pushq %rbp
+    movq %rsp, %rbp
+    subq $64, %rsp                  # Allocate buffer
 
+    movq $0, %rdi                   # stdin
+    leaq -64(%rbp), %rsi            # buffer address
+    movq $64, %rdx                  # max bytes
+    movq $0, %rax                   # syscall: read
+    syscall
+
+    movq %rax, %rcx                 # store number of bytes read
+    cmpq $0, %rcx
+    jle .invalid_input              # if nothing read or error, return 0
+
+    leaq -64(%rbp), %rsi            # reset pointer to buffer
+    movl $0, %eax                   # result = 0
+
+.parse_loop:
+    cmpq $0, %rcx
+    je .done_parsing
+
+    movb (%rsi), %bl
+    cmpb $'\n', %bl
+    je .done_parsing
+
+    cmpb $'0', %bl
+    jb .invalid_input
+    cmpb $'9', %bl
+    ja .invalid_input
+
+    subb $'0', %bl
+    movzbl %bl, %ebx
+    imull $10, %eax, %eax
+    addl %ebx, %eax
+
+    incq %rsi
+    decq %rcx
+    jmp .parse_loop
+
+.done_parsing:
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+.invalid_input:
+    movl $0, %eax
     movq %rbp, %rsp
     popq %rbp
     ret

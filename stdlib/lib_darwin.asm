@@ -2,7 +2,7 @@
 _khevle:
     pushq %rbp
     movq %rsp, %rbp
-    subq $48, %rsp        # Align stack to 16 bytes and allocate space for locals
+    subq $48, %rsp        # Allocate local space
 
     pushq %rbx
     pushq %r12
@@ -10,64 +10,64 @@ _khevle:
     pushq %r14
     pushq %r15
 
-    movl %edi, -28(%rbp)
+    movq %rdi, -8(%rbp)   # Store input number (64-bit)
+    leaq -32(%rbp), %r12  # Buffer pointer (use r12 instead of rdi)
+    movq $0, -16(%rbp)    # Initialize digit count
 
-    movl %edi, -4(%rbp)   # Store input number
-    leaq -16(%rbp), %rdi  # Buffer position
-    movq $0, -24(%rbp)    # Initialize digit count
-
-    cmpl $0, -4(%rbp)
+    movq -8(%rbp), %rax
+    cmpq $0, %rax
     jne convert_loop
-    movb $'0', (%rdi)
-    incq -24(%rbp)
+    movb $'0', (%r12)
+    incq -16(%rbp)
     jmp write_number
 
 convert_loop:
-    movl -4(%rbp), %eax   # Load number
-    movl $10, %ecx        # Divisor for decimal
-    xorl %edx, %edx       # Clear remainder
-    idivl %ecx            # Divide by 10
-    movl %eax, -4(%rbp)   # Store quotient
+    movq -8(%rbp), %rax   # Load input number
+    movq $10, %rcx        # Divisor
+    xorq %rdx, %rdx       # Clear remainder
+    idivq %rcx            # Divide RDX:RAX by RCX -> Quotient in RAX, remainder in RDX
+    movq %rax, -8(%rbp)   # Store quotient
     addb $'0', %dl        # Convert remainder to ASCII
-    movb %dl, (%rdi)      # Store digit
-    incq %rdi             # Move buffer pointer
-    incq -24(%rbp)        # Increment digit count
-    cmpl $0, -4(%rbp)     # Check if quotient is 0
-    jne convert_loop      # If not zero, continue loop
+    movb %dl, (%r12)      # Store digit
+    incq %r12             # Move buffer pointer forward
+    incq -16(%rbp)        # Increment digit count
+    cmpq $0, -8(%rbp)     # Check if quotient is zero
+    jne convert_loop
 
-    leaq -16(%rbp), %rax  # Start of buffer
-    movq %rdi, %rcx       # End of buffer
-    decq %rcx             # Point to last digit
+    # Now reverse digits
+    leaq -32(%rbp), %r13  # Start of buffer
+    movq %r12, %r14       # End of buffer pointer
+    decq %r14             # Point to last digit
+
 reverse_loop:
-    cmpq %rax, %rcx       # Compare pointers
-    jle write_number      # If start >= end, we're done
-    movb (%rax), %dl      # Load from start
-    movb (%rcx), %bl      # Load from end
-    movb %bl, (%rax)      # Store end at start
-    movb %dl, (%rcx)      # Store start at end
-    incq %rax             # Move start pointer
-    decq %rcx             # Move end pointer
-    jmp reverse_loop      # Continue until pointers meet
+    cmpq %r13, %r14
+    jle write_number
+    movb (%r13), %al
+    movb (%r14), %bl
+    movb %bl, (%r13)
+    movb %al, (%r14)
+    incq %r13
+    decq %r14
+    jmp reverse_loop
 
 write_number:
-    movb $'\n', (%rdi)    # Store newline
-    incq -24(%rbp)        # Include newline in length
+    movb $'\n', (%r12)    # Add newline
+    incq -16(%rbp)        # Increment digit count
 
-    movq $0x2000004, %rax # System call number for write
-    movq $1, %rdi         # File descriptor (stdout)
-    leaq -16(%rbp), %rsi  # Buffer address
-    movq -24(%rbp), %rdx  # Length (digits + newline)
+    movq $0x2000004, %rax # sys_write
+    movq $1, %rdi         # stdout
+    leaq -32(%rbp), %rsi  # buffer
+    movq -16(%rbp), %rdx  # length
     syscall
 
-    # Restore original input value to return
-    movl -28(%rbp), %eax  # Load saved input number into return register
+    # Return original input value (lower 32 bits)
+    movq -8(%rbp), %rax
 
     popq %r15
     popq %r14
     popq %r13
     popq %r12
     popq %rbx
-
     movq %rbp, %rsp
     popq %rbp
     ret

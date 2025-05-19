@@ -19,7 +19,7 @@ const (
 	LessThanEqual    TackyBinaryOp = "<="
 	GreaterThan      TackyBinaryOp = ">"
 	GreaterThanEqual TackyBinaryOp = ">="
-	Modulo           TackyBinaryOp = "remainder"
+	Modulo           TackyBinaryOp = "%"
 )
 
 type UnaryOperator string

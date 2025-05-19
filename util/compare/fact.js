@@ -13,7 +13,7 @@ function факториал(н) {
 }
 
 function үндсэн() {
-  return факториал(12); // 12! = 479001600
+  return факториал(20);
 }
 
 // Measure execution time

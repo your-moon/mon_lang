@@ -10,7 +10,7 @@ def факториал(н):
     return бодсон
 
 def үндсэн():
-    return факториал(12)  # 12! = 479001600
+    return факториал(20)
 
 # Run the program
 if __name__ == "__main__":

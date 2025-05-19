@@ -8,13 +8,13 @@ type VoidType struct{}
 
 func (t *VoidType) typecheck() {}
 
-type LongType struct{}
+type Int64Type struct{}
 
-func (t *LongType) typecheck() {}
+func (t *Int64Type) typecheck() {}
 
-type IntType struct{}
+type Int32Type struct{}
 
-func (t *IntType) typecheck() {}
+func (t *Int32Type) typecheck() {}
 
 type FnType struct {
 	ParamTypes []Type

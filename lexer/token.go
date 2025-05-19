@@ -3,11 +3,11 @@ package lexer
 type TokenType string
 
 const (
-	PLUS    TokenType = "PLUS"
-	MINUS   TokenType = "MINUS"
-	MUL     TokenType = "MUL"
-	DIV     TokenType = "DIV"
-	PERCENT TokenType = "PERCENT"
+	PLUS  TokenType = "PLUS"
+	MINUS TokenType = "MINUS"
+	MUL   TokenType = "MUL"
+	DIV   TokenType = "DIV"
+	MOD   TokenType = "PERCENT"
 
 	GREATERTHAN      TokenType = "GREATERTHAN"      // >
 	GREATERTHANEQUAL TokenType = "GREATERTHANEQUAL" //>=

@@ -149,20 +149,23 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction
 
 	case AsmBinary:
 		// Handle large immediate source for Add/Sub
-		if (ast.Op == Add || ast.Op == Sub) && ast.Type.(*asmtype.QuadWord) != nil {
-			if imm, isImm := ast.Src.(Imm); isImm && isLarge(imm.Value) {
-				return []AsmInstruction{
-					AsmMov{
-						Type: &asmtype.QuadWord{},
-						Src:  imm,
-						Dst:  Register{Reg: R10},
-					},
-					AsmBinary{
-						Op:   ast.Op,
-						Type: &asmtype.QuadWord{},
-						Src:  Register{Reg: R10},
-						Dst:  ast.Dst,
-					},
+		if ast.Op == Add || ast.Op == Sub {
+			_, isQuadWord := ast.Type.(*asmtype.QuadWord)
+			if isQuadWord {
+				if imm, isImm := ast.Src.(Imm); isImm && isLarge(imm.Value) {
+					return []AsmInstruction{
+						AsmMov{
+							Type: &asmtype.QuadWord{},
+							Src:  imm,
+							Dst:  Register{Reg: R10},
+						},
+						AsmBinary{
+							Op:   ast.Op,
+							Type: &asmtype.QuadWord{},
+							Src:  Register{Reg: R10},
+							Dst:  ast.Dst,
+						},
+					}
 				}
 			}
 		}

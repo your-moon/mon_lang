@@ -17,6 +17,7 @@ const (
 	A_DOTDOT
 	A_DIV
 	A_MUL
+	A_MOD
 
 	A_ASSIGN
 
@@ -32,6 +33,8 @@ const (
 
 func (op ASTBinOp) String() string {
 	switch op {
+	case ASTBinOp(A_MOD):
+		return "%"
 	case ASTBinOp(A_DOTDOT):
 		return ".."
 	case ASTBinOp(A_QUESTIONMARK):

@@ -1,10 +1,10 @@
 package codegen
 
 import (
-	"fmt"
-
+	"github.com/your-moon/mn_compiler_go_version/code_gen/asmsymbol"
 	"github.com/your-moon/mn_compiler_go_version/symbols"
 	"github.com/your-moon/mn_compiler_go_version/util"
+	"github.com/your-moon/mn_compiler_go_version/util/roundingutil"
 )
 
 type ReplacementState struct {
@@ -13,26 +13,41 @@ type ReplacementState struct {
 }
 
 type ReplacementPassGen struct {
+	asmSymbol *asmsymbol.SymbolTable
 }
 
-func NewReplacementPassGen() ReplacementPassGen {
-	return ReplacementPassGen{}
+func NewReplacementPassGen(table *asmsymbol.SymbolTable) ReplacementPassGen {
+	return ReplacementPassGen{
+		asmSymbol: table,
+	}
 }
 
 func (r *ReplacementPassGen) ReplaceOperand(operand AsmOperand, state ReplacementState) (ReplacementState, AsmOperand) {
-	pseudo, isit := operand.(Pseudo)
-	if isit {
+	pseudo, isPseudo := operand.(Pseudo)
+
+	if isPseudo {
 		value, exists := state.OffsetMap[pseudo.Ident]
 		if exists {
 			return state, Stack{value}
 		} else {
-			state.CurrentOffset = state.CurrentOffset - 4
+			offsetSize, err := r.asmSymbol.GetSize(pseudo.Ident)
+			if err != nil {
+				panic(err)
+			}
+			offsetAlignment, err := r.asmSymbol.GetAlignment(pseudo.Ident)
+			if err != nil {
+				panic(err)
+			}
+
+			newOffset := roundingutil.RoundAwayFromZero(offsetAlignment, state.CurrentOffset-offsetSize)
+			state.CurrentOffset = newOffset
 			state.OffsetMap[pseudo.Ident] = state.CurrentOffset
 			return state, Stack{state.CurrentOffset}
 		}
 	} else {
 		return state, operand
 	}
+
 }
 
 func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction, state ReplacementState) (ReplacementState, AsmInstruction) {
@@ -48,7 +63,6 @@ func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction, s
 			CC: ast.CC,
 		}
 	case Cmp:
-		fmt.Printf("[debug] Cmp before replacement - Type: %v\n", ast.Type)
 		replacedState, src := r.ReplaceOperand(ast.Src, state)
 		replacedState, dst := r.ReplaceOperand(ast.Dst, replacedState)
 		return replacedState, Cmp{
@@ -57,7 +71,6 @@ func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction, s
 			Dst:  dst,
 		}
 	case AsmMov:
-		fmt.Printf("[debug] AsmMov before replacement - Type: %v\n", ast.Type)
 		replacedState, src := r.ReplaceOperand(ast.Src, state)
 		replacedState, dst := r.ReplaceOperand(ast.Dst, replacedState)
 		return replacedState, AsmMov{
@@ -66,7 +79,6 @@ func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction, s
 			Dst:  dst,
 		}
 	case Unary:
-		fmt.Printf("[debug] Unary before replacement - Type: %v\n", ast.Type)
 		replacedState, dst := r.ReplaceOperand(ast.Dst, state)
 		return replacedState, Unary{
 			Type: ast.Type,
@@ -74,7 +86,6 @@ func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction, s
 			Op:   ast.Op,
 		}
 	case AsmBinary:
-		fmt.Printf("[debug] AsmBinary before replacement - Type: %v\n", ast.Type)
 		replacedState, src := r.ReplaceOperand(ast.Src, state)
 		replacedState, dst := r.ReplaceOperand(ast.Dst, replacedState)
 		return replacedState, AsmBinary{
@@ -84,7 +95,6 @@ func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction, s
 			Op:   ast.Op,
 		}
 	case Idiv:
-		fmt.Printf("[debug] Idiv before replacement - Type: %v\n", ast.Type)
 		replacedState, src := r.ReplaceOperand(ast.Src, state)
 		return replacedState, Idiv{
 			Type: ast.Type,
@@ -93,7 +103,6 @@ func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction, s
 	case Return:
 		return state, instr
 	case Cdq:
-		fmt.Printf("[debug] Cdq before replacement - Type: %v\n", ast.Type)
 		return state, Cdq{
 			Type: ast.Type,
 		}

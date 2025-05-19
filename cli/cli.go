@@ -215,12 +215,9 @@ func (c *CLI) runLexer(args []string) error {
 			return fmt.Errorf("лексер алдаа: %v", err)
 		}
 		if c.debug {
-			if token.Value != nil {
-				fmt.Printf("[debug] Токен: %s, Утга: %s\n", token.Type, *token.Value)
-			} else {
-				fmt.Printf("[debug] Токен: %s\n", token.Type)
-			}
+			fmt.Println(fmt.Sprintf("[debug] %v", token.Type))
 		}
+
 		if token.Type == lexer.EOF {
 			break
 		}

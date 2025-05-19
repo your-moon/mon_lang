@@ -29,7 +29,7 @@ func (s *SemanticAnalyzer) Analyze(program *parser.ASTProgram) (*parser.ASTProgr
 	if err != nil {
 		return nil, nil, err
 	}
-	program, err = s.typeChecker.Check(program)
+	program, err = s.typeChecker.CheckTopLevel(program)
 	if err != nil {
 		return nil, nil, err
 	}

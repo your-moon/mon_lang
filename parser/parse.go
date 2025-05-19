@@ -245,10 +245,6 @@ func (p *Parser) parseFnDecl(isPublic bool, isExtern bool) *FnDecl {
 		p.appendError(err.Error())
 		return nil
 	}
-	if !p.expect(lexer.CLOSE_PAREN) {
-		p.appendError(errors.ErrMissingParenClose)
-		return nil
-	}
 
 	ast.Params = params
 
@@ -278,6 +274,11 @@ func (p *Parser) parseFnDecl(isPublic bool, isExtern bool) *FnDecl {
 func (p *Parser) parseParams() ([]Param, error) {
 	params := []Param{}
 
+	if p.peekIs(lexer.CLOSE_PAREN) {
+		p.nextToken()
+		return params, nil
+	}
+
 	for !p.peekIs(lexer.CLOSE_PAREN) {
 		ident := p.peekToken.Value
 		if !p.expect(lexer.IDENT) {
@@ -302,15 +303,20 @@ func (p *Parser) parseParams() ([]Param, error) {
 		}
 	}
 
+	if !p.expect(lexer.CLOSE_PAREN) {
+		p.appendError(errors.ErrMissingParenClose)
+		return nil, errors.New(errors.ErrMissingParenClose, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
+	}
+
 	return params, nil
 }
 
 func (p *Parser) parseType() (mtypes.Type, error) {
 	switch p.peekToken.Type {
 	case lexer.INT_TYPE:
-		return &mtypes.IntType{}, nil
+		return &mtypes.Int32Type{}, nil
 	case lexer.LONG:
-		return &mtypes.LongType{}, nil
+		return &mtypes.Int64Type{}, nil
 	case lexer.VOID:
 		return &mtypes.VoidType{}, nil
 	default:
@@ -489,7 +495,7 @@ func (p *Parser) isInfixOp() bool {
 		p.peekToken.Type == lexer.GREATERTHAN || p.peekToken.Type == lexer.GREATERTHANEQUAL ||
 		p.peekToken.Type == lexer.EQUALTO || p.peekToken.Type == lexer.NOTEQUAL ||
 		p.peekToken.Type == lexer.LOGICAND || p.peekToken.Type == lexer.LOGICOR || p.peekToken.Type == lexer.ASSIGN ||
-		p.peekToken.Type == lexer.QUESTIONMARK || p.peekToken.Type == lexer.DOTDOT
+		p.peekToken.Type == lexer.QUESTIONMARK || p.peekToken.Type == lexer.DOTDOT || p.peekToken.Type == lexer.MOD
 }
 
 const (
@@ -629,6 +635,8 @@ func (p *Parser) ParseBinOp() ASTBinOp {
 
 func (p *Parser) parseInfixOp(op lexer.TokenType) (ASTBinOp, error) {
 	switch op {
+	case lexer.MOD:
+		return ASTBinOp(A_MOD), nil
 	case lexer.DOTDOT:
 		return ASTBinOp(A_DOTDOT), nil
 	case lexer.QUESTIONMARK:
@@ -712,7 +720,6 @@ func (p *Parser) parseFnCall() ASTExpression {
 		Token: cur,
 		Ident: *cur.Value,
 		Args:  args,
-		Type:  &mtypes.FnType{},
 	}
 }
 func (p *Parser) parseIdent() ASTExpression {

@@ -119,5 +119,6 @@ func (l *Linker) Run() error {
 	cmd := exec.Command(l.outputFile)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
 	return cmd.Run()
 }

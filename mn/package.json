@@ -1,0 +1,39 @@
+{
+  "name": "mn",
+  "displayName": "mnlang",
+  "description": "mnlang syntax highlight",
+  "version": "0.0.1",
+  "publisher": "moonn",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moonn/mn"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "mn",
+        "aliases": [
+          "MnLang",
+          "mn"
+        ],
+        "extensions": [
+          ".mn"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "mn",
+        "scopeName": "source.mn",
+        "path": "./syntaxes/mn.tmLanguage.json"
+      }
+    ]
+  }
+}

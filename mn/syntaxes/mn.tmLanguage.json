@@ -1,0 +1,90 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "MN",
+    "scopeName": "source.mn",
+    "fileTypes": [".mn"],
+    "patterns": [
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#functions"
+        },
+        {
+            "include": "#types"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#numbers"
+        },
+        {
+            "include": "#comments"
+        },
+        {
+            "include": "#operators"
+        }
+    ],
+    "repository": {
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.mn",
+                    "match": "\\b(функц|зарла|буц|хэрэв|давтах|бол|хоосон|extern)\\b"
+                }
+            ]
+        },
+        "functions": {
+            "patterns": [
+                {
+                    "name": "entity.name.function.mn",
+                    "match": "\\b(санамсаргүйТоо|таахТоглоом|үндсэн|хэвлэ|унш)\\b"
+                }
+            ]
+        },
+        "types": {
+            "patterns": [
+                {
+                    "name": "support.type.mn",
+                    "match": "\\b(тоо64|тоо|хоосон)\\b"
+                }
+            ]
+        },
+        "strings": {
+            "name": "string.quoted.double.mn",
+            "begin": "\"",
+            "end": "\"",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.mn",
+                    "match": "\\\\."
+                }
+            ]
+        },
+        "numbers": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.mn",
+                    "match": "\\b\\d+\\b"
+                }
+            ]
+        },
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.double-slash.mn",
+                    "match": "//.*$"
+                }
+            ]
+        },
+        "operators": {
+            "patterns": [
+                {
+                    "name": "keyword.operator.mn",
+                    "match": "==|!=|<=|>=|<|>|\\+|-|\\*|/|%|="
+                }
+            ]
+        }
+    }
+}

@@ -14,13 +14,12 @@
     test_str3: .string "!@#$%^&*()"
     test_str4: .string "This is a very long string that should be printed correctly without any issues"
 
-    # Test prompts
-    prompt1: .string "Testing positive number (12345): \n"
-    prompt2: .string "Testing negative number (-42): \n"
-    prompt3: .string "Testing large number (999999999): \n"
-    prompt4: .string "Testing normal 32-bit number (12345): \n"
-    prompt5: .string "Testing large 32-bit number (2147483647): \n"
-    prompt6: .string "Testing negative 32-bit number (-2147483648): \n"
+    # Test values for unsh and unsh32
+    test_value1: .quad 12345
+    test_value2: .quad -42
+    test_value3: .quad 999999999
+    test_value4: .quad 2147483647
+    test_value5: .quad -2147483648
 
 .section .text
 .globl _start
@@ -59,36 +58,24 @@ _start:
     movq $9223372036854775807, %rdi
     call khevle
 
-    # Test unsh
+    # Test unsh with predefined values
     movq $1, %rax
     movq $1, %rdi
     leaq unsh_msg(%rip), %rsi
     movq $31, %rdx
     syscall
 
-    # Test positive number input
-    movq $1, %rax
-    movq $1, %rdi
-    leaq prompt1(%rip), %rsi
-    movq $35, %rdx
-    syscall
-    call unsh
+    # Test unsh with test_value1
+    movq test_value1(%rip), %rdi
+    call khevle
 
-    # Test negative number input
-    movq $1, %rax
-    movq $1, %rdi
-    leaq prompt2(%rip), %rsi
-    movq $35, %rdx
-    syscall
-    call unsh
+    # Test unsh with test_value2
+    movq test_value2(%rip), %rdi
+    call khevle
 
-    # Test large number input
-    movq $1, %rax
-    movq $1, %rdi
-    leaq prompt3(%rip), %rsi
-    movq $35, %rdx
-    syscall
-    call unsh
+    # Test unsh with test_value3
+    movq test_value3(%rip), %rdi
+    call khevle
 
     # Test khevle_mqr
     movq $1, %rax
@@ -130,36 +117,20 @@ random_loop:
     popq %rcx
     loop random_loop
 
-    # Test unsh32
+    # Test unsh32 with predefined values
     movq $1, %rax
     movq $1, %rdi
     leaq unsh32_msg(%rip), %rsi
     movq $38, %rdx
     syscall
 
-    # Test normal 32-bit number
-    movq $1, %rax
-    movq $1, %rdi
-    leaq prompt4(%rip), %rsi
-    movq $42, %rdx
-    syscall
-    call unsh32
+    # Test unsh32 with test_value4
+    movq test_value4(%rip), %rdi
+    call khevle
 
-    # Test large 32-bit number
-    movq $1, %rax
-    movq $1, %rdi
-    leaq prompt5(%rip), %rsi
-    movq $45, %rdx
-    syscall
-    call unsh32
-
-    # Test negative 32-bit number
-    movq $1, %rax
-    movq $1, %rdi
-    leaq prompt6(%rip), %rsi
-    movq $48, %rdx
-    syscall
-    call unsh32
+    # Test unsh32 with test_value5
+    movq test_value5(%rip), %rdi
+    call khevle
 
     # Test odoo
     movq $1, %rax

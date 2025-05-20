@@ -11,4 +11,7 @@ func TestConvert(t *testing.T) {
 	assert.Equal(t, "mayn", converted)
 	converted = UtfConvert("үндсэн")
 	assert.Equal(t, "wndsen", converted)
+	converted = UtfConvert("мөр_хэвлэх")
+	assert.Equal(t, "mqr_khevlekh", converted)
+
 }

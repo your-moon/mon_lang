@@ -116,7 +116,7 @@ unsh:
     popq %rbp
     ret
 
-.globl khevle_mqr
+.globl mqr_khevlekh
 khevle_mqr:
     pushq %rbp
     movq %rsp, %rbp

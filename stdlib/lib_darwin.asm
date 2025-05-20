@@ -147,8 +147,8 @@ invalid_input:
     popq %rbp
     ret
 
-.global _khevle_mqr
-_khevle_mqr:
+.global _mqr_khevlekh
+_mqr_khevlekh:
     pushq %rbp
     movq %rsp, %rbp
 
@@ -321,4 +321,4 @@ _odoo:
     ret
 
 .data
-newline: .byte 10        # Newline character 
+newline: .byte 10        # Newline character

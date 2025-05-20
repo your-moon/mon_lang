@@ -1,4 +1,5 @@
 rustv/target
+out/*
 # Object files
 *.o
 

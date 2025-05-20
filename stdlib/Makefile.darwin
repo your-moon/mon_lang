@@ -1,0 +1,17 @@
+AS = as
+LD = ld
+LDFLAGS = -lSystem -syslibroot `xcrun -sdk macosx --show-sdk-path` -e _main -arch x86_64
+
+all: test_darwin
+
+test_darwin: test_darwin.o lib_darwin.o
+	$(LD) $(LDFLAGS) -o test_darwin test_darwin.o lib_darwin.o
+
+test_darwin.o: test_darwin.asm
+	$(AS) -o test_darwin.o test_darwin.asm
+
+lib_darwin.o: lib_darwin.asm
+	$(AS) -o lib_darwin.o lib_darwin.asm
+
+clean:
+	rm -f *.o test_darwin 

@@ -1,4 +1,4 @@
- .globl _khevle
+.global _khevle
 _khevle:
     pushq %rbp
     movq %rsp, %rbp
@@ -12,16 +12,19 @@ _khevle:
     pushq %r15
 
     movq %rdi, -8(%rbp)   # Store input number (64-bit)
-    leaq -128(%rbp), %r12  # Buffer pointer (use r12 instead of rdi) - moved further down in stack
+    leaq -128(%rbp), %r12  # Buffer pointer (use r12 instead of rdi)
     movq $0, -16(%rbp)    # Initialize digit count
     movq -8(%rbp), %rax   # Copy input to rax for processing
     movq %rax, -24(%rbp)  # Store working copy
 
+    # Handle negative numbers
     cmpq $0, %rax
-    jne convert_loop
-    movb $'0', (%r12)
-    incq -16(%rbp)
-    jmp write_number
+    jge convert_loop
+    movb $'-', (%r12)     # Store minus sign
+    incq %r12             # Move buffer pointer
+    incq -16(%rbp)        # Increment digit count
+    negq %rax             # Make number positive
+    movq %rax, -24(%rbp)  # Update working copy
 
 convert_loop:
     movq -24(%rbp), %rax   # Load working copy
@@ -32,7 +35,7 @@ convert_loop:
     addb $'0', %dl        # Convert remainder to ASCII
     movb %dl, (%r12)      # Store digit
     incq %r12             # Move buffer pointer forward
-    cmpq $100, -16(%rbp)   # Check if we're about to overflow (leave space for null terminator)
+    cmpq $100, -16(%rbp)   # Check if we're about to overflow
     jge write_number       # If too many digits, stop and print what we have
     incq -16(%rbp)        # Increment digit count
     cmpq $0, -24(%rbp)     # Check if quotient is zero
@@ -76,7 +79,7 @@ write_number:
     popq %rbp
     ret
 
-.globl _unsh
+.global _unsh
 _unsh:
     pushq %rbp
     movq %rsp, %rbp
@@ -144,7 +147,7 @@ invalid_input:
     popq %rbp
     ret
 
-.globl _khevle_mqr
+.global _khevle_mqr
 _khevle_mqr:
     pushq %rbp
     movq %rsp, %rbp
@@ -163,10 +166,6 @@ _khevle_mqr:
     movq %r12, %rdi
     call _strlen
     movq %rax, %r13       # Store string length in r13
-
-    # Add newline to the end
-    movq %r12, %rsi       # Source pointer
-    movq %r13, %rdx       # Length
 
     # Write the string to stdout
     movq $0x2000004, %rax # sys_write
@@ -213,7 +212,7 @@ _strlen_done:
     popq %rbp
     ret
 
-.globl _sanamsargwyToo
+.global _sanamsargwyToo
 _sanamsargwyToo:
     pushq %rbp
     movq %rsp, %rbp
@@ -235,7 +234,7 @@ _sanamsargwyToo:
     popq %rbp
     ret
 
-.globl _unsh32
+.global _unsh32
 _unsh32:
     pushq %rbp
     movq %rsp, %rbp
@@ -247,18 +246,18 @@ _unsh32:
     pushq %r14
     pushq %r15
 
-    movq $0, %rdi                   # stdin fd
-    leaq -64(%rbp), %rsi            # buffer address
-    movq $64, %rdx                  # max bytes to read
+    movq $0, %rdi                   # stdin (fd 0)
+    leaq -64(%rbp), %rsi            # buffer
+    movq $64, %rdx                  # max bytes
     movq $0x2000003, %rax           # syscall: read
     syscall
 
-    movq %rax, %rcx                 # bytes read
+    movq %rax, %rcx                 # rcx = bytes read
     cmpq $0, %rcx
-    jle invalid_input               # error or no bytes read => return 0
+    jle invalid_input_32            # nothing read or error
 
     leaq -64(%rbp), %rsi            # reset pointer to buffer
-    movl $0, %eax                   # result = 0 (32-bit)
+    movl $0, %eax                   # result in eax = 0
 
 parse_loop_32:
     cmpq $0, %rcx
@@ -269,34 +268,15 @@ parse_loop_32:
     je done_parsing_32
 
     cmpb $'0', %bl
-    jb invalid_input
+    jb invalid_input_32
     cmpb $'9', %bl
-    ja invalid_input
+    ja invalid_input_32
 
     subb $'0', %bl
-    movzbl %bl, %ebx               # zero extend to 32 bits (EBX)
+    movzbl %bl, %r8d                # r8d = digit (0–9)
 
-    # Check for overflow before multiply/add:
-    # if eax > (0xFFFFFFFF - ebx)/10 then overflow => invalid_input
-    movl $0xFFFFFFFF, %edx
-    subl %ebx, %edx               # edx = max_val - digit
-    cmpl $10, %eax
-    jb continue_parsing_32         # eax < 10 so safe
-    # eax >= 10, check overflow condition:
-    movl %eax, %ecx
-    shrl $2, %ecx                 # divide eax by 10: approximate, so better:
-    # Actually do eax > (0xFFFFFFFF - digit)/10 check:
-    # edx/(10) = quotient to compare
-    # Let's just do exact check:
-    movl %eax, %r8d              # save eax in r8d temporarily
-    movl $10, %r9d
-    xorl %edx, %edx              # clear edx for div
-    divl %r9d                   # edx:eax / r9d, quotient in eax, remainder in edx
-    # Actually this is complex in asm, so you can skip overflow check if unsure
-
-continue_parsing_32:
-    imull $10, %eax, %eax          # eax *= 10
-    addl %ebx, %eax                # eax += digit
+    imull $10, %eax, %eax           # result *= 10
+    addl %r8d, %eax                 # result += digit
 
     incq %rsi
     decq %rcx
@@ -311,6 +291,34 @@ done_parsing_32:
     movq %rbp, %rsp
     popq %rbp
     ret
-# Data section
+
+invalid_input_32:
+    movl $0, %eax                   # return 0 for invalid input
+    popq %r15
+    popq %r14
+    popq %r13
+    popq %r12
+    popq %rbx
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
+.global _odoo
+_odoo:
+    pushq %rbp
+    movq %rsp, %rbp
+    subq $32, %rsp            # Allocate space for timeval struct
+
+    leaq -16(%rbp), %rdi      # Pointer to timeval struct (tv_sec:8, tv_usec:8)
+    movq $0, %rsi             # NULL for timezone
+    movq $0x2000074, %rax     # gettimeofday syscall number for macOS
+    syscall
+
+    movq -16(%rbp), %rax      # Load tv_sec (seconds) into RAX
+
+    movq %rbp, %rsp
+    popq %rbp
+    ret
+
 .data
-newline: .byte 10        # Newline character
+newline: .byte 10        # Newline character 

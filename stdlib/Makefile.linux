@@ -1,0 +1,17 @@
+AS = as
+LD = ld
+LDFLAGS = -dynamic-linker /lib64/ld-linux-x86-64.so.2 -lc
+
+all: test_linux
+
+test_linux: test_linux.o lib_linux.o
+	$(LD) $(LDFLAGS) -o test_linux test_linux.o lib_linux.o
+
+test_linux.o: test_linux.asm
+	$(AS) -o test_linux.o test_linux.asm
+
+lib_linux.o: lib_linux.asm
+	$(AS) -o lib_linux.o lib_linux.asm
+
+clean:
+	rm -f *.o test_linux 

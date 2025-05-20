@@ -31,8 +31,9 @@ func (c *TypeChecker) CheckTopLevel(program *parser.ASTProgram) (*parser.ASTProg
 		case *parser.FnDecl:
 			decl, err := c.checkFnDecl(decltype)
 			if err != nil {
-				program.Decls[i] = decl
+				return nil, err
 			}
+			program.Decls[i] = decl
 		default:
 			// program.Decls[i] = decltype
 			panic("only support fn decl on top level")
@@ -204,11 +205,18 @@ func (c *TypeChecker) checkDecl(decl parser.ASTDecl) (parser.ASTDecl, error) {
 	switch decl := decl.(type) {
 	case *parser.VarDecl:
 		c.symbolTable.AddVar(decl.VarType, decl.Ident)
-		exprCheck, err := c.checkExpr(decl.Expr)
-		if err != nil {
-			return nil, err
+		if decl.Expr != nil {
+			exprCheck, err := c.checkExpr(decl.Expr)
+			if err != nil {
+				return nil, err
+			}
+			_, isInt32 := exprCheck.GetType().(*mtypes.Int32Type)
+			declType, isDeclInt64 := decl.VarType.(*mtypes.Int64Type)
+			if isInt32 && isDeclInt64 {
+				exprCheck.SetType(declType)
+			}
+			decl.Expr = exprCheck
 		}
-		decl.Expr = exprCheck
 		return decl, nil
 	case *parser.FnDecl:
 		decl, err := c.checkFnDecl(decl)
@@ -322,10 +330,10 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 			expr.Type = checkType.RetType
 			return expr, nil
 		default:
-			return nil, c.createSemanticError("функц %s-ийг өөр төрөлтэйгөөр дуудасан байна", expr.Token.Line, expr.Token.Span)
+			return nil, c.createSemanticError(fmt.Sprintf("unreachable expr %T", expr), expr.Token.Line, expr.Token.Span)
 		}
 	}
-	return nil, c.createSemanticError("unreachable expr", 0, lexer.Span{})
+	return nil, c.createSemanticError(fmt.Sprintf("unreachable expr %T", expr), 0, lexer.Span{})
 }
 
 func (c *TypeChecker) getCommonType(t1, t2 mtypes.Type) mtypes.Type {

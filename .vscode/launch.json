@@ -8,8 +8,8 @@
       "mode": "auto",
       "program": "main.go",
       "args": [
-        "parse",
-        "test/guessing_game.mn",
+        "gen",
+        "test/fibonacci.mn",
         "--debug"
       ]
     }

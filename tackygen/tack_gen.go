@@ -93,9 +93,9 @@ func (c *TackyGen) EmitVarDecl(node *parser.VarDecl) []Instruction {
 	irs := []Instruction{}
 	haveInit := node.Expr != nil
 	if haveInit {
-		initVal, initValIrs := c.EmitExpr(node.Expr)
-		irs = append(irs, initValIrs...)
-		irs = append(irs, Copy{Src: initVal, Dst: Var{Name: node.Ident}})
+		rhsResult, rhsValIrs := c.EmitExpr(node.Expr)
+		irs = append(irs, rhsValIrs...)
+		irs = append(irs, Copy{Src: rhsResult, Dst: Var{Name: node.Ident}})
 	}
 	return irs
 }
@@ -469,8 +469,14 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs = append(irs, Copy{Src: rhsResult, Dst: Var{Name: astVar.Ident}})
 		return Var{Name: astVar.Ident}, irs
 	case parser.ASTConst:
+		exprType := expr.GetType()
 		switch consttype := expr.(type) {
 		case *parser.ASTConstInt:
+			//this means the var decl's lhs is long
+			_, isParentLong := exprType.(*mtypes.Int64Type)
+			if isParentLong {
+				return Constant{Value: &mconstant.Int64{Value: int64(consttype.Value)}}, []Instruction{}
+			}
 			return Constant{Value: &mconstant.Int32{Value: int32(consttype.Value)}}, []Instruction{}
 		case *parser.ASTConstLong:
 			return Constant{Value: &mconstant.Int64{Value: consttype.Value}}, []Instruction{}

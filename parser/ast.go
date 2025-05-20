@@ -33,6 +33,7 @@ type ASTExpression interface {
 	ASTNode
 	expressionNode()
 	GetType() mtypes.Type
+	SetType(t mtypes.Type)
 }
 
 type ASTFactor interface {

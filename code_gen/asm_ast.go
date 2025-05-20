@@ -36,7 +36,9 @@ const (
 type AsmRegister string
 
 const (
-	AX  AsmRegister = "ax"
+	AL AsmRegister = "al"
+	AX AsmRegister = "ax"
+
 	CX  AsmRegister = "cx"
 	DX  AsmRegister = "dx"
 	DI  AsmRegister = "di"
@@ -246,6 +248,20 @@ type AsmMovSx struct {
 
 func (a AsmMovSx) Ir() string {
 	return fmt.Sprintf("movsx %s, %s", a.Src.Op(), a.Dst.Op())
+}
+
+type AsmMovZb struct {
+	Type asmtype.AsmType
+	Src  AsmOperand
+	Dst  AsmOperand
+}
+
+func (a AsmMovZb) Ir() string {
+	typeStr := "LongType"
+	if _, ok := a.Type.(*asmtype.QuadWord); ok {
+		typeStr = "QuadType"
+	}
+	return fmt.Sprintf("movzb %s, %s, %s", a.Src.Op(), a.Dst.Op(), typeStr)
 }
 
 type AsmMov struct {

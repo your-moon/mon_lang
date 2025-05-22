@@ -3,12 +3,12 @@ package tackygen
 import (
 	"fmt"
 
-	"github.com/your-moon/mn_compiler_go_version/lexer"
-	"github.com/your-moon/mn_compiler_go_version/mconstant"
-	"github.com/your-moon/mn_compiler_go_version/mtypes"
-	"github.com/your-moon/mn_compiler_go_version/parser"
-	"github.com/your-moon/mn_compiler_go_version/symbols"
-	"github.com/your-moon/mn_compiler_go_version/util/unique"
+	"github.com/your-moon/mn_compiler/lexer"
+	"github.com/your-moon/mn_compiler/mconstant"
+	"github.com/your-moon/mn_compiler/mtypes"
+	"github.com/your-moon/mn_compiler/parser"
+	"github.com/your-moon/mn_compiler/symbols"
+	"github.com/your-moon/mn_compiler/util/unique"
 )
 
 type TackyGen struct {

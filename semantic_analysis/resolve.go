@@ -3,10 +3,10 @@ package semanticanalysis
 import (
 	"fmt"
 
-	compilererrors "github.com/your-moon/mn_compiler_go_version/errors"
-	"github.com/your-moon/mn_compiler_go_version/lexer"
-	"github.com/your-moon/mn_compiler_go_version/parser"
-	"github.com/your-moon/mn_compiler_go_version/util/unique"
+	compilererrors "github.com/your-moon/mn_compiler/errors"
+	"github.com/your-moon/mn_compiler/lexer"
+	"github.com/your-moon/mn_compiler/parser"
+	"github.com/your-moon/mn_compiler/util/unique"
 )
 
 const (

@@ -1,4 +1,4 @@
-module github.com/your-moon/mn_compiler_go_version
+module github.com/your-moon/mn_compiler
 
 go 1.23.4
 

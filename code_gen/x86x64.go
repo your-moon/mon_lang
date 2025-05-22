@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/your-moon/mn_compiler_go_version/base"
-	"github.com/your-moon/mn_compiler_go_version/code_gen/asmtype"
-	"github.com/your-moon/mn_compiler_go_version/stringpool"
-	"github.com/your-moon/mn_compiler_go_version/util"
+	"github.com/your-moon/mn_compiler/base"
+	"github.com/your-moon/mn_compiler/code_gen/asmtype"
+	"github.com/your-moon/mn_compiler/stringpool"
+	"github.com/your-moon/mn_compiler/util"
 )
 
 type OsType string

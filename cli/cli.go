@@ -9,17 +9,17 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/your-moon/mn_compiler_go_version/base"
-	codegen "github.com/your-moon/mn_compiler_go_version/code_gen"
-	"github.com/your-moon/mn_compiler_go_version/code_gen/asmsymbol"
-	"github.com/your-moon/mn_compiler_go_version/lexer"
-	"github.com/your-moon/mn_compiler_go_version/linker"
-	"github.com/your-moon/mn_compiler_go_version/parser"
-	semanticanalysis "github.com/your-moon/mn_compiler_go_version/semantic_analysis"
-	"github.com/your-moon/mn_compiler_go_version/symbols"
-	"github.com/your-moon/mn_compiler_go_version/tackygen"
-	"github.com/your-moon/mn_compiler_go_version/util"
-	"github.com/your-moon/mn_compiler_go_version/util/unique"
+	"github.com/your-moon/mn_compiler/base"
+	codegen "github.com/your-moon/mn_compiler/code_gen"
+	"github.com/your-moon/mn_compiler/code_gen/asmsymbol"
+	"github.com/your-moon/mn_compiler/lexer"
+	"github.com/your-moon/mn_compiler/linker"
+	"github.com/your-moon/mn_compiler/parser"
+	semanticanalysis "github.com/your-moon/mn_compiler/semantic_analysis"
+	"github.com/your-moon/mn_compiler/symbols"
+	"github.com/your-moon/mn_compiler/tackygen"
+	"github.com/your-moon/mn_compiler/util"
+	"github.com/your-moon/mn_compiler/util/unique"
 )
 
 type Command struct {

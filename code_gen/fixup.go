@@ -1,9 +1,9 @@
 package codegen
 
 import (
-	"github.com/your-moon/mn_compiler_go_version/code_gen/asmtype"
-	"github.com/your-moon/mn_compiler_go_version/symbols"
-	"github.com/your-moon/mn_compiler_go_version/util/roundingutil"
+	"github.com/your-moon/mn_compiler/code_gen/asmtype"
+	"github.com/your-moon/mn_compiler/symbols"
+	"github.com/your-moon/mn_compiler/util/roundingutil"
 )
 
 type FixUpPassGen struct {

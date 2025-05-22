@@ -3,13 +3,13 @@ package codegen
 import (
 	"fmt"
 
-	"github.com/your-moon/mn_compiler_go_version/base"
-	"github.com/your-moon/mn_compiler_go_version/code_gen/asmsymbol"
-	"github.com/your-moon/mn_compiler_go_version/code_gen/asmtype"
-	"github.com/your-moon/mn_compiler_go_version/mconstant"
-	"github.com/your-moon/mn_compiler_go_version/mtypes"
-	"github.com/your-moon/mn_compiler_go_version/symbols"
-	"github.com/your-moon/mn_compiler_go_version/tackygen"
+	"github.com/your-moon/mn_compiler/base"
+	"github.com/your-moon/mn_compiler/code_gen/asmsymbol"
+	"github.com/your-moon/mn_compiler/code_gen/asmtype"
+	"github.com/your-moon/mn_compiler/mconstant"
+	"github.com/your-moon/mn_compiler/mtypes"
+	"github.com/your-moon/mn_compiler/symbols"
+	"github.com/your-moon/mn_compiler/tackygen"
 )
 
 type MachineTarget string

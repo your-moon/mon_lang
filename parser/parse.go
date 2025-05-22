@@ -5,9 +5,9 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/your-moon/mn_compiler_go_version/errors"
-	"github.com/your-moon/mn_compiler_go_version/lexer"
-	"github.com/your-moon/mn_compiler_go_version/mtypes"
+	"github.com/your-moon/mn_compiler/errors"
+	"github.com/your-moon/mn_compiler/lexer"
+	"github.com/your-moon/mn_compiler/mtypes"
 )
 
 type Parser struct {
@@ -799,13 +799,13 @@ func (p *Parser) peekIs(expected lexer.TokenType) bool {
 func (p *Parser) parseString() *ASTStringExpression {
 	next := p.peekToken
 	p.nextToken()
-	
+
 	// Make sure we have a valid string value
 	value := ""
 	if next.Value != nil {
 		value = *next.Value
 	}
-	
+
 	return &ASTStringExpression{
 		Token: next,
 		Value: value,

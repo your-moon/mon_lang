@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/your-moon/mn_compiler_go_version/lexer"
-	"github.com/your-moon/mn_compiler_go_version/mtypes"
+	"github.com/your-moon/mn_compiler/lexer"
+	"github.com/your-moon/mn_compiler/mtypes"
 )
 
 type ASTBinOp int

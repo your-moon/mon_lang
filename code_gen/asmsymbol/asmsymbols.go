@@ -3,7 +3,7 @@ package asmsymbol
 import (
 	"fmt"
 
-	"github.com/your-moon/mn_compiler_go_version/code_gen/asmtype"
+	"github.com/your-moon/mn_compiler/code_gen/asmtype"
 )
 
 // Entry is the interface implemented by both Fun and Obj

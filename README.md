@@ -1,23 +1,33 @@
-# Mon Compiler
+# 🚀 Mon Compiler
+
+<div align="center">
+
+[![Go Version](https://img.shields.io/badge/Go-1.23.4-blue.svg)](https://golang.org)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md)
 
 A modern compiler implementation written in Go for the Mon programming language.
 
-## Overview
+[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Examples](#code-examples) • [Contributing](#contributing)
 
-Mon Compiler is an open-source compiler that translates Mon source code into executable programs. It features a complete compilation pipeline including lexical analysis, parsing, semantic analysis, and code generation.
+</div>
 
-## Features
+## 📖 Overview
 
-- Lexical Analysis
-- Parser Implementation
-- Semantic Analysis
-- Code Generation
-- Standard Library Support
-- Error Handling
-- Symbol Table Management
-- Type System
+Mon Compiler is an open-source compiler that translates Mon source code into executable programs. Built with modern compiler design principles, it provides a complete compilation pipeline from source code to machine code.
 
-## Project Structure
+### 🌟 Key Features
+
+- **Lexical Analysis** - Efficient tokenization of source code
+- **Parser Implementation** - Robust syntax analysis
+- **Semantic Analysis** - Type checking and validation
+- **Code Generation** - Optimized machine code generation
+- **Standard Library** - Rich set of built-in functions
+- **Error Handling** - Comprehensive error reporting
+- **Symbol Table** - Efficient symbol management
+- **Type System** - Strong static typing
+
+## 🏗️ Project Structure
 
 ```
 .
@@ -41,12 +51,12 @@ Mon Compiler is an open-source compiler that translates Mon source code into exe
 └── util/           # Utility functions
 ```
 
-## Requirements
+## ⚙️ Requirements
 
 - Go 1.23.4 or higher
 - Make (optional, for build scripts)
 
-## Installation
+## 🚀 Installation
 
 ```bash
 # Clone the repository
@@ -59,7 +69,7 @@ cd mn_compiler
 go build
 ```
 
-## Usage
+## 💻 Usage
 
 The compiler provides several commands for different stages of compilation:
 
@@ -81,16 +91,19 @@ compiler compile input.mn [--debug]
 
 # Full Compilation Pipeline
 compiler gen input.mn [options]
-
-# Options for gen command:
-  --debug    Enable debug mode
-  --asm      Generate assembly file
-  --obj      Generate object file
-  --run      Compile and run the program
-  -o         Specify output file name
 ```
 
-### Examples
+### 🔧 Command Options
+
+| Option | Description |
+|--------|-------------|
+| `--debug` | Enable debug mode |
+| `--asm` | Generate assembly file |
+| `--obj` | Generate object file |
+| `--run` | Compile and run the program |
+| `-o` | Specify output file name |
+
+### 📝 Examples
 
 ```bash
 # Basic compilation
@@ -112,11 +125,11 @@ compiler gen input.mn --run
 compiler gen input.mn -o myprogram
 ```
 
-## Code Examples
+## 📚 Code Examples
 
 Here are some examples of Mon code to help you get started:
 
-### Hello World
+### 🌍 Hello World
 ```mon
 extern функц мөр_хэвлэх(м мөр) -> хоосон {}
 
@@ -126,7 +139,7 @@ extern функц мөр_хэвлэх(м мөр) -> хоосон {}
 }
 ```
 
-### Basic Arithmetic
+### 🔢 Basic Arithmetic
 ```mon
 extern функц хэвлэ(н тоо64) -> хоосон {}
 
@@ -148,55 +161,7 @@ extern функц хэвлэ(н тоо64) -> хоосон {}
 }
 ```
 
-### Function Definition
-```mon
-extern функц хэвлэ(н тоо64) -> хоосон {}
-
-функц нэмэх(a тоо64, b тоо64) -> тоо64 {
-    буц a + b;
-}
-
-функц үндсэн() -> тоо {
-    зарла хариу: тоо64 = нэмэх(5, 3);
-    хэвлэ(хариу);
-    буц 0;
-}
-```
-
-### Conditional Statements
-```mon
-extern функц хэвлэ(н тоо64) -> хоосон {}
-
-функц үндсэн() -> тоо {
-    зарла нас: тоо64 = 18;
-    
-    хэрэв нас >= 18 бол {
-        хэвлэ(1); // Том хүн
-    } эсвэл {
-        хэвлэ(0); // Насанд хүрээгүй
-    }
-    
-    буц 0;
-}
-```
-
-### Loops
-```mon
-extern функц хэвлэ(н тоо64) -> хоосон {}
-
-функц үндсэн() -> тоо {
-    зарла тоолуур: тоо64 = 0;
-    
-    давтах тоолуур < 5 бол {
-        хэвлэ(тоолуур);
-        тоолуур = тоолуур + 1;
-    }
-    
-    буц 0;
-}
-```
-
-### Fibonacci Example
+### 🔄 Fibonacci Example
 ```mon
 extern функц хэвлэ(н тоо64) -> хоосон {}
 extern функц унш() -> тоо64 {}
@@ -228,7 +193,7 @@ extern функц унш() -> тоо64 {}
 }
 ```
 
-## Development
+## 🛠️ Development
 
 ```bash
 # Run tests
@@ -238,9 +203,9 @@ go test ./...
 go build
 ```
 
-## Contributing
+## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+We welcome contributions! Please feel free to submit a Pull Request.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -248,11 +213,25 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
+### 📋 Contributing Guidelines
+
+- Write clear, descriptive commit messages
+- Follow the existing code style
+- Add tests for new features
+- Update documentation as needed
+- Ensure all tests pass
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
 - Thanks to all contributors who have helped shape this project
-- Inspired by modern compiler design principles and practices 
+- Inspired by modern compiler design principles and practices
+
+---
+
+<div align="center">
+Made with ❤️ by e.munkherdene
+</div> 

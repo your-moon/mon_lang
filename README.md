@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🚀 Mon Compiler
+#  Mon Compiler
 
 </div>
 

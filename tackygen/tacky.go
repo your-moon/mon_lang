@@ -3,7 +3,7 @@ package tackygen
 import (
 	"fmt"
 
-	"github.com/your-moon/mn_compiler/mconstant"
+	"github.com/your-moon/mon_lang/mconstant"
 )
 
 type TackyBinaryOp string

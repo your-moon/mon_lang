@@ -3,12 +3,12 @@ package semanticanalysis
 import (
 	"fmt"
 
-	compilererrors "github.com/your-moon/mn_compiler/errors"
-	"github.com/your-moon/mn_compiler/lexer"
-	"github.com/your-moon/mn_compiler/mtypes"
-	"github.com/your-moon/mn_compiler/parser"
-	"github.com/your-moon/mn_compiler/symbols"
-	"github.com/your-moon/mn_compiler/util/unique"
+	compilererrors "github.com/your-moon/mon_lang/errors"
+	"github.com/your-moon/mon_lang/lexer"
+	"github.com/your-moon/mon_lang/mtypes"
+	"github.com/your-moon/mon_lang/parser"
+	"github.com/your-moon/mon_lang/symbols"
+	"github.com/your-moon/mon_lang/util/unique"
 )
 
 type TypeChecker struct {

@@ -9,17 +9,17 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/your-moon/mn_compiler/base"
-	codegen "github.com/your-moon/mn_compiler/code_gen"
-	"github.com/your-moon/mn_compiler/code_gen/asmsymbol"
-	"github.com/your-moon/mn_compiler/lexer"
-	"github.com/your-moon/mn_compiler/linker"
-	"github.com/your-moon/mn_compiler/parser"
-	semanticanalysis "github.com/your-moon/mn_compiler/semantic_analysis"
-	"github.com/your-moon/mn_compiler/symbols"
-	"github.com/your-moon/mn_compiler/tackygen"
-	"github.com/your-moon/mn_compiler/util"
-	"github.com/your-moon/mn_compiler/util/unique"
+	"github.com/your-moon/mon_lang/base"
+	codegen "github.com/your-moon/mon_lang/code_gen"
+	"github.com/your-moon/mon_lang/code_gen/asmsymbol"
+	"github.com/your-moon/mon_lang/lexer"
+	"github.com/your-moon/mon_lang/linker"
+	"github.com/your-moon/mon_lang/parser"
+	semanticanalysis "github.com/your-moon/mon_lang/semantic_analysis"
+	"github.com/your-moon/mon_lang/symbols"
+	"github.com/your-moon/mon_lang/tackygen"
+	"github.com/your-moon/mon_lang/util"
+	"github.com/your-moon/mon_lang/util/unique"
 )
 
 type Command struct {

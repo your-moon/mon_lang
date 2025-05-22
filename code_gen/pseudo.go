@@ -1,10 +1,10 @@
 package codegen
 
 import (
-	"github.com/your-moon/mn_compiler/code_gen/asmsymbol"
-	"github.com/your-moon/mn_compiler/symbols"
-	"github.com/your-moon/mn_compiler/util"
-	"github.com/your-moon/mn_compiler/util/roundingutil"
+	"github.com/your-moon/mon_lang/code_gen/asmsymbol"
+	"github.com/your-moon/mon_lang/symbols"
+	"github.com/your-moon/mon_lang/util"
+	"github.com/your-moon/mon_lang/util/roundingutil"
 )
 
 type ReplacementState struct {

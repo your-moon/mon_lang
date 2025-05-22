@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/your-moon/mn_compiler/lexer"
+	"github.com/your-moon/mon_lang/lexer"
 )
 
 type CompilerError struct {

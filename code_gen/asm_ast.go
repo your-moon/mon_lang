@@ -3,7 +3,7 @@ package codegen
 import (
 	"fmt"
 
-	"github.com/your-moon/mn_compiler/code_gen/asmtype"
+	"github.com/your-moon/mon_lang/code_gen/asmtype"
 )
 
 // cond_code = E | NE | G | GE | L | LE

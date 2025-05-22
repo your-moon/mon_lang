@@ -3,12 +3,12 @@ package tackygen
 import (
 	"fmt"
 
-	"github.com/your-moon/mn_compiler/lexer"
-	"github.com/your-moon/mn_compiler/mconstant"
-	"github.com/your-moon/mn_compiler/mtypes"
-	"github.com/your-moon/mn_compiler/parser"
-	"github.com/your-moon/mn_compiler/symbols"
-	"github.com/your-moon/mn_compiler/util/unique"
+	"github.com/your-moon/mon_lang/lexer"
+	"github.com/your-moon/mon_lang/mconstant"
+	"github.com/your-moon/mon_lang/mtypes"
+	"github.com/your-moon/mon_lang/parser"
+	"github.com/your-moon/mon_lang/symbols"
+	"github.com/your-moon/mon_lang/util/unique"
 )
 
 type TackyGen struct {

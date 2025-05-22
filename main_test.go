@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/your-moon/mn_compiler/cli"
+	"github.com/your-moon/mon_lang/cli"
 )
 
 func TestLex(t *testing.T) {

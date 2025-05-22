@@ -3,13 +3,13 @@ package codegen
 import (
 	"fmt"
 
-	"github.com/your-moon/mn_compiler/base"
-	"github.com/your-moon/mn_compiler/code_gen/asmsymbol"
-	"github.com/your-moon/mn_compiler/code_gen/asmtype"
-	"github.com/your-moon/mn_compiler/mconstant"
-	"github.com/your-moon/mn_compiler/mtypes"
-	"github.com/your-moon/mn_compiler/symbols"
-	"github.com/your-moon/mn_compiler/tackygen"
+	"github.com/your-moon/mon_lang/base"
+	"github.com/your-moon/mon_lang/code_gen/asmsymbol"
+	"github.com/your-moon/mon_lang/code_gen/asmtype"
+	"github.com/your-moon/mon_lang/mconstant"
+	"github.com/your-moon/mon_lang/mtypes"
+	"github.com/your-moon/mon_lang/symbols"
+	"github.com/your-moon/mon_lang/tackygen"
 )
 
 type MachineTarget string

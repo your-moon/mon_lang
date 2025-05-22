@@ -1,6 +1,6 @@
 package symbols
 
-import "github.com/your-moon/mn_compiler/mtypes"
+import "github.com/your-moon/mon_lang/mtypes"
 
 type Entry struct {
 	Type           mtypes.Type

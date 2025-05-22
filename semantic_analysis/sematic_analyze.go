@@ -1,9 +1,9 @@
 package semanticanalysis
 
 import (
-	"github.com/your-moon/mn_compiler/parser"
-	"github.com/your-moon/mn_compiler/symbols"
-	"github.com/your-moon/mn_compiler/util/unique"
+	"github.com/your-moon/mon_lang/parser"
+	"github.com/your-moon/mon_lang/symbols"
+	"github.com/your-moon/mon_lang/util/unique"
 )
 
 type SemanticAnalyzer struct {

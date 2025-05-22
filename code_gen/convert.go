@@ -1,7 +1,7 @@
 package codegen
 
 import (
-	"github.com/your-moon/mn_compiler/util/utfconvert"
+	"github.com/your-moon/mon_lang/util/utfconvert"
 )
 
 type TranslatePass struct{}

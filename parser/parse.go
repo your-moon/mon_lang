@@ -5,9 +5,9 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/your-moon/mn_compiler/errors"
-	"github.com/your-moon/mn_compiler/lexer"
-	"github.com/your-moon/mn_compiler/mtypes"
+	"github.com/your-moon/mon_lang/errors"
+	"github.com/your-moon/mon_lang/lexer"
+	"github.com/your-moon/mon_lang/mtypes"
 )
 
 type Parser struct {

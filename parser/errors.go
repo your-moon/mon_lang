@@ -3,7 +3,7 @@ package parser
 import (
 	"fmt"
 
-	"github.com/your-moon/mn_compiler/lexer"
+	"github.com/your-moon/mon_lang/lexer"
 )
 
 // Error messages in Mongolian

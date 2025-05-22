@@ -3,8 +3,8 @@ package lexer
 import (
 	"fmt"
 
-	"github.com/your-moon/mn_compiler/base"
-	"github.com/your-moon/mn_compiler/stringpool"
+	"github.com/your-moon/mon_lang/base"
+	"github.com/your-moon/mon_lang/stringpool"
 )
 
 type Scanner struct {

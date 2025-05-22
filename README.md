@@ -64,7 +64,7 @@ Mon Compiler is an open-source compiler that translates Mon source code into exe
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-moon/mn_compiler.git
+git clone https://github.com/your-moon/mon_lang.git
 
 # Navigate to the project directory
 cd mn_compiler

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/your-moon/mn_compiler/cli"
+	"github.com/your-moon/mon_lang/cli"
 )
 
 func main() {

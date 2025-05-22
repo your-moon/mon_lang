@@ -3,8 +3,8 @@ package parser
 import (
 	"fmt"
 
-	"github.com/your-moon/mn_compiler/lexer"
-	"github.com/your-moon/mn_compiler/mtypes"
+	"github.com/your-moon/mon_lang/lexer"
+	"github.com/your-moon/mon_lang/mtypes"
 )
 
 type Param struct {

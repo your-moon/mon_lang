@@ -1,4 +1,4 @@
-module github.com/your-moon/mn_compiler
+module github.com/your-moon/mon_lang
 
 go 1.23.4
 

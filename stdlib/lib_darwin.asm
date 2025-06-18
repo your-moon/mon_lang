@@ -3,7 +3,7 @@ _khevle:
     pushq %rbp
     movq %rsp, %rbp
     andq $-16, %rsp
-    subq $264, %rsp       # Allocate larger local space for big numbers
+    subq $264, %rsp     
 
     pushq %rbx
     pushq %r12

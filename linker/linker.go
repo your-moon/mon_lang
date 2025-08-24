@@ -68,7 +68,12 @@ func (l *Linker) Link() error {
 	defer os.Remove(tempAsmFile)
 
 	objFile := filepath.Join(outputDir, outputName+".o")
-	asmCmd := exec.Command("as", "-o", objFile, tempAsmFile)
+	var asmCmd *exec.Cmd
+	if l.osType == "darwin" && runtime.GOARCH == "arm64" {
+		asmCmd = exec.Command("arch", "-x86_64", "as", "-o", objFile, tempAsmFile)
+	} else {
+		asmCmd = exec.Command("as", "-o", objFile, tempAsmFile)
+	}
 	var asmStdout, asmStderr bytes.Buffer
 	asmCmd.Stdout = &asmStdout
 	asmCmd.Stderr = &asmStderr
@@ -84,7 +89,12 @@ func (l *Linker) Link() error {
 
 	stdlibFile := filepath.Join(STDLIB_DIR, "lib_"+l.osType+".asm")
 	stdlibObj := filepath.Join(outputDir, "lib_"+l.osType+".o")
-	stdlibAsmCmd := exec.Command("as", "-o", stdlibObj, stdlibFile)
+	var stdlibAsmCmd *exec.Cmd
+	if l.osType == "darwin" && runtime.GOARCH == "arm64" {
+		stdlibAsmCmd = exec.Command("arch", "-x86_64", "as", "-o", stdlibObj, stdlibFile)
+	} else {
+		stdlibAsmCmd = exec.Command("as", "-o", stdlibObj, stdlibFile)
+	}
 	var stdlibStdout, stdlibStderr bytes.Buffer
 	stdlibAsmCmd.Stdout = &stdlibStdout
 	stdlibAsmCmd.Stderr = &stdlibStderr
@@ -94,7 +104,9 @@ func (l *Linker) Link() error {
 	defer os.Remove(stdlibObj)
 
 	var linkCmd *exec.Cmd
-	if l.osType == "darwin" {
+	if l.osType == "darwin" && runtime.GOARCH == "arm64" {
+		linkCmd = exec.Command("arch", "-x86_64", "ld", "-arch", "x86_64", "-o", l.outputFile, objFile, stdlibObj, "-e", "_main", "-no_pie", "-lSystem", "-syslibroot", "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk")
+	} else if l.osType == "darwin" {
 		linkCmd = exec.Command("ld", "-arch", "x86_64", "-o", l.outputFile, objFile, stdlibObj, "-e", "_main", "-no_pie", "-lSystem", "-syslibroot", "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk")
 	} else {
 		linkCmd = exec.Command("ld", "-o", l.outputFile, objFile, stdlibObj)

@@ -1,6 +1,17 @@
 AS = as
 LD = ld
+# Use x86_64 architecture for compatibility
 LDFLAGS = -lSystem -syslibroot `xcrun -sdk macosx --show-sdk-path` -e _main -arch x86_64
+
+# Use arch -x86_64 for ARM64 systems
+ARCH := $(shell uname -m)
+ifeq ($(ARCH),arm64)
+    AS := arch -x86_64 as
+    LD := arch -x86_64 ld
+else
+    AS := as
+    LD := ld
+endif
 
 all: test_darwin
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/your-moon/mon_lang/errors"
 	"github.com/your-moon/mon_lang/lexer"
@@ -68,9 +69,12 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 	}
 
 	if len(p.parseErrors) > 0 {
-		err := p.parseErrors[0]
+		msgs := make([]string, len(p.parseErrors))
+		for i, e := range p.parseErrors {
+			msgs[i] = e.Error()
+		}
 		p.parseErrors = nil
-		return nil, err
+		return nil, fmt.Errorf("%s", strings.Join(msgs, "\n"))
 	}
 
 	return program, nil

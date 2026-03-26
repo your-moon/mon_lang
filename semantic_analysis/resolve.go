@@ -2,6 +2,7 @@ package semanticanalysis
 
 import (
 	"fmt"
+	"strings"
 
 	compilererrors "github.com/your-moon/mon_lang/errors"
 	"github.com/your-moon/mon_lang/lexer"
@@ -93,12 +94,19 @@ func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, erro
 			hasLinkage:       true,
 		}
 	}
+	var resolveErrors []string
 	for i, decl := range program.Decls {
-		_, decl, err := r.ResolveDecl(decl, emptyMap)
+		newMap, resolvedDecl, err := r.ResolveDecl(decl, emptyMap)
 		if err != nil {
-			return nil, err
+			resolveErrors = append(resolveErrors, err.Error())
+			continue
 		}
-		program.Decls[i] = decl
+		emptyMap = newMap
+		program.Decls[i] = resolvedDecl
+	}
+
+	if len(resolveErrors) > 0 {
+		return nil, fmt.Errorf("%s", strings.Join(resolveErrors, "\n"))
 	}
 
 	return program, nil
@@ -211,12 +219,18 @@ func (r *Resolver) resolveLocalVarHelper(innerMap map[string]VarEntry, varDecl *
 }
 
 func (r *Resolver) ResolveBlock(program *parser.ASTBlock, innerMap IdMap) (*parser.ASTBlock, error) {
+	var blockErrors []string
 	for i, item := range program.BlockItems {
-		_, blockitem, err := r.ResolveBlockItem(item, innerMap)
+		newMap, blockitem, err := r.ResolveBlockItem(item, innerMap)
 		if err != nil {
-			return nil, err
+			blockErrors = append(blockErrors, err.Error())
+			continue
 		}
+		innerMap = newMap
 		program.BlockItems[i] = blockitem
+	}
+	if len(blockErrors) > 0 {
+		return nil, fmt.Errorf("%s", strings.Join(blockErrors, "\n"))
 	}
 	return program, nil
 }

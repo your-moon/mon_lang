@@ -29,8 +29,8 @@ const (
 type AsmUnaryOperator string
 
 const (
-	Not AsmUnaryOperator = "notl"
-	Neg AsmUnaryOperator = "negl"
+	Not AsmUnaryOperator = "not"
+	Neg AsmUnaryOperator = "neg"
 )
 
 type AsmRegister string

@@ -204,18 +204,13 @@ func (r *Resolver) resolveLocalVarHelper(innerMap map[string]VarEntry, varDecl *
 }
 
 func (r *Resolver) ResolveBlock(program *parser.ASTBlock, innerMap IdMap) (*parser.ASTBlock, error) {
-	var blockErrors []string
 	for i, item := range program.BlockItems {
 		newMap, blockitem, err := r.ResolveBlockItem(item, innerMap)
 		if err != nil {
-			blockErrors = append(blockErrors, err.Error())
-			continue
+			return nil, err
 		}
 		innerMap = newMap
 		program.BlockItems[i] = blockitem
-	}
-	if len(blockErrors) > 0 {
-		return nil, fmt.Errorf("%s", strings.Join(blockErrors, "\n"))
 	}
 	return program, nil
 }

@@ -305,9 +305,12 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 		return expr, nil
 	case *parser.ASTVar:
 		dVar := c.symbolTable.Get(expr.Ident)
+		if dVar == nil {
+			return nil, c.createSemanticError(fmt.Sprintf("хувьсагч '%s' олдсонгүй", expr.Ident), expr.Token.Line, expr.Token.Span)
+		}
 		_, ok := dVar.Type.(*mtypes.FnType)
 		if ok {
-			return nil, c.createSemanticError("%s-нь функц байна", expr.Token.Line, expr.Token.Span)
+			return nil, c.createSemanticError(fmt.Sprintf("'%s' нь функц байна", expr.Ident), expr.Token.Line, expr.Token.Span)
 		}
 		expr.Type = dVar.Type
 		return expr, nil

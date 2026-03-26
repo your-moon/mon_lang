@@ -596,6 +596,7 @@ var precedences = map[lexer.TokenType]int{
 	lexer.MINUS:            Sum,
 	lexer.DIV:              Product,
 	lexer.MUL:              Product,
+	lexer.MOD:              Product,
 	lexer.LESSTHAN:         Compare,
 	lexer.LESSTHANEQUAL:    Compare,
 	lexer.GREATERTHAN:      Compare,

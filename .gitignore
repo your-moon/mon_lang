@@ -3,6 +3,12 @@ debug_out.asm
 nora_sandler_compiler.md
 rustv/target
 out/
+playground/mon_lang
+playground/playground-server
+playground/static/
+playground/web/node_modules/
+playground/web/.next/
+playground/web/out/
 # Object files
 *.o
 
@@ -58,3 +64,4 @@ out/
 .Trashes
 ehthumbs.db
 Thumbs.db
+playground/playground

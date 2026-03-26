@@ -23,6 +23,7 @@ type Emitter interface {
 type AsmASTGen struct {
 	Registers   []AsmRegister
 	SymbolTable *symbols.SymbolTable
+	asmSymbols  *asmsymbol.SymbolTable
 }
 
 func NewAsmGen(table *symbols.SymbolTable) AsmASTGen {
@@ -34,6 +35,20 @@ func NewAsmGen(table *symbols.SymbolTable) AsmASTGen {
 
 func (a *AsmASTGen) GenASTAsm(program tackygen.TackyProgram, symbolTable *symbols.SymbolTable, asmSymbols *asmsymbol.SymbolTable) AsmProgram {
 	asmprogram := AsmProgram{}
+	a.asmSymbols = asmSymbols
+
+	// Register globals first so GenASTVal can check them
+	globalNames := map[string]bool{}
+	for _, gv := range program.GlobalVars {
+		globalNames[gv.Name] = true
+		convType := a.ConvType(symbolTable.Get(gv.Name).Type)
+		asmSymbols.AddGlobal(gv.Name, convType)
+		asmprogram.GlobalVars = append(asmprogram.GlobalVars, GlobalVarAsm{
+			Label:     gv.Name,
+			InitValue: gv.InitValue,
+			Size:      gv.Size,
+		})
+	}
 
 	for _, fn := range program.ExternDefs {
 		asmfn := a.GenASTExternFn(fn)
@@ -46,6 +61,9 @@ func (a *AsmASTGen) GenASTAsm(program tackygen.TackyProgram, symbolTable *symbol
 	}
 
 	for i, v := range symbolTable.Entries {
+		if globalNames[i] {
+			continue // already registered as global
+		}
 		switch v.Type.(type) {
 		case *mtypes.FnType:
 			asmSymbols.AddFun(i, true)
@@ -577,6 +595,9 @@ func (a *AsmASTGen) GenASTVal(val tackygen.TackyVal) AsmOperand {
 	case tackygen.Constant:
 		return Imm{Value: ast.Value.GetValue()}
 	case tackygen.Var:
+		if a.asmSymbols != nil && a.asmSymbols.IsGlobalVar(ast.Name) {
+			return RipRelative{Label: ast.Name}
+		}
 		return Pseudo{Ident: ast.Name}
 	case tackygen.StringConstant:
 		return StringLiteral{Value: ast.Value}

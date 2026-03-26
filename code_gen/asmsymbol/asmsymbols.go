@@ -21,8 +21,9 @@ func (f *Fun) isEntry() {}
 
 // Obj represents a variable/object entry
 type Obj struct {
-	Type     asmtype.AsmType
-	IsStatic bool
+	Type      asmtype.AsmType
+	IsStatic  bool
+	IsGlobalV bool
 }
 
 func (o *Obj) isEntry() {}
@@ -48,6 +49,26 @@ func (s *SymbolTable) AddVar(name string, t asmtype.AsmType, isStatic bool) {
 		Type:     t,
 		IsStatic: isStatic,
 	}
+}
+
+func (s *SymbolTable) AddGlobal(name string, t asmtype.AsmType) {
+	s.entries[name] = &Obj{
+		Type:      t,
+		IsStatic:  false,
+		IsGlobalV: true,
+	}
+}
+
+func (s *SymbolTable) IsGlobalVar(name string) bool {
+	entry, ok := s.entries[name]
+	if !ok {
+		return false
+	}
+	obj, ok := entry.(*Obj)
+	if !ok {
+		return false
+	}
+	return obj.IsGlobalV
 }
 
 func (s *SymbolTable) SetBytesRequired(name string, bytes int) error {

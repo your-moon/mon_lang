@@ -21,6 +21,15 @@ func isLarge(i int64) bool {
 	return i > 0x7fffffff || i < -0x80000000
 }
 
+// isMemoryOperand returns true if the operand is a memory-based operand (Stack or RipRelative)
+func isMemoryOperand(op AsmOperand) bool {
+	switch op.(type) {
+	case Stack, RipRelative:
+		return true
+	}
+	return false
+}
+
 func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction {
 	switch ast := instr.(type) {
 	case StringLiteral:
@@ -81,11 +90,57 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction
 				}
 			}
 		}
+
+		// Handle RipRelative (memory) to Stack (memory) move
+		if _, isSrcRip := ast.Src.(RipRelative); isSrcRip {
+			if _, isDstStack := ast.Dst.(Stack); isDstStack {
+				return []AsmInstruction{
+					AsmMov{Type: ast.Type, Src: ast.Src, Dst: Register{Reg: R10}},
+					AsmMov{Type: ast.Type, Src: Register{Reg: R10}, Dst: ast.Dst},
+				}
+			}
+		}
+		// Handle Stack (memory) to RipRelative (memory) move
+		if _, isSrcStack := ast.Src.(Stack); isSrcStack {
+			if _, isDstRip := ast.Dst.(RipRelative); isDstRip {
+				return []AsmInstruction{
+					AsmMov{Type: ast.Type, Src: ast.Src, Dst: Register{Reg: R10}},
+					AsmMov{Type: ast.Type, Src: Register{Reg: R10}, Dst: ast.Dst},
+				}
+			}
+		}
+		// Handle RipRelative to RipRelative move
+		if _, isSrcRip := ast.Src.(RipRelative); isSrcRip {
+			if _, isDstRip := ast.Dst.(RipRelative); isDstRip {
+				return []AsmInstruction{
+					AsmMov{Type: ast.Type, Src: ast.Src, Dst: Register{Reg: R10}},
+					AsmMov{Type: ast.Type, Src: Register{Reg: R10}, Dst: ast.Dst},
+				}
+			}
+		}
 		return []AsmInstruction{ast}
 
 	case AsmMovSx:
 		// Handle immediate source with stack/data destination
 		if imm, isImm := ast.Src.(Imm); isImm {
+			if _, isRip := ast.Dst.(RipRelative); isRip {
+				return []AsmInstruction{
+					AsmMov{
+						Type: &asmtype.LongWord{},
+						Src:  imm,
+						Dst:  Register{Reg: R10},
+					},
+					AsmMovSx{
+						Src: Register{Reg: R10},
+						Dst: Register{Reg: R11},
+					},
+					AsmMov{
+						Type: &asmtype.QuadWord{},
+						Src:  Register{Reg: R11},
+						Dst:  ast.Dst,
+					},
+				}
+			}
 			if _, isStack := ast.Dst.(Stack); isStack {
 				return []AsmInstruction{
 					AsmMov{
@@ -119,6 +174,20 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction
 
 		// Handle stack/data destination
 		if _, isStack := ast.Dst.(Stack); isStack {
+			return []AsmInstruction{
+				AsmMovSx{
+					Src: ast.Src,
+					Dst: Register{Reg: R11},
+				},
+				AsmMov{
+					Type: &asmtype.QuadWord{},
+					Src:  Register{Reg: R11},
+					Dst:  ast.Dst,
+				},
+			}
+		}
+		// Handle RipRelative destination
+		if _, isRip := ast.Dst.(RipRelative); isRip {
 			return []AsmInstruction{
 				AsmMovSx{
 					Src: ast.Src,
@@ -175,32 +244,30 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction
 
 		// Handle memory operands for Add/Sub
 		if ast.Op == Add || ast.Op == Sub {
-			if srcStack, isSrcStack := ast.Src.(Stack); isSrcStack {
-				if dstStack, isDstStack := ast.Dst.(Stack); isDstStack {
-					return []AsmInstruction{
-						AsmMov{
-							Type: ast.Type,
-							Src:  srcStack,
-							Dst:  Register{Reg: R10},
-						},
-						AsmBinary{
-							Op:   ast.Op,
-							Type: ast.Type,
-							Src:  Register{Reg: R10},
-							Dst:  dstStack,
-						},
-					}
+			if isMemoryOperand(ast.Src) && isMemoryOperand(ast.Dst) {
+				return []AsmInstruction{
+					AsmMov{
+						Type: ast.Type,
+						Src:  ast.Src,
+						Dst:  Register{Reg: R10},
+					},
+					AsmBinary{
+						Op:   ast.Op,
+						Type: ast.Type,
+						Src:  Register{Reg: R10},
+						Dst:  ast.Dst,
+					},
 				}
 			}
 		}
 
 		// Handle Mult with memory destination
 		if ast.Op == Mult {
-			if dstStack, isDstStack := ast.Dst.(Stack); isDstStack {
+			if isMemoryOperand(ast.Dst) {
 				return []AsmInstruction{
 					AsmMov{
 						Type: ast.Type,
-						Src:  dstStack,
+						Src:  ast.Dst,
 						Dst:  Register{Reg: R11},
 					},
 					AsmBinary{
@@ -212,7 +279,7 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction
 					AsmMov{
 						Type: ast.Type,
 						Src:  Register{Reg: R11},
-						Dst:  dstStack,
+						Dst:  ast.Dst,
 					},
 				}
 			}
@@ -220,21 +287,19 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction
 		return []AsmInstruction{ast}
 
 	case Cmp:
-		// Handle memory operands
-		if srcStack, isSrcStack := ast.Src.(Stack); isSrcStack {
-			if dstStack, isDstStack := ast.Dst.(Stack); isDstStack {
-				return []AsmInstruction{
-					AsmMov{
-						Type: ast.Type,
-						Src:  srcStack,
-						Dst:  Register{Reg: R10},
-					},
-					Cmp{
-						Type: ast.Type,
-						Src:  Register{Reg: R10},
-						Dst:  dstStack,
-					},
-				}
+		// Handle memory-to-memory operands (Stack or RipRelative)
+		if isMemoryOperand(ast.Src) && isMemoryOperand(ast.Dst) {
+			return []AsmInstruction{
+				AsmMov{
+					Type: ast.Type,
+					Src:  ast.Src,
+					Dst:  Register{Reg: R10},
+				},
+				Cmp{
+					Type: ast.Type,
+					Src:  Register{Reg: R10},
+					Dst:  ast.Dst,
+				},
 			}
 		}
 
@@ -343,5 +408,5 @@ func (f *FixUpPassGen) FixUpProgram(program AsmProgram) AsmProgram {
 	for _, fn := range program.AsmFnDef {
 		asmFnDefs = append(asmFnDefs, f.FixUpInFn(fn))
 	}
-	return AsmProgram{AsmFnDef: asmFnDefs, AsmExternFn: program.AsmExternFn}
+	return AsmProgram{AsmFnDef: asmFnDefs, AsmExternFn: program.AsmExternFn, GlobalVars: program.GlobalVars}
 }

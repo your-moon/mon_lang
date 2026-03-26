@@ -49,15 +49,29 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 				program.ExternDefs = append(program.ExternDefs, c.EmitTackyFn(stmttype))
 			}
 		case *parser.VarDecl:
-			// Top-level variable declarations with constant initializers become global constants
+			// Top-level variable declarations become global variables in .data section
+			var initValue int64
+			size := 4 // default Int32
 			if stmttype.Expr != nil {
 				switch constExpr := stmttype.Expr.(type) {
 				case *parser.ASTConstInt:
-					c.GlobalConstants[stmttype.Ident] = &mconstant.Int32{Value: int32(constExpr.Value)}
+					initValue = int64(constExpr.Value)
 				case *parser.ASTConstLong:
-					c.GlobalConstants[stmttype.Ident] = &mconstant.Int64{Value: constExpr.Value}
+					initValue = constExpr.Value
+					size = 8
 				}
 			}
+			if stmttype.VarType != nil {
+				if _, is64 := stmttype.VarType.(*mtypes.Int64Type); is64 {
+					size = 8
+				}
+			}
+			c.MutableGlobals[stmttype.Ident] = true
+			program.GlobalVars = append(program.GlobalVars, GlobalVar{
+				Name:      stmttype.Ident,
+				InitValue: initValue,
+				Size:      size,
+			})
 		}
 	}
 
@@ -483,10 +497,7 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs = append(irs, Label{Ident: endLabel.Name})
 		return dst, irs
 	case *parser.ASTVar:
-		// Check if this is a global constant
-		if constVal, ok := c.GlobalConstants[expr.Ident]; ok {
-			return Constant{Value: constVal}, []Instruction{}
-		}
+		// Global mutable variables are accessed via Var - the emitter will convert to RipRelative
 		return Var{Name: expr.Ident}, []Instruction{}
 	case *parser.ASTNewArray:
 		irs := []Instruction{}

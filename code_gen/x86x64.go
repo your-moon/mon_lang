@@ -70,6 +70,33 @@ func (a *AsmGen) GenStringData() {
 	}
 }
 
+func (a *AsmGen) GenGlobalVarData(globalVars []GlobalVarAsm) {
+	if len(globalVars) == 0 {
+		return
+	}
+	a.Write(".data")
+	for _, gv := range globalVars {
+		var label string
+		if a.ostype == util.Darwin {
+			label = "_" + gv.Label
+		} else {
+			label = gv.Label
+		}
+		if gv.Size == 8 {
+			a.Write(fmt.Sprintf(".align 8"))
+		} else {
+			a.Write(fmt.Sprintf(".align 4"))
+		}
+		a.Write(fmt.Sprintf("%s:", label))
+		if gv.Size == 8 {
+			a.Write(fmt.Sprintf("    .quad %d", gv.InitValue))
+		} else {
+			a.Write(fmt.Sprintf("    .long %d", gv.InitValue))
+		}
+	}
+	a.Write("")
+}
+
 func (a *AsmGen) GenAsm(program AsmProgram) {
 	for _, fn := range program.AsmFnDef {
 		for _, instr := range fn.Irs {
@@ -85,6 +112,7 @@ func (a *AsmGen) GenAsm(program AsmProgram) {
 	}
 
 	a.GenStringData()
+	a.GenGlobalVarData(program.GlobalVars)
 
 	a.Write(".text")
 
@@ -238,6 +266,11 @@ func (a *AsmGen) GenOperand(op AsmOperand, asmType asmtype.AsmType) string {
 	case StringLiteral:
 		label := a.AddString(ast.Value)
 		return fmt.Sprintf("%s(%%rip)", label)
+	case RipRelative:
+		if a.ostype == util.Darwin {
+			return fmt.Sprintf("_%s(%%rip)", ast.Label)
+		}
+		return fmt.Sprintf("%s(%%rip)", ast.Label)
 	default:
 		panic("unimplemented operand")
 	}

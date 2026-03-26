@@ -156,5 +156,5 @@ func (r *ReplacementPassGen) ReplacePseudosInProgram(program AsmProgram, symbolT
 		asmFnDefs = append(asmFnDefs, asmFnDef)
 		symbolTable.SetBytesRequired(fn.Ident, util.Abs(finalState.CurrentOffset))
 	}
-	return AsmProgram{AsmFnDef: asmFnDefs, AsmExternFn: program.AsmExternFn}
+	return AsmProgram{AsmFnDef: asmFnDefs, AsmExternFn: program.AsmExternFn, GlobalVars: program.GlobalVars}
 }

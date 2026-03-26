@@ -117,6 +117,14 @@ func (a Stack) Op() string {
 	return fmt.Sprintf("(%d)", a.Value)
 }
 
+type RipRelative struct {
+	Label string
+}
+
+func (a RipRelative) Op() string {
+	return fmt.Sprintf("%s(%%rip)", a.Label)
+}
+
 type AsmInstruction interface {
 	Ir() string
 }
@@ -348,7 +356,14 @@ func (a AsmStoreToMem) Ir() string {
 	return fmt.Sprintf("storemem %s -> (%s)", a.Src.Op(), a.Base)
 }
 
+type GlobalVarAsm struct {
+	Label     string
+	InitValue int64
+	Size      int // 4 or 8
+}
+
 type AsmProgram struct {
 	AsmFnDef    []AsmFnDef
 	AsmExternFn []AsmExternFn
+	GlobalVars  []GlobalVarAsm
 }

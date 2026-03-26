@@ -3,10 +3,11 @@ package codegen
 import (
 	"fmt"
 	"io"
+	"sort"
+	"strings"
 
 	"github.com/your-moon/mon_lang/base"
 	"github.com/your-moon/mon_lang/code_gen/asmtype"
-	"github.com/your-moon/mon_lang/stringpool"
 	"github.com/your-moon/mon_lang/util"
 )
 
@@ -30,14 +31,15 @@ type AsmGen struct {
 	ostype          util.OsType
 	currentInstrIdx int
 	currentFn       string
+	strings         map[string]int
+	stringCount     int
 }
 
 func NewGenASM(writer io.Writer, osType util.OsType) AsmGen {
 	return AsmGen{
-		writer:          writer,
-		ostype:          osType,
-		currentInstrIdx: 0,
-		currentFn:       "",
+		writer:  writer,
+		ostype:  osType,
+		strings: make(map[string]int),
 	}
 }
 
@@ -51,23 +53,67 @@ func (a *AsmGen) AddString(value string) string {
 		fmt.Println()
 	}
 
-	label := stringpool.GetLabel(value)
+	if id, exists := a.strings[value]; exists {
+		return fmt.Sprintf(".LC%d", id)
+	}
+	id := a.stringCount
+	a.strings[value] = id
+	a.stringCount++
+	return fmt.Sprintf(".LC%d", id)
+}
 
-	return label
+func escapeForAsm(s string) string {
+	var buf strings.Builder
+	for _, r := range s {
+		switch r {
+		case '\n':
+			buf.WriteString("\\n")
+		case '\t':
+			buf.WriteString("\\t")
+		case '"':
+			buf.WriteString("\\\"")
+		case '\\':
+			buf.WriteString("\\\\")
+		case 0:
+			buf.WriteString("\\0")
+		default:
+			buf.WriteRune(r)
+		}
+	}
+	return buf.String()
 }
 
 func (a *AsmGen) GenStringData() {
-	strings := stringpool.GetAllStrings()
-
-	if len(strings) > 0 {
-		a.Write(".data")
-		for str, id := range strings {
-			label := fmt.Sprintf(".LC%d", id)
-			a.Write(fmt.Sprintf("%s:", label))
-			a.Write(fmt.Sprintf(".string \"%s\"", str))
-		}
-		a.Write("")
+	if len(a.strings) == 0 {
+		return
 	}
+
+	// Use .section .rodata for read-only data
+	if a.ostype == util.Darwin {
+		a.Write(".section __TEXT,__cstring,cstring_literals")
+	} else {
+		a.Write(".section .rodata")
+	}
+
+	// Sort by ID to ensure deterministic output
+	type entry struct {
+		value string
+		id    int
+	}
+	entries := make([]entry, 0, len(a.strings))
+	for str, id := range a.strings {
+		entries = append(entries, entry{str, id})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].id < entries[j].id
+	})
+
+	for _, e := range entries {
+		label := fmt.Sprintf(".LC%d", e.id)
+		a.Write(fmt.Sprintf("%s:", label))
+		a.Write(fmt.Sprintf("    .asciz \"%s\"", escapeForAsm(e.value)))
+	}
+	a.Write("")
 }
 
 func (a *AsmGen) GenGlobalVarData(globalVars []GlobalVarAsm) {

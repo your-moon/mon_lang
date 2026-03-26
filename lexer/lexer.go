@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/your-moon/mon_lang/base"
-	"github.com/your-moon/mon_lang/stringpool"
 )
 
 type Scanner struct {
@@ -246,12 +245,43 @@ func (s *Scanner) Skip() {
 		break
 	}
 }
+func processEscapes(runes []int32) string {
+	var result []rune
+	for i := 0; i < len(runes); i++ {
+		if runes[i] == '\\' && i+1 < len(runes) {
+			i++
+			switch runes[i] {
+			case 'n':
+				result = append(result, '\n')
+			case 't':
+				result = append(result, '\t')
+			case '\\':
+				result = append(result, '\\')
+			case '"':
+				result = append(result, '"')
+			case '0':
+				result = append(result, 0)
+			default:
+				result = append(result, '\\')
+				result = append(result, rune(runes[i]))
+			}
+		} else {
+			result = append(result, rune(runes[i]))
+		}
+	}
+	return string(result)
+}
+
 func (s *Scanner) BuildString() (Token, error) {
 	tokenStart := s.Start
 	s.Next()
 	for s.Peek() != '"' && !s.isAtEnd() {
 		if s.Peek() == '\n' {
 			s.Line++
+		}
+		if s.Peek() == '\\' {
+			s.Next() // skip backslash
+			// skip the escaped character too
 		}
 		s.Next()
 	}
@@ -261,7 +291,7 @@ func (s *Scanner) BuildString() (Token, error) {
 	}
 
 	strRunes := s.Source[tokenStart+1 : s.Cursor]
-	strValue := string(strRunes)
+	strValue := processEscapes(strRunes)
 
 	if base.Debug {
 		fmt.Printf("[DEBUG] String literal: '%s'\n", strValue)
@@ -272,8 +302,6 @@ func (s *Scanner) BuildString() (Token, error) {
 		}
 		fmt.Println()
 	}
-
-	stringpool.Intern(strValue)
 
 	s.Next()
 	s.Start = tokenStart

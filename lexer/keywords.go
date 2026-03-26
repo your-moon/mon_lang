@@ -6,7 +6,7 @@ const (
 	KeywordExtern Keyword = "extern"
 	KeywordStatic Keyword = "статик"
 
-	KeywordImport   Keyword = "импорт"
+	KeywordImport   Keyword = "ашигла"
 	KeywordPublic   Keyword = "тунх"
 	KeywordBreak    Keyword = "зогс"
 	KeywordContinue Keyword = "үргэлжлүүл"

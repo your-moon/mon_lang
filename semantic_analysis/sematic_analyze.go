@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
-	"github.com/your-moon/mon_lang/mtypes"
 	"github.com/your-moon/mon_lang/parser"
 	"github.com/your-moon/mon_lang/symbols"
 	"github.com/your-moon/mon_lang/util/unique"
@@ -18,15 +17,17 @@ type SemanticAnalyzer struct {
 	typeChecker   *TypeChecker
 	importedFiles map[string]bool
 	baseDir       string
+	stdlibDir     string
 }
 
-func NewSemanticAnalyzer(source []int32, uniqueGen unique.UniqueGen, table *symbols.SymbolTable, baseDir string) *SemanticAnalyzer {
+func NewSemanticAnalyzer(source []int32, uniqueGen unique.UniqueGen, table *symbols.SymbolTable, baseDir string, stdlibDir string) *SemanticAnalyzer {
 	return &SemanticAnalyzer{
 		resolver:      NewResolver(source, uniqueGen),
 		labelPass:     NewLoopPass(source),
 		typeChecker:   NewTypeChecker(source, uniqueGen, table),
 		importedFiles: make(map[string]bool),
 		baseDir:       baseDir,
+		stdlibDir:     stdlibDir,
 	}
 }
 
@@ -44,6 +45,24 @@ func convertToRuneArray(dataString string) []int32 {
 func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.ASTProgram, error) {
 	var importedDecls []parser.ASTDecl
 	var ownDecls []parser.ASTDecl
+
+	// Auto-import prelude (stdlib declarations)
+	preludePath := filepath.Join(s.stdlibDir, "prelude.mn")
+	if _, err := os.Stat(preludePath); err == nil {
+		data, err := os.ReadFile(preludePath)
+		if err != nil {
+			return nil, fmt.Errorf("prelude уншихад алдаа: %v", err)
+		}
+		runeStr := convertToRuneArray(string(data))
+		p := parser.NewParser(runeStr)
+		preludeProg, err := p.ParseProgram()
+		if err != nil {
+			return nil, fmt.Errorf("prelude парсингийн алдаа: %v", err)
+		}
+		for _, d := range preludeProg.Decls {
+			importedDecls = append(importedDecls, d)
+		}
+	}
 
 	for _, decl := range program.Decls {
 		imp, ok := decl.(*parser.ASTImport)
@@ -91,32 +110,7 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 	return program, nil
 }
 
-// registerImplicitStdlib registers built-in stdlib functions so they don't need extern declarations
-func (s *SemanticAnalyzer) registerImplicitStdlib() {
-	stdlibFns := []struct {
-		name    string
-		retType mtypes.Type
-	}{
-		{"хэвлэ", &mtypes.VoidType{}},
-		{"мөр_хэвлэх", &mtypes.VoidType{}},
-		{"унш", &mtypes.Int64Type{}},
-		{"унш32", &mtypes.Int32Type{}},
-		{"санамсаргүйТоо", &mtypes.Int32Type{}},
-		{"одоо", &mtypes.Int64Type{}},
-		{"malloc", &mtypes.Int64Type{}},
-		{"чөлөөлөх", &mtypes.VoidType{}},
-	}
-
-	for _, fn := range stdlibFns {
-		fnType := &mtypes.FnType{RetType: fn.retType}
-		s.typeChecker.symbolTable.AddFn(fnType, fn.name, false)
-		s.resolver.RegisterBuiltin(fn.name)
-	}
-}
-
 func (s *SemanticAnalyzer) Analyze(program *parser.ASTProgram) (*parser.ASTProgram, *symbols.SymbolTable, error) {
-	s.registerImplicitStdlib()
-
 	program, err := s.processImports(program)
 	if err != nil {
 		return nil, nil, err

@@ -34,7 +34,6 @@ type Resolver struct {
 	source      []int32
 	uniqueGen   unique.UniqueGen
 	errors      []compilererrors.CompilerError
-	builtins    map[string]bool
 }
 
 func NewResolver(source []int32, uniqueGen unique.UniqueGen) *Resolver {
@@ -42,13 +41,7 @@ func NewResolver(source []int32, uniqueGen unique.UniqueGen) *Resolver {
 		tempCounter: 0,
 		source:      source,
 		uniqueGen:   uniqueGen,
-		builtins:    make(map[string]bool),
 	}
-}
-
-// RegisterBuiltin registers a built-in function name so the resolver knows it exists
-func (r *Resolver) RegisterBuiltin(name string) {
-	r.builtins[name] = true
 }
 
 func (r *Resolver) makeNamedTemporary(name string) string {
@@ -86,14 +79,6 @@ func (r *Resolver) resolveParams(params []parser.Param, innerMap map[string]VarE
 
 func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, error) {
 	emptyMap := make(IdMap)
-	// Register builtins so they are available without extern declarations
-	for name := range r.builtins {
-		emptyMap[name] = VarEntry{
-			UniqueName:       name,
-			fromCurrentScope: true,
-			hasLinkage:       true,
-		}
-	}
 	var resolveErrors []string
 	for i, decl := range program.Decls {
 		newMap, resolvedDecl, err := r.ResolveDecl(decl, emptyMap)

@@ -34,11 +34,8 @@ func NewTackyGen(uniquegen unique.UniqueGen, table *symbols.SymbolTable) TackyGe
 func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	program := TackyProgram{}
 
-	// Register implicit stdlib externs
-	implicitExterns := []string{"хэвлэ", "мөр_хэвлэх", "унш", "унш32", "санамсаргүйТоо", "одоо", "malloc", "чөлөөлөх"}
-	for _, name := range implicitExterns {
-		program.ExternDefs = append(program.ExternDefs, TackyFn{Name: name, IsExtern: true})
-	}
+	// Only malloc is implicit (used by шинэ keyword internally)
+	program.ExternDefs = append(program.ExternDefs, TackyFn{Name: "malloc", IsExtern: true})
 
 	for _, stmt := range node.Decls {
 		switch stmttype := stmt.(type) {

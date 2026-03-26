@@ -52,7 +52,7 @@ func (c *TypeChecker) checkFnDecl(decl *parser.FnDecl) (*parser.FnDecl, error) {
 	fnType := &mtypes.FnType{
 		RetType: decl.ReturnType,
 	}
-	hasBody := decl.Body != nil
+	hasBody := decl.Body != nil && !decl.IsExtern
 	alreadyDefined := false
 
 	prev := c.symbolTable.GetOptional(decl.Ident)

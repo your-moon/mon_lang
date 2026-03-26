@@ -26,4 +26,6 @@ const (
 	KeywordLong   Keyword = "тоо64"
 	KeywordVoid   Keyword = "хоосон"
 	KeywordString Keyword = "мөр"
+	KeywordNew    Keyword = "шинэ"
+	KeywordElse   Keyword = "эсвэл"
 )

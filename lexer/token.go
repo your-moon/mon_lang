@@ -55,8 +55,10 @@ const (
 	OPEN_PAREN  TokenType = "OPEN_PAREN"
 	CLOSE_PAREN TokenType = "CLOSE_PAREN"
 	RIGHT_ARROW TokenType = "RIGHT_ARROW"
-	OPEN_BRACE  TokenType = "OPEN_BRACE"
-	CLOSE_BRACE TokenType = "CLOSE_BRACE"
+	OPEN_BRACE    TokenType = "OPEN_BRACE"
+	CLOSE_BRACE   TokenType = "CLOSE_BRACE"
+	OPEN_BRACKET  TokenType = "OPEN_BRACKET"  // [
+	CLOSE_BRACKET TokenType = "CLOSE_BRACKET" // ]
 	SEMICOLON   TokenType = "SEMICOLON"
 	COLON       TokenType = "COLON"
 	TILDE       TokenType = "TILDE"
@@ -65,6 +67,8 @@ const (
 	INT_TYPE    TokenType = "INT_TYPE"
 	STRING_TYPE TokenType = "STRING_TYPE"
 	VOID        TokenType = "VOID"
+	NEW         TokenType = "NEW"  // шинэ
+	ELSE        TokenType = "ELSE" // эсвэл
 	ERROR       TokenType = "ERROR"
 )
 

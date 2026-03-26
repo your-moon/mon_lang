@@ -8,22 +8,12 @@ import (
 )
 
 type Scanner struct {
-	Source []int32
-
-	// asdf
-	//^
-	Cursor uint
-
-	// asdf
-	// ^
-	Start uint
-
-	// asdf
-	//    ^
+	Source  []int32
+	Cursor  uint
+	Start   uint
 	Current int32
-
-	Line   uint
-	Column uint
+	Line    uint
+	Column  uint
 }
 
 func NewScanner(source []int32) Scanner {
@@ -37,6 +27,7 @@ func NewScanner(source []int32) Scanner {
 }
 
 func (s *Scanner) IsWhiteSpace() bool {
+	//32 in ascii => space
 	if s.Peek() == 32 {
 		return true
 	}
@@ -44,6 +35,7 @@ func (s *Scanner) IsWhiteSpace() bool {
 }
 
 func (s *Scanner) IsTab() bool {
+	//9 in ascii => tab
 	if s.Peek() == 9 {
 		return true
 	}
@@ -172,6 +164,12 @@ func (s *Scanner) ToKeyword() (Token, bool) {
 	}
 	if str == string(KeywordReturn) {
 		return s.BuildToken(RETURN), true
+	}
+	if str == string(KeywordNew) {
+		return s.BuildToken(NEW), true
+	}
+	if str == string(KeywordElse) {
+		return s.BuildToken(ELSE), true
 	}
 
 	return Token{}, false
@@ -327,6 +325,10 @@ func (s *Scanner) Scan() (Token, error) {
 		return s.BuildToken(OPEN_BRACE), nil
 	case '}':
 		return s.BuildToken(CLOSE_BRACE), nil
+	case '[':
+		return s.BuildToken(OPEN_BRACKET), nil
+	case ']':
+		return s.BuildToken(CLOSE_BRACKET), nil
 	case ':':
 		return s.BuildToken(COLON), nil
 	case ';':

@@ -34,9 +34,14 @@ func (c *TypeChecker) CheckTopLevel(program *parser.ASTProgram) (*parser.ASTProg
 				return nil, err
 			}
 			program.Decls[i] = decl
+		case *parser.VarDecl:
+			decl, err := c.checkDecl(decltype)
+			if err != nil {
+				return nil, err
+			}
+			program.Decls[i] = decl
 		default:
-			// program.Decls[i] = decltype
-			panic("only support fn decl on top level")
+			panic(fmt.Sprintf("unsupported top-level declaration: %T", decl))
 		}
 	}
 	return program, nil
@@ -242,6 +247,7 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 		}
 		expr.Left = left
 		expr.Right = right
+		// For array index assignment, the type is the element type
 		expr.Type = left.GetType()
 		return expr, nil
 	case *parser.ASTUnary:
@@ -305,6 +311,34 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 		}
 		expr.Type = dVar.Type
 		return expr, nil
+	case *parser.ASTArrayIndex:
+		arr, err := c.checkExpr(expr.Array)
+		if err != nil {
+			return nil, err
+		}
+		idx, err := c.checkExpr(expr.Index)
+		if err != nil {
+			return nil, err
+		}
+		expr.Array = arr
+		expr.Index = idx
+		// Set type to element type
+		if arrType, ok := arr.GetType().(*mtypes.ArrayType); ok {
+			expr.Type = arrType.ElementType
+		} else {
+			expr.Type = &mtypes.Int32Type{}
+		}
+		return expr, nil
+
+	case *parser.ASTNewArray:
+		size, err := c.checkExpr(expr.Size)
+		if err != nil {
+			return nil, err
+		}
+		expr.Size = size
+		expr.Type = &mtypes.ArrayType{ElementType: expr.ElementType}
+		return expr, nil
+
 	case *parser.ASTFnCall:
 		fn := c.symbolTable.Get(expr.Ident)
 		if fn == nil {

@@ -361,6 +361,50 @@ func (a *AsmASTGen) GenASTInstr(instr tackygen.Instruction) []AsmInstruction {
 		}
 		ret := Return{}
 		return []AsmInstruction{mov, ret}
+	case tackygen.SignExtend:
+		movsx := AsmMovSx{
+			Src: a.GenASTVal(ast.Src),
+			Dst: a.GenASTVal(ast.Dst),
+		}
+		return []AsmInstruction{movsx}
+	case tackygen.Load:
+		// Move pointer to R10, load from memory to R11, then move to dst
+		dstType := a.AsmType(ast.Dst)
+		mov := AsmMov{
+			Type: &asmtype.QuadWord{},
+			Src:  a.GenASTVal(ast.Src),
+			Dst:  Register{Reg: R10},
+		}
+		load := AsmLoadFromMem{
+			Type: dstType,
+			Base: R10,
+			Dst:  Register{Reg: R11},
+		}
+		movResult := AsmMov{
+			Type: dstType,
+			Src:  Register{Reg: R11},
+			Dst:  a.GenASTVal(ast.Dst),
+		}
+		return []AsmInstruction{mov, load, movResult}
+	case tackygen.Store:
+		// Move pointer to R10, then store to memory
+		movAddr := AsmMov{
+			Type: &asmtype.QuadWord{},
+			Src:  a.GenASTVal(ast.Dst),
+			Dst:  Register{Reg: R10},
+		}
+		// Move value to R11 first, then store
+		movVal := AsmMov{
+			Type: a.AsmType(ast.Src),
+			Src:  a.GenASTVal(ast.Src),
+			Dst:  Register{Reg: R11},
+		}
+		store := AsmStoreToMem{
+			Type: a.AsmType(ast.Src),
+			Src:  Register{Reg: R11},
+			Base: R10,
+		}
+		return []AsmInstruction{movAddr, movVal, store}
 	case tackygen.Binary:
 		return a.GenASTBinary(ast)
 	case tackygen.Unary:
@@ -551,6 +595,8 @@ func (a *AsmASTGen) ConvType(val mtypes.Type) asmtype.AsmType {
 		return &asmtype.LongWord{}
 	case *mtypes.StringType:
 		return &asmtype.StringType{}
+	case *mtypes.ArrayType:
+		return &asmtype.QuadWord{} // arrays are pointers
 	case *mtypes.FnType:
 		panic("fn type should not be here")
 	default:

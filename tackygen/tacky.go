@@ -156,6 +156,24 @@ func (u Unary) Ir() {
 		u.Src.val())
 }
 
+type Load struct {
+	Src TackyVal
+	Dst TackyVal
+}
+
+func (l Load) Ir() {
+	fmt.Printf("%s := load %s\n", l.Dst.val(), l.Src.val())
+}
+
+type Store struct {
+	Src TackyVal
+	Dst TackyVal
+}
+
+func (s Store) Ir() {
+	fmt.Printf("store %s -> %s\n", s.Src.val(), s.Dst.val())
+}
+
 type Instruction interface {
 	Ir()
 }

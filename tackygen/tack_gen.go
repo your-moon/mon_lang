@@ -12,23 +12,31 @@ import (
 )
 
 type TackyGen struct {
-	TempCount   uint64
-	LabelCount  uint64
-	UniqueGen   unique.UniqueGen
-	SymbolTable *symbols.SymbolTable
+	TempCount      uint64
+	LabelCount     uint64
+	UniqueGen      unique.UniqueGen
+	SymbolTable    *symbols.SymbolTable
+	GlobalConstants map[string]mconstant.Const
 }
 
 func NewTackyGen(uniquegen unique.UniqueGen, table *symbols.SymbolTable) TackyGen {
 	return TackyGen{
-		TempCount:   0,
-		LabelCount:  0,
-		UniqueGen:   uniquegen,
-		SymbolTable: table,
+		TempCount:      0,
+		LabelCount:     0,
+		UniqueGen:      uniquegen,
+		SymbolTable:    table,
+		GlobalConstants: make(map[string]mconstant.Const),
 	}
 }
 
 func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	program := TackyProgram{}
+
+	// Register implicit stdlib externs
+	implicitExterns := []string{"хэвлэ", "мөр_хэвлэх", "унш", "унш32", "санамсаргүйТоо", "одоо", "malloc"}
+	for _, name := range implicitExterns {
+		program.ExternDefs = append(program.ExternDefs, TackyFn{Name: name, IsExtern: true})
+	}
 
 	for _, stmt := range node.Decls {
 		switch stmttype := stmt.(type) {
@@ -37,6 +45,16 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 				program.FnDefs = append(program.FnDefs, c.EmitTackyFn(stmttype))
 			} else {
 				program.ExternDefs = append(program.ExternDefs, c.EmitTackyFn(stmttype))
+			}
+		case *parser.VarDecl:
+			// Top-level variable declarations with constant initializers become global constants
+			if stmttype.Expr != nil {
+				switch constExpr := stmttype.Expr.(type) {
+				case *parser.ASTConstInt:
+					c.GlobalConstants[stmttype.Ident] = &mconstant.Int32{Value: int32(constExpr.Value)}
+				case *parser.ASTConstLong:
+					c.GlobalConstants[stmttype.Ident] = &mconstant.Int64{Value: constExpr.Value}
+				}
 			}
 		}
 	}
@@ -233,6 +251,7 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 			jmpifzero := JumpIfZero{Val: evalCond, Ident: elseLabel.Name}
 			irs = append(irs, jmpifzero)
 			irs = append(irs, c.EmitTackyStmt(ast.Then)...)
+			irs = append(irs, Jump{Target: endLabel.Name})
 			irs = append(irs, Label{Ident: elseLabel.Name})
 			irs = append(irs, c.EmitTackyStmt(ast.Else)...)
 			irs = append(irs, Label{Ident: endLabel.Name})
@@ -456,18 +475,76 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs = append(irs, Label{Ident: endLabel.Name})
 		return dst, irs
 	case *parser.ASTVar:
+		// Check if this is a global constant
+		if constVal, ok := c.GlobalConstants[expr.Ident]; ok {
+			return Constant{Value: constVal}, []Instruction{}
+		}
 		return Var{Name: expr.Ident}, []Instruction{}
+	case *parser.ASTNewArray:
+		irs := []Instruction{}
+		sizeVal, sizeIrs := c.EmitExpr(expr.Size)
+		irs = append(irs, sizeIrs...)
+		// Sign-extend size to 64-bit if needed
+		size64 := c.makeTemp(&mtypes.Int64Type{})
+		irs = append(irs, SignExtend{Src: sizeVal, Dst: size64})
+		// byteSize = size * 4 (element size for Int32)
+		byteSize := c.makeTemp(&mtypes.Int64Type{})
+		irs = append(irs, Binary{Op: Mul, Src1: size64, Src2: Constant{Value: &mconstant.Int64{Value: 4}}, Dst: byteSize})
+		// Call malloc
+		dst := c.makeTemp(&mtypes.Int64Type{})
+		irs = append(irs, FnCall{Name: "malloc", Args: []TackyVal{byteSize}, Dst: dst})
+		return dst, irs
+
+	case *parser.ASTArrayIndex:
+		irs := []Instruction{}
+		basePtr, baseIrs := c.EmitExpr(expr.Array)
+		irs = append(irs, baseIrs...)
+		indexVal, indexIrs := c.EmitExpr(expr.Index)
+		irs = append(irs, indexIrs...)
+		// Sign-extend index to 64-bit
+		idx64 := c.makeTemp(&mtypes.Int64Type{})
+		irs = append(irs, SignExtend{Src: indexVal, Dst: idx64})
+		// offset = index * 4
+		offset := c.makeTemp(&mtypes.Int64Type{})
+		irs = append(irs, Binary{Op: Mul, Src1: idx64, Src2: Constant{Value: &mconstant.Int64{Value: 4}}, Dst: offset})
+		// addr = base + offset
+		addr := c.makeTemp(&mtypes.Int64Type{})
+		irs = append(irs, Binary{Op: Add, Src1: basePtr, Src2: offset, Dst: addr})
+		// Load value from memory
+		dst := c.makeTemp(expr.Type)
+		irs = append(irs, Load{Src: addr, Dst: dst})
+		return dst, irs
+
 	case *parser.ASTAssignment:
 		irs := []Instruction{}
-		astVar, ok := expr.Left.(*parser.ASTVar)
-		if !ok {
-			panic("assignment left side must be var")
+		switch lhs := expr.Left.(type) {
+		case *parser.ASTVar:
+			rhsResult, rhsIrs := c.EmitExpr(expr.Right)
+			irs = append(irs, rhsIrs...)
+			irs = append(irs, Copy{Src: rhsResult, Dst: Var{Name: lhs.Ident}})
+			return Var{Name: lhs.Ident}, irs
+		case *parser.ASTArrayIndex:
+			// Compute address
+			basePtr, baseIrs := c.EmitExpr(lhs.Array)
+			irs = append(irs, baseIrs...)
+			indexVal, indexIrs := c.EmitExpr(lhs.Index)
+			irs = append(irs, indexIrs...)
+			// Sign-extend index to 64-bit
+			idx64 := c.makeTemp(&mtypes.Int64Type{})
+			irs = append(irs, SignExtend{Src: indexVal, Dst: idx64})
+			offset := c.makeTemp(&mtypes.Int64Type{})
+			irs = append(irs, Binary{Op: Mul, Src1: idx64, Src2: Constant{Value: &mconstant.Int64{Value: 4}}, Dst: offset})
+			addr := c.makeTemp(&mtypes.Int64Type{})
+			irs = append(irs, Binary{Op: Add, Src1: basePtr, Src2: offset, Dst: addr})
+			// Evaluate RHS
+			rhsResult, rhsIrs := c.EmitExpr(expr.Right)
+			irs = append(irs, rhsIrs...)
+			// Store
+			irs = append(irs, Store{Src: rhsResult, Dst: addr})
+			return rhsResult, irs
+		default:
+			panic("assignment left side must be var or array index")
 		}
-
-		rhsResult, rhsIrs := c.EmitExpr(expr.Right)
-		irs = append(irs, rhsIrs...)
-		irs = append(irs, Copy{Src: rhsResult, Dst: Var{Name: astVar.Ident}})
-		return Var{Name: astVar.Ident}, irs
 	case parser.ASTConst:
 		exprType := expr.GetType()
 		switch consttype := expr.(type) {

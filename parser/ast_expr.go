@@ -335,3 +335,35 @@ func (a *ASTInfixExpression) PrintAST(depth int) string {
 
 	return out.String()
 }
+
+// ASTArrayIndex represents array indexing: arr[i]
+type ASTArrayIndex struct {
+	Token lexer.Token
+	Array ASTExpression
+	Index ASTExpression
+	Type  mtypes.Type
+}
+
+func (a *ASTArrayIndex) expressionNode()       {}
+func (a *ASTArrayIndex) TokenLiteral() string  { return "INDEX" }
+func (a *ASTArrayIndex) GetType() mtypes.Type  { return a.Type }
+func (a *ASTArrayIndex) SetType(t mtypes.Type) { a.Type = t }
+func (a *ASTArrayIndex) PrintAST(depth int) string {
+	return fmt.Sprintf("%s%s[%s]", indent(depth), a.Array.PrintAST(0), a.Index.PrintAST(0))
+}
+
+// ASTNewArray represents heap array allocation: шинэ тоо[N]
+type ASTNewArray struct {
+	Token       lexer.Token
+	ElementType mtypes.Type
+	Size        ASTExpression
+	Type        mtypes.Type
+}
+
+func (a *ASTNewArray) expressionNode()       {}
+func (a *ASTNewArray) TokenLiteral() string  { return "NEW" }
+func (a *ASTNewArray) GetType() mtypes.Type  { return a.Type }
+func (a *ASTNewArray) SetType(t mtypes.Type) { a.Type = t }
+func (a *ASTNewArray) PrintAST(depth int) string {
+	return fmt.Sprintf("%sшинэ %s[%s]", indent(depth), a.ElementType, a.Size.PrintAST(0))
+}

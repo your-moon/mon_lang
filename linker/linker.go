@@ -74,6 +74,7 @@ func (l *Linker) Link() error {
 	} else {
 		asmCmd = exec.Command("as", "-o", objFile, tempAsmFile)
 	}
+
 	var asmStdout, asmStderr bytes.Buffer
 	asmCmd.Stdout = &asmStdout
 	asmCmd.Stderr = &asmStderr
@@ -87,29 +88,17 @@ func (l *Linker) Link() error {
 
 	defer os.Remove(objFile)
 
-	stdlibFile := filepath.Join(STDLIB_DIR, "lib_"+l.osType+".asm")
-	stdlibObj := filepath.Join(outputDir, "lib_"+l.osType+".o")
-	var stdlibAsmCmd *exec.Cmd
-	if l.osType == "darwin" && runtime.GOARCH == "arm64" {
-		stdlibAsmCmd = exec.Command("arch", "-x86_64", "as", "-o", stdlibObj, stdlibFile)
-	} else {
-		stdlibAsmCmd = exec.Command("as", "-o", stdlibObj, stdlibFile)
-	}
-	var stdlibStdout, stdlibStderr bytes.Buffer
-	stdlibAsmCmd.Stdout = &stdlibStdout
-	stdlibAsmCmd.Stderr = &stdlibStderr
-	if err := stdlibAsmCmd.Run(); err != nil {
-		return fmt.Errorf("стандарт сан ассембле хийхэд алдаа гарлаа: %v\nstdout: %s\nstderr: %s", err, stdlibStdout.String(), stdlibStderr.String())
-	}
-	defer os.Remove(stdlibObj)
+	// Find stdlib/lib.c relative to the executable or current directory
+	stdlibFile := filepath.Join(STDLIB_DIR, "lib.c")
 
+	// Use cc to link with libc (provides malloc, printf, etc.)
 	var linkCmd *exec.Cmd
 	if l.osType == "darwin" && runtime.GOARCH == "arm64" {
-		linkCmd = exec.Command("arch", "-x86_64", "ld", "-arch", "x86_64", "-o", l.outputFile, objFile, stdlibObj, "-e", "_main", "-no_pie", "-lSystem", "-syslibroot", "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk")
+		linkCmd = exec.Command("arch", "-x86_64", "cc", "-arch", "x86_64", "-o", l.outputFile, objFile, stdlibFile)
 	} else if l.osType == "darwin" {
-		linkCmd = exec.Command("ld", "-arch", "x86_64", "-o", l.outputFile, objFile, stdlibObj, "-e", "_main", "-no_pie", "-lSystem", "-syslibroot", "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk")
+		linkCmd = exec.Command("cc", "-arch", "x86_64", "-o", l.outputFile, objFile, stdlibFile)
 	} else {
-		linkCmd = exec.Command("ld", "-o", l.outputFile, objFile, stdlibObj)
+		linkCmd = exec.Command("cc", "-o", l.outputFile, objFile, stdlibFile)
 	}
 
 	var stdout, stderr bytes.Buffer

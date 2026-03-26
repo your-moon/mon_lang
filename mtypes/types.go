@@ -20,6 +20,12 @@ type StringType struct{}
 
 func (t *StringType) typecheck() {}
 
+type ArrayType struct {
+	ElementType Type
+}
+
+func (t *ArrayType) typecheck() {}
+
 type FnType struct {
 	ParamTypes []Type
 	RetType    Type

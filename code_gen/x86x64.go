@@ -190,6 +190,12 @@ func (a *AsmGen) GenInstr(instr AsmInstruction) {
 		} else {
 			a.Write(fmt.Sprintf("    mov%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
 		}
+	case AsmMovSx:
+		a.Write(fmt.Sprintf("    movslq %s, %s", a.GenOperand(ast.Src, &asmtype.LongWord{}), a.GenOperand(ast.Dst, &asmtype.QuadWord{})))
+	case AsmLoadFromMem:
+		a.Write(fmt.Sprintf("    mov%s (%%r10), %s", a.GenType(ast.Type), a.GenOperand(ast.Dst, ast.Type)))
+	case AsmStoreToMem:
+		a.Write(fmt.Sprintf("    mov%s %s, (%%r10)", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type)))
 	case Return:
 		a.Write("    movq %rbp, %rsp")
 		a.Write("    popq %rbp")

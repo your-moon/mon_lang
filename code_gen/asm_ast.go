@@ -326,6 +326,28 @@ func (s StringLiteral) Op() string {
 
 var _ AsmInstruction = StringLiteral{} // Ensure StringLiteral implements AsmInstruction
 
+// AsmLoadFromMem loads a value from memory address in Base register to Dst
+type AsmLoadFromMem struct {
+	Type asmtype.AsmType
+	Base AsmRegister
+	Dst  AsmOperand
+}
+
+func (a AsmLoadFromMem) Ir() string {
+	return fmt.Sprintf("loadmem (%s) -> %s", a.Base, a.Dst.Op())
+}
+
+// AsmStoreToMem stores a value from Src to memory address in Base register
+type AsmStoreToMem struct {
+	Type asmtype.AsmType
+	Src  AsmOperand
+	Base AsmRegister
+}
+
+func (a AsmStoreToMem) Ir() string {
+	return fmt.Sprintf("storemem %s -> (%s)", a.Src.Op(), a.Base)
+}
+
 type AsmProgram struct {
 	AsmFnDef    []AsmFnDef
 	AsmExternFn []AsmExternFn

@@ -29,11 +29,11 @@ type VariableMap struct {
 }
 
 type Resolver struct {
-	// idMap       VariableMap
 	tempCounter int
 	source      []int32
 	uniqueGen   unique.UniqueGen
 	errors      []compilererrors.CompilerError
+	builtins    map[string]bool
 }
 
 func NewResolver(source []int32, uniqueGen unique.UniqueGen) *Resolver {
@@ -41,7 +41,13 @@ func NewResolver(source []int32, uniqueGen unique.UniqueGen) *Resolver {
 		tempCounter: 0,
 		source:      source,
 		uniqueGen:   uniqueGen,
+		builtins:    make(map[string]bool),
 	}
+}
+
+// RegisterBuiltin registers a built-in function name so the resolver knows it exists
+func (r *Resolver) RegisterBuiltin(name string) {
+	r.builtins[name] = true
 }
 
 func (r *Resolver) makeNamedTemporary(name string) string {
@@ -79,6 +85,14 @@ func (r *Resolver) resolveParams(params []parser.Param, innerMap map[string]VarE
 
 func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, error) {
 	emptyMap := make(IdMap)
+	// Register builtins so they are available without extern declarations
+	for name := range r.builtins {
+		emptyMap[name] = VarEntry{
+			UniqueName:       name,
+			fromCurrentScope: true,
+			hasLinkage:       true,
+		}
+	}
 	for i, decl := range program.Decls {
 		_, decl, err := r.ResolveDecl(decl, emptyMap)
 		if err != nil {
@@ -116,9 +130,17 @@ func (r *Resolver) ResolveFileScopeVarDecl(varDecl *parser.VarDecl, innerMap IdM
 		fromCurrentScope: true,
 		hasLinkage:       true,
 	}
+	varDecl.Ident = uniqueName
+
+	if varDecl.Expr != nil {
+		resolvedExpr, err := r.ResolveExpr(varDecl.Expr, innerMap)
+		if err != nil {
+			return nil, nil, err
+		}
+		varDecl.Expr = resolvedExpr
+	}
 
 	return innerMap, varDecl, nil
-
 }
 func (r *Resolver) ResolveFnDecl(fndecl *parser.FnDecl, innerMap IdMap) (IdMap, *parser.FnDecl, error) {
 	if found, exists := innerMap[fndecl.Ident]; exists && found.fromCurrentScope && !found.hasLinkage {
@@ -423,16 +445,7 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression, innerMap IdMap) (pa
 		nodetype.Else = resolvedElse
 		return nodetype, nil
 	case *parser.ASTAssignment:
-		left, ok := nodetype.Left.(*parser.ASTVar)
-		if !ok {
-			return nil, r.createSemanticError(
-				fmt.Sprintf(compilererrors.ErrInvalidAssignment, nodetype.Left.TokenLiteral()),
-				nodetype.Token.Line,
-				nodetype.Token.Span,
-			)
-		}
-
-		resolvedLeft, err := r.ResolveExpr(left, innerMap)
+		resolvedLeft, err := r.ResolveExpr(nodetype.Left, innerMap)
 		if err != nil {
 			return nil, err
 		}
@@ -495,8 +508,32 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression, innerMap IdMap) (pa
 	case *parser.ASTStringExpression:
 		return nodetype, nil
 
-		// case *parser.ASTIdent:
-		// 	return nodetype, nil
+	case *parser.ASTArrayIndex:
+		resolvedArray, err := r.ResolveExpr(nodetype.Array, innerMap)
+		if err != nil {
+			return nil, err
+		}
+		resolvedIndex, err := r.ResolveExpr(nodetype.Index, innerMap)
+		if err != nil {
+			return nil, err
+		}
+		return &parser.ASTArrayIndex{
+			Token: nodetype.Token,
+			Array: resolvedArray,
+			Index: resolvedIndex,
+		}, nil
+
+	case *parser.ASTNewArray:
+		resolvedSize, err := r.ResolveExpr(nodetype.Size, innerMap)
+		if err != nil {
+			return nil, err
+		}
+		return &parser.ASTNewArray{
+			Token:       nodetype.Token,
+			ElementType: nodetype.ElementType,
+			Size:        resolvedSize,
+			Type:        nodetype.Type,
+		}, nil
 	}
 
 	return nil, r.createSemanticError(

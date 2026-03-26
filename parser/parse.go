@@ -51,6 +51,13 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 			if stmt != nil {
 				program.Decls = append(program.Decls, stmt)
 			}
+		case lexer.VAR_DECL:
+			// parseVarDecl expects to advance into VAR_DECL, so call it
+			// when current is already VAR_DECL by calling parseTopLevelVarDecl
+			decl := p.parseTopLevelVarDecl()
+			if decl != nil {
+				program.Decls = append(program.Decls, decl)
+			}
 		default:
 			decl := p.parseDecl(false, false)
 			if decl != nil {
@@ -76,7 +83,7 @@ func (p *Parser) parseDecl(globl bool, extern bool) ASTDecl {
 	case lexer.VAR_DECL:
 		return p.parseVarDecl(globl, extern)
 	default:
-		panic("unimplemented token")
+		panic(fmt.Sprintf("unimplemented token: %s", p.current.Type))
 	}
 }
 
@@ -259,7 +266,7 @@ func (p *Parser) parseFnDecl(isPublic bool, isExtern bool) *FnDecl {
 		return nil
 	}
 	p.nextToken() // consume type
-	ast.ReturnType = returnType
+	ast.ReturnType = p.tryParseArrayType(returnType)
 
 	if p.peekIs(lexer.OPEN_BRACE) {
 		block := p.parseBlock()
@@ -286,17 +293,22 @@ func (p *Parser) parseParams() ([]Param, error) {
 			return nil, errors.New(ErrMissingIdentifier, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
 		}
 
+		// optional colon between ident and type
+		p.checkOptional(lexer.COLON)
+
 		paramType, err := p.parseType()
 		if err != nil {
 			p.appendError(err.Error())
 		}
 
+		p.nextToken() // consume type keyword
+		paramType = p.tryParseArrayType(paramType)
+
 		params = append(params, Param{
-			Token: p.peekToken,
+			Token: p.current,
 			Ident: *ident,
 			Type:  paramType,
 		})
-		p.nextToken()
 
 		if p.peekIs(lexer.COMMA) {
 			p.nextToken()
@@ -326,6 +338,51 @@ func (p *Parser) parseType() (mtypes.Type, error) {
 	}
 }
 
+// tryParseArrayType checks for [] suffix after a base type and wraps it in ArrayType
+func (p *Parser) tryParseArrayType(baseType mtypes.Type) mtypes.Type {
+	if p.peekIs(lexer.OPEN_BRACKET) {
+		p.nextToken() // consume [
+		p.expect(lexer.CLOSE_BRACKET)
+		return &mtypes.ArrayType{ElementType: baseType}
+	}
+	return baseType
+}
+
+// parseTopLevelVarDecl handles var decl when p.current is already VAR_DECL
+func (p *Parser) parseTopLevelVarDecl() *VarDecl {
+	ast := &VarDecl{}
+	ast.Token = p.current
+
+	if p.peekToken.Value == nil {
+		p.appendError(ErrMissingIdentifier)
+		return nil
+	}
+
+	ast.Ident = *p.peekToken.Value
+	p.nextToken()
+
+	if p.checkOptional(lexer.COLON) {
+		varType, err := p.parseType()
+		if err != nil {
+			p.appendError(err.Error())
+		}
+		p.nextToken() // consume type keyword
+		varType = p.tryParseArrayType(varType)
+		ast.VarType = varType
+	}
+
+	if p.checkOptional(lexer.ASSIGN) {
+		ast.Expr = p.parseExpr(Lowest)
+	}
+
+	if !p.expect(lexer.SEMICOLON) {
+		p.appendError(ErrMissingSemicolon)
+		return nil
+	}
+
+	return ast
+}
+
 func (p *Parser) parseVarDecl(globl bool, extern bool) *VarDecl {
 	ast := &VarDecl{
 		IsExtern: extern,
@@ -349,8 +406,9 @@ func (p *Parser) parseVarDecl(globl bool, extern bool) *VarDecl {
 		if err != nil {
 			p.appendError(err.Error())
 		}
+		p.nextToken() // consume type keyword
+		varType = p.tryParseArrayType(varType)
 		ast.VarType = varType
-		p.nextToken()
 	}
 
 	if p.checkOptional(lexer.ASSIGN) {
@@ -380,7 +438,9 @@ func (p *Parser) parseIf() *ASTIfStmt {
 	ast.Cond = cond
 	ast.Then = block
 
-	if p.checkOptional(lexer.IFNOT) {
+	if p.checkOptional(lexer.ELSE) {
+		ast.Else = p.parseStmt()
+	} else if p.checkOptional(lexer.IFNOT) {
 		if !p.expect(lexer.IS) {
 			p.appendError(ErrMissingIs)
 			return nil
@@ -482,6 +542,8 @@ func (p *Parser) parseFactor() ASTExpression {
 		return p.parseConst()
 	case lexer.STRING:
 		return p.parseString()
+	case lexer.NEW:
+		return p.parseNewArray()
 	case lexer.MINUS, lexer.TILDE, lexer.NOT:
 		return p.parseUnary(next.Type)
 	case lexer.OPEN_PAREN:
@@ -561,14 +623,13 @@ func (p *Parser) parseExpr(minPrec int) ASTExpression {
 		}
 		if op == ASTBinOp(A_ASSIGN) {
 			right := p.parseExpr(Assign)
-			leftIdent, ok := left.(*ASTVar)
-			if !ok {
-				panic("left side of assign must be var")
-			}
-			left = &ASTAssignment{
-				Token: p.current,
-				Left:  leftIdent,
-				Right: right,
+			switch lhs := left.(type) {
+			case *ASTVar:
+				left = &ASTAssignment{Token: p.current, Left: lhs, Right: right}
+			case *ASTArrayIndex:
+				left = &ASTAssignment{Token: p.current, Left: lhs, Right: right}
+			default:
+				panic("left side of assign must be var or array index")
 			}
 		} else if op == ASTBinOp(A_QUESTIONMARK) {
 			middle := p.parseExpr(Lowest)
@@ -686,6 +747,27 @@ func (p *Parser) parseUnary(op lexer.TokenType) *ASTUnary {
 	}
 }
 
+func (p *Parser) parseNewArray() *ASTNewArray {
+	p.nextToken() // consume шинэ
+	elementType, _ := p.parseType()
+	p.nextToken() // consume type keyword (тоо)
+	if !p.expect(lexer.OPEN_BRACKET) {
+		p.appendError("'[' байх ёстой")
+		return nil
+	}
+	size := p.parseExpr(Lowest)
+	if !p.expect(lexer.CLOSE_BRACKET) {
+		p.appendError("']' байх ёстой")
+		return nil
+	}
+	return &ASTNewArray{
+		Token:       p.current,
+		ElementType: elementType,
+		Size:        size,
+		Type:        &mtypes.ArrayType{ElementType: elementType},
+	}
+}
+
 func (p *Parser) parseGrouping() ASTExpression {
 	p.nextToken()
 	inner := p.parseExpr(Lowest)
@@ -732,6 +814,20 @@ func (p *Parser) parseIdent() ASTExpression {
 
 	if p.peekIs(lexer.OPEN_PAREN) {
 		return p.parseFnCall()
+	}
+
+	if p.peekIs(lexer.OPEN_BRACKET) {
+		p.nextToken() // consume [
+		index := p.parseExpr(Lowest)
+		if !p.expect(lexer.CLOSE_BRACKET) {
+			p.appendError("']' байх ёстой")
+			return nil
+		}
+		return &ASTArrayIndex{
+			Token: next,
+			Array: &ASTVar{Token: next, Ident: *next.Value},
+			Index: index,
+		}
 	}
 
 	return &ASTVar{

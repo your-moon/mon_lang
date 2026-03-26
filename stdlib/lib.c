@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 
 // хэвлэ - print 64-bit integer
 void khevle(long n) {
@@ -44,4 +45,15 @@ long odoo(void) {
 // чөлөөлөх - free heap memory
 void chqlqqlqkh(void *p) {
     free(p);
+}
+
+// хүлээх - sleep milliseconds
+void khwleekh(int ms) {
+    usleep(ms * 1000);
+}
+
+// дэлгэцЦэвэрлэх - clear screen (ANSI escape)
+void delgetsTseverlekh(void) {
+    printf("\033[H\033[2J");
+    fflush(stdout);
 }

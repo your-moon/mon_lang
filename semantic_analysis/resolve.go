@@ -180,10 +180,10 @@ func (r *Resolver) ResolveFnDecl(fndecl *parser.FnDecl, innerMap IdMap) (IdMap, 
 			return nil, nil, err
 		}
 		fndecl.Body = body
-		return solvedInnerMap, fndecl, nil
+		return innerMap, fndecl, nil
 	}
 
-	return solvedInnerMap, fndecl, nil
+	return innerMap, fndecl, nil
 }
 
 func (r *Resolver) resolveLocalVarHelper(innerMap map[string]VarEntry, varDecl *parser.VarDecl) (map[string]VarEntry, string, error) {

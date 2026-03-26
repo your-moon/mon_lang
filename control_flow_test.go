@@ -54,6 +54,14 @@ func TestGlobalMutableVars(t *testing.T) {
 	}
 }
 
+func TestImport(t *testing.T) {
+	output := compileAndRun(t, "test/import/main.mn")
+	expected := "30 12\n"
+	if output != expected {
+		t.Errorf("expected %q, got %q", expected, output)
+	}
+}
+
 func TestTypeCoercion(t *testing.T) {
 	output := compileAndRun(t, "test/types.mn")
 	expected := "300 30 42 100\n"

@@ -274,7 +274,8 @@ func (c *CLI) runValidate(args []string) error {
 	}
 
 	table := symbols.NewSymbolTable()
-	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen, table)
+	baseDir := filepath.Dir(args[0])
+	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen, table, baseDir)
 
 	resolvedAst, _, err := resolver.Analyze(node)
 	if err != nil {
@@ -302,7 +303,8 @@ func (c *CLI) runTacky(args []string) error {
 	}
 
 	table := symbols.NewSymbolTable()
-	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen, table)
+	baseDir := filepath.Dir(args[0])
+	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen, table, baseDir)
 
 	resolvedAst, _, err := resolver.Analyze(node)
 	if err != nil {
@@ -337,7 +339,8 @@ func (c *CLI) runCompiler(args []string) error {
 	}
 
 	table := symbols.NewSymbolTable()
-	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen, table)
+	baseDir := filepath.Dir(args[0])
+	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen, table, baseDir)
 	resolvedAst, symbolTable, err := resolver.Analyze(node)
 	if err != nil {
 		return fmt.Errorf("семантик шинжилгээний алдаа: %v", err)
@@ -418,7 +421,8 @@ func (c *CLI) runGen(args []string) error {
 	}
 
 	table := symbols.NewSymbolTable()
-	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen, table)
+	baseDir := filepath.Dir(args[0])
+	resolver := semanticanalysis.NewSemanticAnalyzer(runeString, uniqueGen, table, baseDir)
 
 	resolvedAst, symbolTable, err := resolver.Analyze(node)
 	if err != nil {

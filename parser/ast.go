@@ -55,6 +55,7 @@ type ASTImport struct {
 	Token      lexer.Token
 	Ident      string
 	SubImports []string
+	FilePath   string
 }
 
 func (a *ASTImport) TokenLiteral() string {

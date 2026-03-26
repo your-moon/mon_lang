@@ -39,7 +39,6 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 			if stmt != nil {
 				program.Decls = append(program.Decls, stmt)
 			}
-			p.nextToken()
 		case lexer.EXTERN:
 			p.nextToken()
 			stmt := p.parseDecl(false, true)
@@ -96,23 +95,32 @@ func (p *Parser) parseImport() *ASTImport {
 		Token: p.current,
 	}
 
-	if !p.expect(lexer.IDENT) {
-		p.appendError(ErrMissingIdentifier)
+	if p.peekIs(lexer.STRING) {
+		p.nextToken()
+		if p.current.Value != nil {
+			ast.FilePath = *p.current.Value
+		}
+	} else if p.expect(lexer.IDENT) {
+		ast.Ident = *p.current.Value
+		for !p.peekIs(lexer.SEMICOLON) {
+			if p.peekIs(lexer.DOT) {
+				p.nextToken()
+				if !p.expect(lexer.IDENT) {
+					p.appendError(ErrMissingIdentifier)
+					return nil
+				}
+				ast.SubImports = append(ast.SubImports, *p.current.Value)
+			}
+		}
+	} else {
+		p.appendError("файлын зам эсвэл нэр байх ёстой")
 		return nil
 	}
 
-	ast.Ident = *p.current.Value
-
-	for !p.peekIs(lexer.SEMICOLON) {
-		if p.peekIs(lexer.DOT) {
-			p.nextToken()
-			if !p.expect(lexer.IDENT) {
-				p.appendError(ErrMissingIdentifier)
-				return nil
-			}
-			ast.SubImports = append(ast.SubImports, *p.current.Value)
-		}
+	if !p.expect(lexer.SEMICOLON) {
+		p.appendError(ErrMissingSemicolon)
 	}
+
 	return ast
 }
 

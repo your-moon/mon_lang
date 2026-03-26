@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"os/exec"
+	"strings"
 	"testing"
 )
 
@@ -67,5 +69,44 @@ func TestTypeCoercion(t *testing.T) {
 	expected := "300 30 42 100\n"
 	if output != expected {
 		t.Errorf("expected %q, got %q", expected, output)
+	}
+}
+
+func TestHelloWorld(t *testing.T) {
+	output := compileAndRun(t, "test/hello_world.mn")
+	if !strings.Contains(output, "Өдрийн мэнд") {
+		t.Errorf("expected hello world output, got %q", output)
+	}
+}
+
+func TestRule110(t *testing.T) {
+	output := compileAndRun(t, "test/rule110.mn")
+	lines := strings.Split(strings.TrimRight(output, "\n"), "\n")
+	if len(lines) != 50 {
+		t.Errorf("expected 50 lines, got %d", len(lines))
+	}
+	if !strings.Contains(lines[0], "█") {
+		t.Errorf("first line should contain █")
+	}
+}
+
+func TestElseIf(t *testing.T) {
+	src := `функц үндсэн() -> тоо {
+    зарла x: тоо = 2;
+    хэрэв x == 1 бол {
+        хэвлэ(1);
+    } эсвэл хэрэв x == 2 бол {
+        хэвлэ(2);
+    } эсвэл {
+        хэвлэ(3);
+    }
+    мөр_хэвлэх("\n");
+    буц 0;
+}`
+	tmpFile := t.TempDir() + "/elseif.mn"
+	os.WriteFile(tmpFile, []byte(src), 0644)
+	output := compileAndRun(t, tmpFile)
+	if output != "2\n" {
+		t.Errorf("expected \"2\\n\", got %q", output)
 	}
 }

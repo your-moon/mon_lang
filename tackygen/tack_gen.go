@@ -122,9 +122,9 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 	switch ast := node.(type) {
 	case *parser.ASTWhile:
 		irs := []Instruction{}
-		startLabel := c.makeLabel("while")
-		continueLabel := c.makeLabel("while_continue")
-		breakLabel := c.makeLabel("while_break")
+		startLabel := c.makeLabel("while_start")
+		continueLabel := c.continueLabel(ast.Id)
+		breakLabel := c.breakLabel(ast.Id)
 
 		irs = append(irs, Label{Ident: startLabel.Name})
 

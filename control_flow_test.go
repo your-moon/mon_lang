@@ -38,6 +38,14 @@ func TestControlFlow(t *testing.T) {
 	}
 }
 
+func TestFree(t *testing.T) {
+	output := compileAndRun(t, "test/free.mn")
+	expected := "42\n"
+	if output != expected {
+		t.Errorf("expected %q, got %q", expected, output)
+	}
+}
+
 func TestTypeCoercion(t *testing.T) {
 	output := compileAndRun(t, "test/types.mn")
 	expected := "300 30 42 100\n"

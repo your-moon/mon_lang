@@ -40,3 +40,8 @@ int sanamsargwyToo(int n) {
 long odoo(void) {
     return (long)time(NULL);
 }
+
+// чөлөөлөх - free heap memory
+void chqlqqlqkh(void *p) {
+    free(p);
+}

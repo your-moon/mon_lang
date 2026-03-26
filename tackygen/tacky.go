@@ -217,9 +217,16 @@ func (f TackyFn) Ir() {
 	fmt.Printf("}\n")
 }
 
+type GlobalVar struct {
+	Name       string
+	InitValue  int64
+	Size       int // 4 for Int32, 8 for Int64
+}
+
 type TackyProgram struct {
 	FnDefs     []TackyFn
 	ExternDefs []TackyFn
+	GlobalVars []GlobalVar
 }
 
 func (p TackyProgram) Ir() {

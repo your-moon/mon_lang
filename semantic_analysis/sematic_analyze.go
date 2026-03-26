@@ -34,6 +34,7 @@ func (s *SemanticAnalyzer) registerImplicitStdlib() {
 		{"санамсаргүйТоо", &mtypes.Int32Type{}},
 		{"одоо", &mtypes.Int64Type{}},
 		{"malloc", &mtypes.Int64Type{}},
+		{"чөлөөлөх", &mtypes.VoidType{}},
 	}
 
 	for _, fn := range stdlibFns {

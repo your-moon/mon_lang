@@ -12,20 +12,22 @@ import (
 )
 
 type TackyGen struct {
-	TempCount      uint64
-	LabelCount     uint64
-	UniqueGen      unique.UniqueGen
-	SymbolTable    *symbols.SymbolTable
+	TempCount       uint64
+	LabelCount      uint64
+	UniqueGen       unique.UniqueGen
+	SymbolTable     *symbols.SymbolTable
 	GlobalConstants map[string]mconstant.Const
+	MutableGlobals  map[string]bool
 }
 
 func NewTackyGen(uniquegen unique.UniqueGen, table *symbols.SymbolTable) TackyGen {
 	return TackyGen{
-		TempCount:      0,
-		LabelCount:     0,
-		UniqueGen:      uniquegen,
-		SymbolTable:    table,
+		TempCount:       0,
+		LabelCount:      0,
+		UniqueGen:       uniquegen,
+		SymbolTable:     table,
 		GlobalConstants: make(map[string]mconstant.Const),
+		MutableGlobals:  make(map[string]bool),
 	}
 }
 
@@ -33,7 +35,7 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	program := TackyProgram{}
 
 	// Register implicit stdlib externs
-	implicitExterns := []string{"хэвлэ", "мөр_хэвлэх", "унш", "унш32", "санамсаргүйТоо", "одоо", "malloc"}
+	implicitExterns := []string{"хэвлэ", "мөр_хэвлэх", "унш", "унш32", "санамсаргүйТоо", "одоо", "malloc", "чөлөөлөх"}
 	for _, name := range implicitExterns {
 		program.ExternDefs = append(program.ExternDefs, TackyFn{Name: name, IsExtern: true})
 	}

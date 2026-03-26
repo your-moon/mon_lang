@@ -113,6 +113,12 @@ func (c *TackyGen) EmitVarDecl(node *parser.VarDecl) []Instruction {
 	if haveInit {
 		rhsResult, rhsValIrs := c.EmitExpr(node.Expr)
 		irs = append(irs, rhsValIrs...)
+		// Sign-extend if assigning тоо to тоо64 variable
+		if node.VarType != nil && node.Expr.GetType() != nil {
+			extended, extIrs := c.maybeSignExtend(rhsResult, node.Expr.GetType(), node.VarType)
+			irs = append(irs, extIrs...)
+			rhsResult = extended
+		}
 		irs = append(irs, Copy{Src: rhsResult, Dst: Var{Name: node.Ident}})
 	}
 	return irs
@@ -599,6 +605,18 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 			irs = append(irs, v1Irs...)
 			v2, v2Irs := c.EmitExpr(expr.Right)
 			irs = append(irs, v2Irs...)
+
+			// Sign-extend if mixed 32/64-bit
+			_, commonIs64 := expr.Type.(*mtypes.Int64Type)
+			if commonIs64 {
+				v1ext, v1extIrs := c.maybeSignExtend(v1, expr.Left.GetType(), expr.Type)
+				irs = append(irs, v1extIrs...)
+				v1 = v1ext
+				v2ext, v2extIrs := c.maybeSignExtend(v2, expr.Right.GetType(), expr.Type)
+				irs = append(irs, v2extIrs...)
+				v2 = v2ext
+			}
+
 			dst := c.makeTemp(expr.Type)
 			instr := Binary{
 				Op:   op,
@@ -639,6 +657,16 @@ func (c *TackyGen) PrettyPrint(program TackyProgram) {
 		}
 		fmt.Println()
 	}
+}
+
+func (c *TackyGen) maybeSignExtend(val TackyVal, fromType, toType mtypes.Type) (TackyVal, []Instruction) {
+	_, fromIs32 := fromType.(*mtypes.Int32Type)
+	_, toIs64 := toType.(*mtypes.Int64Type)
+	if fromIs32 && toIs64 {
+		dst := c.makeTemp(&mtypes.Int64Type{})
+		return dst, []Instruction{SignExtend{Src: val, Dst: dst}}
+	}
+	return val, nil
 }
 
 func (c *TackyGen) makeTemp(mtype mtypes.Type) Var {

@@ -48,9 +48,13 @@ func (c *TypeChecker) CheckTopLevel(program *parser.ASTProgram) (*parser.ASTProg
 }
 
 func (c *TypeChecker) checkFnDecl(decl *parser.FnDecl) (*parser.FnDecl, error) {
-	//TODO: ADD PARAM TYPES
+	paramTypes := make([]mtypes.Type, len(decl.Params))
+	for i, param := range decl.Params {
+		paramTypes[i] = param.Type
+	}
 	fnType := &mtypes.FnType{
-		RetType: decl.ReturnType,
+		ParamTypes: paramTypes,
+		RetType:    decl.ReturnType,
 	}
 	hasBody := decl.Body != nil && !decl.IsExtern
 	alreadyDefined := false
@@ -352,10 +356,11 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 		case *mtypes.Int32Type:
 			return nil, c.createSemanticError("хувьсагч %s-ийг функц шиг болохгүй", expr.Token.Line, expr.Token.Span)
 		case *mtypes.FnType:
-			//TODO: ADD CHECK
-			// if len(expr.Args) != len(fType.ParamTypes) {
-			// 	return c.createSemanticError("функц %s-ийг дуудахдаа аргументын тоог буруу оруулсан байна", expr.Token.Line, expr.Token.Span)
-			// }
+			if len(checkType.ParamTypes) > 0 && len(expr.Args) != len(checkType.ParamTypes) {
+				return nil, c.createSemanticError(
+					fmt.Sprintf("'%s' функц %d аргумент авах ёстой, %d өгсөн байна", expr.Ident, len(checkType.ParamTypes), len(expr.Args)),
+					expr.Token.Line, expr.Token.Span)
+			}
 
 			for i, arg := range expr.Args {
 				checkedArg, err := c.checkExpr(arg)
@@ -363,6 +368,17 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 					return nil, err
 				}
 				expr.Args[i] = checkedArg
+
+				if i < len(checkType.ParamTypes) {
+					argType := checkedArg.GetType()
+					paramType := checkType.ParamTypes[i]
+					if !c.typesCompatible(argType, paramType) {
+						return nil, c.createSemanticError(
+							fmt.Sprintf("'%s' функцийн %d-р аргумент '%s' төрөлтэй байх ёстой, '%s' төрөл өгсөн байна",
+								expr.Ident, i+1, c.typeName(paramType), c.typeName(argType)),
+							expr.Token.Line, expr.Token.Span)
+					}
+				}
 			}
 			expr.Type = checkType.RetType
 			return expr, nil
@@ -371,6 +387,45 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 		}
 	}
 	return nil, c.createSemanticError(fmt.Sprintf("unreachable expr %T", expr), 0, lexer.Span{})
+}
+
+func (c *TypeChecker) typesCompatible(argType, paramType mtypes.Type) bool {
+	// int32 and int64 are compatible (implicit widening)
+	_, argIsInt32 := argType.(*mtypes.Int32Type)
+	_, argIsInt64 := argType.(*mtypes.Int64Type)
+	_, paramIsInt32 := paramType.(*mtypes.Int32Type)
+	_, paramIsInt64 := paramType.(*mtypes.Int64Type)
+	if (argIsInt32 || argIsInt64) && (paramIsInt32 || paramIsInt64) {
+		return true
+	}
+	// exact match for other types
+	switch paramType.(type) {
+	case *mtypes.StringType:
+		_, ok := argType.(*mtypes.StringType)
+		return ok
+	case *mtypes.ArrayType:
+		_, ok := argType.(*mtypes.ArrayType)
+		return ok
+	default:
+		return true
+	}
+}
+
+func (c *TypeChecker) typeName(t mtypes.Type) string {
+	switch t.(type) {
+	case *mtypes.Int32Type:
+		return "тоо"
+	case *mtypes.Int64Type:
+		return "тоо64"
+	case *mtypes.StringType:
+		return "мөр"
+	case *mtypes.VoidType:
+		return "хоосон"
+	case *mtypes.ArrayType:
+		return "массив"
+	default:
+		return fmt.Sprintf("%T", t)
+	}
 }
 
 func (c *TypeChecker) getCommonType(t1, t2 mtypes.Type) mtypes.Type {

@@ -28,7 +28,7 @@ var exampleFiles embed.FS
 const (
 	maxCodeSize   = 64 * 1024 // 64KB
 	maxOutputSize = 64 * 1024 // 64KB
-	execTimeout   = 5 * time.Second
+	execTimeout   = 30 * time.Second
 	rateLimit     = 30 // requests per minute per IP
 )
 
@@ -186,7 +186,7 @@ func (s *Server) runCode(code string) RunResponse {
 	}
 
 	if ctx.Err() == context.DeadlineExceeded {
-		resp.Error = "Хугацаа хэтэрсэн (5 секунд)"
+		resp.Error = "Хугацаа хэтэрсэн (30 секунд)"
 		resp.ExitCode = -1
 	} else if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {

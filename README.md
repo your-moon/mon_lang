@@ -1,139 +1,7 @@
-<div align="center">
+# Mon
 
-#  Mon Compiler
+Mon is a small statically-typed programming language with Mongolian keywords. This repo contains its compiler, written in Go, which lowers Mon source through a Tacky intermediate representation to x86-64 assembly, then assembles and links it into a native executable.
 
-</div>
-
-<div align="center">
-
-[![Go Version](https://img.shields.io/badge/Go-1.23.4-blue.svg)](https://golang.org)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md)
-
-A modern compiler implementation written in Go for the Mon programming language.
-
-[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Examples](#code-examples) • [Contributing](#contributing)
-
-</div>
-
-## 📖 Overview
-
-Mon Compiler is an open-source compiler that translates Mon source code into executable programs. Built with modern compiler design principles, it provides a complete compilation pipeline from source code to machine code.
-
-### 🌟 Key Features
-
-- **Lexical Analysis** - Efficient tokenization of source code
-- **Parser Implementation** - Robust syntax analysis
-- **Semantic Analysis** - Type checking and validation
-- **Code Generation** - Optimized machine code generation
-- **Standard Library** - Rich set of built-in functions
-- **Error Handling** - Comprehensive error reporting
-- **Symbol Table** - Efficient symbol management
-- **Type System** - Strong static typing
-
-## 🏗️ Project Structure
-
-```
-.
-├── base/           # Base utilities and common functionality
-├── cli/            # Command-line interface implementation
-├── codegen/        # Code generation components
-├── errors/         # Error handling and reporting
-├── lexer/          # Lexical analysis implementation
-├── linker/         # Linker implementation
-├── mconstant/      # Constant definitions
-├── mn/             # Core language components
-├── mtypes/         # Type system implementation
-├── out/            # Output directory
-├── parser/         # Parser implementation
-├── rustv/          # Rust version compatibility
-├── semantic_analysis/ # Semantic analysis implementation
-├── stdlib/         # Standard library implementation
-├── stringpool/     # String interning implementation
-├── symbols/        # Symbol table management
-├── tackygen/       # Target code generation
-└── util/           # Utility functions
-```
-
-## ⚙️ Requirements
-
-- Go 1.23.4 or higher
-- Make (optional, for build scripts)
-
-## 🚀 Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/your-moon/mon_lang.git
-
-# Navigate to the project directory
-cd mn_compiler
-
-# Build the compiler
-go build
-```
-
-## 💻 Usage
-
-The compiler provides several commands for different stages of compilation:
-
-```bash
-# Lexical Analysis
-compiler lex input.mn [--debug]
-
-# Parsing
-compiler parse input.mn [--debug]
-
-# Semantic Analysis
-compiler validate input.mn [--debug]
-
-# Generate Tacky IR
-compiler tacky input.mn [--debug]
-
-# Compile to Assembly
-compiler compile input.mn [--debug]
-
-# Full Compilation Pipeline
-compiler gen input.mn [options]
-```
-
-### 🔧 Command Options
-
-| Option | Description |
-|--------|-------------|
-| `--debug` | Enable debug mode |
-| `--asm` | Generate assembly file |
-| `--obj` | Generate object file |
-| `--run` | Compile and run the program |
-| `-o` | Specify output file name |
-
-### 📝 Examples
-
-```bash
-# Basic compilation
-compiler gen input.mn
-
-# Compile with debug output
-compiler gen input.mn --debug
-
-# Generate assembly file
-compiler gen input.mn --asm
-
-# Generate object file
-compiler gen input.mn --obj
-
-# Compile and run
-compiler gen input.mn --run
-
-# Specify output file
-compiler gen input.mn -o myprogram
-```
-
-## 📚 Code Examples
-
-Here are some examples of Mon code to help you get started:
-
-### 🌍 Hello World
 ```mon
 extern функц мөр_хэвлэх(м мөр) -> хоосон {}
 
@@ -143,29 +11,79 @@ extern функц мөр_хэвлэх(м мөр) -> хоосон {}
 }
 ```
 
-### 🔢 Basic Arithmetic
+## How it works
+
+The compiler runs as a pipeline, and each stage is exposed as its own command:
+
+| Stage | Command | Package |
+|-------|---------|---------|
+| Tokenize source | `lex` | `lexer/` |
+| Build the AST | `parse` | `parser/` |
+| Type check & resolve | `validate` | `semantic_analysis/`, `symbols/`, `mtypes/` |
+| Lower to Tacky IR | `tacky` | `tackygen/` |
+| Generate x86-64 assembly | `compile` | `code_gen/` |
+| Assemble + link to a binary | `gen` | `linker/` |
+
+`gen` runs the whole pipeline end to end. Assembly and linking shell out to the system `as` and `cc`; the standard library lives in `stdlib/`.
+
+## Requirements
+
+- Go 1.23.4+
+- A C toolchain (`as` and `cc` — on Apple Silicon the linker invokes `arch -x86_64`, so Rosetta is required)
+
+## Build
+
+```bash
+git clone https://github.com/your-moon/mon_lang.git
+cd mon_lang
+go build -o mon_lang .
+```
+
+## Usage
+
+```bash
+# Compile and run a program
+./mon_lang gen program.mn --run
+
+# Compile to an executable named "out"
+./mon_lang gen program.mn -o out
+
+# Inspect an intermediate stage
+./mon_lang lex program.mn --debug
+./mon_lang parse program.mn --debug
+./mon_lang tacky program.mn --debug
+```
+
+| Flag | Description |
+|------|-------------|
+| `--debug` | Print the output of the stage |
+| `--asm` | Keep the generated `.s` assembly file |
+| `--obj` | Keep the generated object file |
+| `--run` | Run the program after compiling |
+| `-o` | Output file name |
+
+## Language examples
+
+### Arithmetic
+
 ```mon
 extern функц хэвлэ(н тоо64) -> хоосон {}
 
 функц үндсэн() -> тоо {
     зарла a: тоо64 = 10;
     зарла b: тоо64 = 5;
-    
-    зарла нийлбэр: тоо64 = a + b;
-    зарла ялгавар: тоо64 = a - b;
-    зарла үржвэр: тоо64 = a * b;
-    зарла хуваарь: тоо64 = a / b;
-    
-    хэвлэ(нийлбэр);
-    хэвлэ(ялгавар);
-    хэвлэ(үржвэр);
-    хэвлэ(хуваарь);
-    
+
+    хэвлэ(a + b);
+    хэвлэ(a - b);
+    хэвлэ(a * b);
+    хэвлэ(a / b);
+
     буц 0;
 }
 ```
 
-### 🔄 Fibonacci Example
+### Fibonacci
+
 ```mon
 extern функц хэвлэ(н тоо64) -> хоосон {}
 extern функц унш() -> тоо64 {}
@@ -174,68 +92,50 @@ extern функц унш() -> тоо64 {}
     хэрэв н <= 1 бол {
         буц н;
     }
-    
+
     зарла өмнөх: тоо64 = 0;
     зарла одоогийн: тоо64 = 1;
     зарла i: тоо64 = 2;
-    
+
     давтах i <= н бол {
         зарла дараах: тоо64 = өмнөх + одоогийн;
         өмнөх = одоогийн;
         одоогийн = дараах;
         i = i + 1;
     }
-    
+
     буц одоогийн;
 }
 
 функц үндсэн() -> тоо {
-    зарла n: тоо64 = унш();
-    зарла хариу: тоо64 = фибоначчи(n);
-    хэвлэ(хариу);
+    хэвлэ(фибоначчи(унш()));
     буц 0;
 }
 ```
 
-## 🛠️ Development
+## Repository layout
 
-```bash
-# Run tests
-go test ./...
-
-# Build the project
-go build
+```
+lexer/              Tokenizer
+parser/             Recursive-descent parser → AST
+semantic_analysis/  Type checking and validation
+symbols/  mtypes/   Symbol table and type system
+tackygen/           AST → Tacky IR lowering
+code_gen/           Tacky IR → x86-64 assembly
+linker/             Assemble and link via as/cc
+stdlib/             Runtime / built-in functions
+cli/                Command-line entry point
+playground/         Web playground (Next.js frontend + Go server)
+vscode/             VS Code syntax extension
 ```
 
-## 🤝 Contributing
+## Development
 
-We welcome contributions! Please feel free to submit a Pull Request.
+```bash
+go test ./...
+go build ./...
+```
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## License
 
-### 📋 Contributing Guidelines
-
-- Write clear, descriptive commit messages
-- Follow the existing code style
-- Add tests for new features
-- Update documentation as needed
-- Ensure all tests pass
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Thanks to all contributors who have helped shape this project
-- Inspired by modern compiler design principles and practices
-
----
-
-<div align="center">
-Made with ❤️ by e.munkherdene
-</div> 
+MIT — see [LICENSE](LICENSE).

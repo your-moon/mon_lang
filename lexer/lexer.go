@@ -8,6 +8,7 @@
 package lexer
 
 import (
+	"strconv"
 	"fmt"
 
 	"github.com/your-moon/mon_lang/base"
@@ -160,6 +161,10 @@ func (s *Scanner) ToKeyword() (Token, bool) {
 		return s.BuildToken(VAR_DECL), true
 	}
 	if str == string(KeywordInt) {
+		return s.BuildToken(INT_TYPE), true
+	}
+	if str == string(KeywordChar) {
+		// тэмдэгт is an alias of тоо: a codepoint is a 32-bit integer
 		return s.BuildToken(INT_TYPE), true
 	}
 	if str == string(KeywordUInt) {
@@ -320,6 +325,41 @@ func (s *Scanner) BuildString() (Token, error) {
 	return token, nil
 }
 
+// BuildCharLiteral lexes 'ө' (any single rune, or \n \t \\ \' \0 escapes)
+// into a NUMBER token holding the Unicode codepoint: character literals ARE
+// integer literals, C-style, so the rest of the pipeline needs no new cases.
+func (s *Scanner) BuildCharLiteral() (Token, error) {
+	if s.isAtEnd() {
+		return Token{}, fmt.Errorf("unterminated character literal at line %d", s.Line)
+	}
+	r := s.Next()
+	if r == '\\' {
+		esc := s.Next()
+		switch esc {
+		case 'n':
+			r = '\n'
+		case 't':
+			r = '\t'
+		case '\\':
+			r = '\\'
+		case '\'':
+			r = '\''
+		case '0':
+			r = 0
+		default:
+			return Token{}, fmt.Errorf("unknown escape in character literal at line %d", s.Line)
+		}
+	}
+	if s.Peek() != '\'' {
+		return Token{}, fmt.Errorf("unterminated character literal at line %d", s.Line)
+	}
+	s.Next() // closing quote
+	token := s.BuildToken(NUMBER)
+	v := strconv.FormatInt(int64(r), 10)
+	token.Value = &v
+	return token, nil
+}
+
 func (s *Scanner) Scan() (Token, error) {
 	s.Skip() //skip whitespace and incr line
 	if s.isAtEnd() {
@@ -331,6 +371,10 @@ func (s *Scanner) Scan() (Token, error) {
 
 	if c == '"' {
 		return s.BuildString()
+	}
+
+	if c == '\'' {
+		return s.BuildCharLiteral()
 	}
 
 	if s.isAlpha(c) || c == '_' {

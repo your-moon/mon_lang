@@ -395,9 +395,11 @@ func (a *AsmGen) RegisterShow(reg Register, asmType asmtype.AsmType) string {
 	if reg.Reg.IsXmm() {
 		return "%" + string(reg.Reg)
 	}
-	numbered := reg.Reg == R8 || reg.Reg == R9 || reg.Reg == R10 || reg.Reg == R11
+	// numbered = uses the raw "rNN" name with a "d" suffix at 32-bit
+	numbered := reg.Reg == R8 || reg.Reg == R9 || reg.Reg == R10 || reg.Reg == R11 ||
+		reg.Reg == R12 || reg.Reg == R13 || reg.Reg == R14 || reg.Reg == R15
 	switch asmType.(type) {
-	case *asmtype.QuadWord, *asmtype.StringType:
+	case *asmtype.QuadWord, *asmtype.StringType, *asmtype.Double:
 		if numbered {
 			return "%" + string(reg.Reg)
 		}

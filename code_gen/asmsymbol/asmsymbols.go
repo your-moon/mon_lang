@@ -104,6 +104,20 @@ func (s *SymbolTable) GetBytesRequired(name string) (int, error) {
 	return fun.BytesRequired, nil
 }
 
+// IsDouble reports whether an object symbol holds a double (XMM) value.
+func (s *SymbolTable) IsDouble(name string) bool {
+	entry, ok := s.entries[name]
+	if !ok {
+		return false
+	}
+	obj, ok := entry.(*Obj)
+	if !ok {
+		return false
+	}
+	_, isD := obj.Type.(*asmtype.Double)
+	return isD
+}
+
 func (s *SymbolTable) GetSize(name string) (int, error) {
 	entry, ok := s.entries[name]
 	if !ok {

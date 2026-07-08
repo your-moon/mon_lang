@@ -63,6 +63,13 @@ const (
 	R11 AsmRegister = "r11"
 	SP  AsmRegister = "sp"
 
+	// callee-saved GPRs used by the register allocator
+	BX  AsmRegister = "bx"
+	R12 AsmRegister = "r12"
+	R13 AsmRegister = "r13"
+	R14 AsmRegister = "r14"
+	R15 AsmRegister = "r15"
+
 	// SSE registers; XMM14/XMM15 are the double scratch pair (as R10/R11
 	// are for integers)
 	XMM0  AsmRegister = "xmm0"

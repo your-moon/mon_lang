@@ -1,0 +1,6 @@
+// regression: this used to crash the compiler with a Go panic
+// шалгах: алдаа "зүүн тал"
+функц үндсэн() -> тоо {
+    2 = 3;
+    буц 0;
+}

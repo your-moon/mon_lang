@@ -1,0 +1,3 @@
+// regression: this used to hang the parser forever
+// шалгах: алдаа "хаалт"
+функц үндсэн() -> тоо { буц нэмэх(1

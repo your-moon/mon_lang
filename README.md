@@ -24,12 +24,14 @@ The compiler runs as a pipeline, and each stage is exposed as its own command:
 | Generate x86-64 assembly | `compile` | `code_gen/` |
 | Assemble + link to a binary | `gen` | `linker/` |
 
-`gen` runs the whole pipeline end to end. Assembly and linking shell out to the system `as` and `cc`; the standard library lives in `stdlib/`.
+`gen` runs the whole pipeline end to end. By default the compiler is fully self-contained (TCC-style): it encodes x86_64 machine code itself (`encoder/`), writes the Mach-O executable directly (`macho/`), and links in a built-in syscall standard library — no `as`, no `cc`, no Xcode, no libc. The produced binaries are static (~8 KB for hello world) with zero dynamic dependencies.
+
+Pass `--cc` to use the legacy external-toolchain path (`as` + `cc` with `stdlib/cc/lib.c`), or `--asm` to emit AT&T assembly text.
 
 ## Requirements
 
-- Go 1.23.4+
-- A C toolchain (`as` and `cc` — on Apple Silicon the linker invokes `arch -x86_64`, so Rosetta is required)
+- Go 1.23.4+ (build-time only)
+- macOS. Output is x86_64, so Apple Silicon runs binaries under Rosetta 2. The `--cc` legacy path additionally needs Xcode Command Line Tools.
 
 ## Build
 

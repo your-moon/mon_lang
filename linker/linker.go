@@ -96,8 +96,8 @@ func (l *Linker) Link() error {
 
 	defer os.Remove(objFile)
 
-	// cc compiles the C runtime shim on every link
-	stdlibFile := filepath.Join(STDLIB_DIR, "lib.c")
+	// legacy path only: cc compiles the C runtime shim on every link
+	stdlibFile := findStdlibCC()
 
 	// Use cc to link with libc (provides malloc, printf, etc.)
 	var linkCmd *exec.Cmd
@@ -118,6 +118,26 @@ func (l *Linker) Link() error {
 	}
 
 	return nil
+}
+
+// findStdlibCC locates the C runtime shim without depending on the working
+// directory: MON_STDLIB env, then CWD (development layout), then next to
+// the compiler executable (installed layout).
+func findStdlibCC() string {
+	if env := os.Getenv("MON_STDLIB"); env != "" {
+		return filepath.Join(env, "cc", "lib.c")
+	}
+	local := filepath.Join(STDLIB_DIR, "cc", "lib.c")
+	if _, err := os.Stat(local); err == nil {
+		return local
+	}
+	if exe, err := os.Executable(); err == nil {
+		installed := filepath.Join(filepath.Dir(exe), STDLIB_DIR, "cc", "lib.c")
+		if _, err := os.Stat(installed); err == nil {
+			return installed
+		}
+	}
+	return local
 }
 
 func (l *Linker) MakeExecutable() error {

@@ -1,15 +1,42 @@
 # Mon
 
-Mon is a small statically-typed programming language with Mongolian keywords. This repo contains its compiler, written in Go, which lowers Mon source through a Tacky intermediate representation to x86-64 assembly, then assembles and links it into a native executable.
+Mon is a small statically-typed programming language with Mongolian keywords. This repo contains its compiler, written in Go, which lowers Mon source through a Tacky intermediate representation to x86-64 machine code and writes a native executable directly — no external toolchain.
 
 ```mon
-extern функц мөр_хэвлэх(м мөр) -> хоосон {}
-
 функц үндсэн() -> тоо {
-    мөр_хэвлэх("Өдрийн мэнд");
+    мөр_хэвлэх("Өдрийн мэнд\n");
     буц 0;
 }
 ```
+
+## Language
+
+- Types: тоо/тоо64 (int32/64), этоо/этоо64 (unsigned), тэмдэгт (Unicode codepoint), мөр (string), заагч (`тоо*`), arrays (`тоо[5]`, heap-backed references)
+- Rust-style structs with methods and self:
+
+```mon
+бүтэц Цэг { х: тоо, у: тоо64 }
+
+хэрэгжүүл Цэг {
+    функц нийлбэр(өөрөө) -> тоо64 { буц өөрөө.х + өөрөө.у; }
+}
+```
+
+- Rust-style match:
+
+```mon
+тааруул х {
+    1   => { мөр_хэвлэх("нэг"); }
+    'ө' => { мөр_хэвлэх("үсэг"); }
+    _   => { мөр_хэвлэх("бусад"); }
+}
+```
+
+- Control flow: хэрэв/эсвэл, давтах (while), давт..хүртэл (range for), зогс/үргэлжлүүл
+- Modules: `ашигла "файл.mn"` with тунх exports, named imports via `ашигла "файл.mn" гэж нэр` → `нэр.функц()`
+- Pointers with scaled arithmetic, character literals, constant folding and dead-code elimination on by default
+- Builtins: printing (хэвлэ, эхэвлэ, мөр_хэвлэх, тэмдэгтХэвлэх), stdin (унш), file I/O (файлУншихБүтэн, файлБичих), bytes (мөрУрт, байт, байтТавих, мөрШинэ), argv (аргумент), time/random/sleep
+- `selfhost/` holds the beginning of the self-hosted compiler: a mon_lang lexer that lexes itself, and a hash map written in mon_lang
 
 ## How it works
 

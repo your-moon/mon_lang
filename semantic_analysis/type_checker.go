@@ -56,13 +56,24 @@ func (c *TypeChecker) resolveType(t mtypes.Type, line int, span lexer.Span) (mty
 	return t, nil
 }
 
-// checkStructDecl computes the struct layout: fields at offsets aligned to
-// their own size, total size rounded up to 8.
-func (c *TypeChecker) checkStructDecl(decl *parser.ASTStructDecl) error {
+// declareStruct registers a struct's name with an empty layout, so that
+// fields (of any struct) may reference it — including self-references and
+// mutual recursion, which a tree-shaped AST needs. Layout is filled later by
+// defineStructFields.
+func (c *TypeChecker) declareStruct(decl *parser.ASTStructDecl) error {
 	if _, dup := c.structs[decl.Name]; dup {
 		return c.createSemanticError(fmt.Sprintf("бүтэц '%s'-ийг дахин зарласан байна", decl.Name), decl.Token.Line, decl.Token.Span)
 	}
-	st := &mtypes.StructType{Name: decl.Name}
+	c.structs[decl.Name] = &mtypes.StructType{Name: decl.Name}
+	return nil
+}
+
+// defineStructFields computes the layout on the already-registered struct:
+// fields at offsets aligned to their own size, total size rounded up to 8.
+// Struct-typed fields are references (8-byte handles), so a struct may embed a
+// reference to itself without an infinite size.
+func (c *TypeChecker) defineStructFields(decl *parser.ASTStructDecl) error {
+	st := c.structs[decl.Name]
 	var off int64
 	seen := map[string]bool{}
 	for i, name := range decl.FieldNames {
@@ -81,9 +92,8 @@ func (c *TypeChecker) checkStructDecl(decl *parser.ASTStructDecl) error {
 	}
 	st.Size = (off + 7) &^ 7
 	if st.Size == 0 {
-		st.Size = 8 // malloc(0) portability: an empty struct still owns a slot
+		st.Size = 8 // an empty struct still owns a slot
 	}
-	c.structs[decl.Name] = st
 	return nil
 }
 
@@ -92,11 +102,20 @@ func (c *TypeChecker) createSemanticError(message string, line int, span lexer.S
 }
 
 func (c *TypeChecker) CheckTopLevel(program *parser.ASTProgram) (*parser.ASTProgram, error) {
-	// Pass 1: register every struct layout, so a signature may reference a
-	// struct declared later in the file.
+	// Pass 1a: register every struct name (empty layout) so field and
+	// signature types may reference any struct — including self-references and
+	// mutually recursive structs, as a tree-shaped AST requires.
 	for _, decl := range program.Decls {
 		if s, ok := decl.(*parser.ASTStructDecl); ok {
-			if err := c.checkStructDecl(s); err != nil {
+			if err := c.declareStruct(s); err != nil {
+				return nil, err
+			}
+		}
+	}
+	// Pass 1b: resolve struct field types and compute layouts.
+	for _, decl := range program.Decls {
+		if s, ok := decl.(*parser.ASTStructDecl); ok {
+			if err := c.defineStructFields(s); err != nil {
 				return nil, err
 			}
 		}
@@ -681,7 +700,14 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 			return nil, err
 		}
 		expr.Size = size
-		expr.Type = &mtypes.ArrayType{ElementType: expr.ElementType}
+		// resolve the element type so `шинэ Ном[n]` has element StructType, not
+		// an unresolved NamedType — otherwise it won't match a Ном[] variable.
+		elem, err := c.resolveType(expr.ElementType, expr.Token.Line, expr.Token.Span)
+		if err != nil {
+			return nil, err
+		}
+		expr.ElementType = elem
+		expr.Type = &mtypes.ArrayType{ElementType: elem}
 		return expr, nil
 
 	case *parser.ASTFnCall:

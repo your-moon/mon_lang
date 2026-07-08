@@ -1,7 +1,7 @@
 // named module import: ашигла "..." гэж нэр; qualified access is
 // validated against the module's export list
 // шалгах: гаралт "77 1\n"
-ашигла "../../selfhost/хүснэгт.mn" гэж хүс;
+ашигла "modules/хүснэгт.mn" гэж хүс;
 
 функц үндсэн() -> тоо {
     зарла х: Хүснэгт = хүс.шинэХүснэгт();

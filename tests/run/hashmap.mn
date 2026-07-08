@@ -1,7 +1,7 @@
 // hash map written in mon_lang itself (selfhost/хүснэгт.mn):
 // insert, overwrite, lookup, membership, count
 // шалгах: гаралт "100 3 1 0 3\n"
-ашигла "../../selfhost/хүснэгт.mn";
+ашигла "modules/хүснэгт.mn";
 
 функц үндсэн() -> тоо {
     зарла х: Хүснэгт = шинэХүснэгт();

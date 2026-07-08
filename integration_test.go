@@ -47,8 +47,8 @@ func TestControlFlow(t *testing.T) {
 	}
 }
 
-func TestFree(t *testing.T) {
-	output := compileAndRun(t, "test/features/free.mn")
+func TestGcAlloc(t *testing.T) {
+	output := compileAndRun(t, "test/features/gc_alloc.mn")
 	expected := "42\n"
 	if output != expected {
 		t.Errorf("expected %q, got %q", expected, output)

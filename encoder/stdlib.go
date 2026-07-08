@@ -94,6 +94,28 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.Syscall()
 	b.Epilogue()
 
+	/* ekhevle(n): print n as an unsigned decimal (эхэвлэ) */
+	b.Label(fnLabel("ekhevle"))
+	b.Prologue()
+	b.AluIR(OpSub, true, 48, RSP)
+	b.MovRR(true, RDI, RAX)
+	b.LeaRBP(-8, RSI)
+	b.MovIR(false, 10, R8)
+	b.Label("stdlib.ekhevle.loop")
+	b.XorRR(true, RDX, RDX)
+	b.DivR(true, R8)
+	b.AluIR(OpAdd, false, '0', RDX)
+	b.DecR(true, RSI)
+	b.StoreByte(RDX, RSI)
+	b.TestRR(true, RAX, RAX)
+	b.Jcc(CondNE, "stdlib.ekhevle.loop")
+	b.LeaRBP(-8, RDX)
+	b.AluRR(OpSub, true, RSI, RDX)
+	b.MovIR(false, 1, RDI)
+	b.MovIR(false, sysWrite, RAX)
+	b.Syscall()
+	b.Epilogue()
+
 	/* mqr_khevlekh(s): write(1, s, strlen(s)) */
 	b.Label(fnLabel("mqr_khevlekh"))
 	b.Prologue()
@@ -301,7 +323,7 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 // StdlibFns lists the function names EmitStdlib defines; the program mapper
 // uses this to know which extern declarations are satisfied internally.
 func StdlibFns() []string {
-	return []string{"khevle", "mqr_khevlekh", "unsh", "unsh32",
+	return []string{"khevle", "ekhevle", "mqr_khevlekh", "unsh", "unsh32",
 		"sanamsargwyToo", "odoo", "malloc", "chqlqqlqkh", "khwleekh",
 		"delgetsTseverlekh"}
 }

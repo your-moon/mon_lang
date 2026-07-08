@@ -502,6 +502,8 @@ func (b *Buf) Syscall() { b.byte(0x0F, 0x05) }
 
 func (b *Buf) DivR(w bool, r Reg) { b.unaryF7(w, 6, r) } // unsigned div
 
+func (b *Buf) DivM(w bool, disp int) { b.unaryF7M(w, 6, disp) }
+
 func (b *Buf) ShlIR(w bool, n byte, r Reg) { // shl $n, r
 	b.rex(w, 0, r)
 	b.byte(0xC1, modrm(3, 4, r), n)
@@ -538,6 +540,8 @@ const (
 	CondNS Cond = 0x9
 	CondB  Cond = 0x2 // unsigned <
 	CondA  Cond = 0x7 // unsigned >
+	CondAE Cond = 0x3 // unsigned >=
+	CondBE Cond = 0x6 // unsigned <=
 )
 
 /* function frame */

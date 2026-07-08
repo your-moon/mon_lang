@@ -23,6 +23,11 @@ const (
 	GE CondCode = "ge"
 	L  CondCode = "l"
 	LE CondCode = "le"
+	// unsigned orderings
+	A  CondCode = "a"
+	AE CondCode = "ae"
+	B  CondCode = "b"
+	BE CondCode = "be"
 )
 
 type AsmAstBinaryOp string
@@ -224,8 +229,9 @@ func (a AsmBinary) Ir() string {
 }
 
 type Idiv struct {
-	Type asmtype.AsmType
-	Src  AsmOperand
+	Type     asmtype.AsmType
+	Src      AsmOperand
+	Unsigned bool // div instead of idiv; pairs with a zeroed rdx
 }
 
 func (a Idiv) Ir() string {

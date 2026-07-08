@@ -361,6 +361,10 @@ func (p *Parser) parseType() (mtypes.Type, error) {
 		return &mtypes.Int32Type{}, nil
 	case lexer.LONG:
 		return &mtypes.Int64Type{}, nil
+	case lexer.UINT_TYPE:
+		return &mtypes.UInt32Type{}, nil
+	case lexer.ULONG_TYPE:
+		return &mtypes.UInt64Type{}, nil
 	case lexer.STRING_TYPE:
 		return &mtypes.StringType{}, nil
 	case lexer.VOID:

@@ -260,7 +260,11 @@ func (a *AsmGen) GenInstr(instr AsmInstruction) {
 
 		}
 	case Idiv:
-		a.Write(fmt.Sprintf("    idiv%s %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type)))
+		mnemonic := "idiv"
+		if ast.Unsigned {
+			mnemonic = "div"
+		}
+		a.Write(fmt.Sprintf("    %s%s %s", mnemonic, a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type)))
 	case AsmMov:
 		if strLit, isStrLit := ast.Src.(StringLiteral); isStrLit {
 			label := a.AddString(strLit.Value)

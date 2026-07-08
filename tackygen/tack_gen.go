@@ -781,8 +781,10 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 				return dst, irs
 			}
 
-			// Sign-extend if mixed 32/64-bit
-			_, commonIs64 := expr.Type.(*mtypes.Int64Type)
+			op = unsignedOp(op, expr.Left.GetType(), expr.Right.GetType())
+
+			// widen if mixed 32/64-bit
+			commonIs64 := mtypes.IsInteger(expr.Type) && mtypes.SizeOf(expr.Type) == 8
 			if commonIs64 {
 				v1ext, v1extIrs := c.maybeSignExtend(v1, expr.Left.GetType(), expr.Type)
 				irs = append(irs, v1extIrs...)
@@ -834,14 +836,50 @@ func (c *TackyGen) PrettyPrint(program TackyProgram) {
 	}
 }
 
+// maybeSignExtend widens a 32-bit integer to 64 bits when the context
+// demands it: sign-extension for signed sources, zero-extension for
+// unsigned ones. Same-width or non-integer pairs pass through.
 func (c *TackyGen) maybeSignExtend(val TackyVal, fromType, toType mtypes.Type) (TackyVal, []Instruction) {
-	_, fromIs32 := fromType.(*mtypes.Int32Type)
-	_, toIs64 := toType.(*mtypes.Int64Type)
-	if fromIs32 && toIs64 {
-		dst := c.makeTemp(&mtypes.Int64Type{})
-		return dst, []Instruction{SignExtend{Src: val, Dst: dst}}
+	if fromType == nil || toType == nil {
+		return val, nil
 	}
-	return val, nil
+	if !mtypes.IsInteger(fromType) || !mtypes.IsInteger(toType) {
+		return val, nil
+	}
+	if mtypes.SizeOf(fromType) != 4 || mtypes.SizeOf(toType) != 8 {
+		return val, nil
+	}
+	dst := c.makeTemp(toType)
+	if mtypes.IsUnsigned(fromType) {
+		return dst, []Instruction{ZeroExtend{Src: val, Dst: dst}}
+	}
+	return dst, []Instruction{SignExtend{Src: val, Dst: dst}}
+}
+
+// unsignedOp swaps division and ordered comparisons for their unsigned
+// variants when the operands' common type is unsigned.
+func unsignedOp(op TackyBinaryOp, l, r mtypes.Type) TackyBinaryOp {
+	lu, ru := mtypes.IsUnsigned(l), mtypes.IsUnsigned(r)
+	unsigned := (lu && mtypes.SizeOf(l) >= mtypes.SizeOf(r)) ||
+		(ru && mtypes.SizeOf(r) >= mtypes.SizeOf(l))
+	if !unsigned {
+		return op
+	}
+	switch op {
+	case Div:
+		return UDiv
+	case Modulo:
+		return UModulo
+	case LessThan:
+		return ULessThan
+	case LessThanEqual:
+		return ULessThanEqual
+	case GreaterThan:
+		return UGreaterThan
+	case GreaterThanEqual:
+		return UGreaterThanEqual
+	}
+	return op
 }
 
 func (c *TackyGen) makeTemp(mtype mtypes.Type) Var {

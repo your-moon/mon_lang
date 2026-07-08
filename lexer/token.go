@@ -73,6 +73,8 @@ const (
 	EOF           TokenType = "EOF"
 
 	INT_TYPE    TokenType = "INT_TYPE"
+	UINT_TYPE   TokenType = "UINT_TYPE"  // этоо
+	ULONG_TYPE  TokenType = "ULONG_TYPE" // этоо64
 	STRING_TYPE TokenType = "STRING_TYPE"
 	VOID        TokenType = "VOID"
 	NEW         TokenType = "NEW"  // шинэ

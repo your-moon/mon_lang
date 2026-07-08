@@ -386,6 +386,13 @@ func (a *AsmASTGen) GenASTInstr(instr tackygen.Instruction) []AsmInstruction {
 			Dst: a.GenASTVal(ast.Dst),
 		}
 		return []AsmInstruction{movsx}
+	case tackygen.ZeroExtend:
+		// writing the 32-bit register clears the upper half: two moves
+		// through r11 zero-extend without a dedicated instruction
+		return []AsmInstruction{
+			AsmMov{Type: &asmtype.LongWord{}, Src: a.GenASTVal(ast.Src), Dst: Register{Reg: R11}},
+			AsmMov{Type: &asmtype.QuadWord{}, Src: Register{Reg: R11}, Dst: a.GenASTVal(ast.Dst)},
+		}
 	case tackygen.GetAddress:
 		lea := AsmLea{
 			Src: a.GenASTVal(ast.Src),
@@ -484,19 +491,37 @@ func (a *AsmASTGen) ConvOpToCond(op tackygen.TackyBinaryOp) CondCode {
 		return E
 	case tackygen.NotEqual:
 		return NE
+	case tackygen.UGreaterThan:
+		return A
+	case tackygen.UGreaterThanEqual:
+		return AE
+	case tackygen.ULessThan:
+		return B
+	case tackygen.ULessThanEqual:
+		return BE
 	default:
 		panic("the op is not relational op")
 
 	}
 }
 
+func isRelationalOp(op tackygen.TackyBinaryOp) bool {
+	switch op {
+	case tackygen.GreaterThan, tackygen.GreaterThanEqual,
+		tackygen.LessThan, tackygen.LessThanEqual,
+		tackygen.Equal, tackygen.NotEqual,
+		tackygen.UGreaterThan, tackygen.UGreaterThanEqual,
+		tackygen.ULessThan, tackygen.ULessThanEqual:
+		return true
+	}
+	return false
+}
+
 func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) []AsmInstruction {
 	Src1T := a.AsmType(instr.Src1)
 	DstT := a.AsmType(instr.Dst)
 	//is relational op
-	if instr.Op == tackygen.GreaterThan || instr.Op == tackygen.GreaterThanEqual ||
-		instr.Op == tackygen.LessThan || instr.Op == tackygen.LessThanEqual ||
-		instr.Op == tackygen.Equal || instr.Op == tackygen.NotEqual {
+	if isRelationalOp(instr.Op) {
 
 		cmp := Cmp{
 			Type: Src1T,
@@ -513,51 +538,36 @@ func (a *AsmASTGen) GenASTBinary(instr tackygen.Binary) []AsmInstruction {
 			Op: a.GenASTVal(instr.Dst),
 		}
 		return []AsmInstruction{cmp, mov, setcc}
-	} else if instr.Op == tackygen.Modulo {
+	} else if instr.Op == tackygen.Div || instr.Op == tackygen.Modulo ||
+		instr.Op == tackygen.UDiv || instr.Op == tackygen.UModulo {
+		unsigned := instr.Op == tackygen.UDiv || instr.Op == tackygen.UModulo
+		resultReg := AX // quotient
+		if instr.Op == tackygen.Modulo || instr.Op == tackygen.UModulo {
+			resultReg = DX // remainder
+		}
 
-		mov := AsmMov{
+		irs := []AsmInstruction{AsmMov{
 			Type: Src1T,
 			Src:  a.GenASTVal(instr.Src1),
 			Dst:  Register{Reg: AX},
+		}}
+		if unsigned {
+			// unsigned division needs rdx zeroed, not sign-filled
+			irs = append(irs, AsmMov{Type: Src1T, Src: Imm{Value: 0}, Dst: Register{Reg: DX}})
+		} else {
+			irs = append(irs, Cdq{Type: Src1T})
 		}
-		cdq := Cdq{
+		irs = append(irs, Idiv{
+			Type:     Src1T,
+			Src:      a.GenASTVal(instr.Src2),
+			Unsigned: unsigned,
+		})
+		irs = append(irs, AsmMov{
 			Type: Src1T,
-		}
-		idiv := Idiv{
-			Type: Src1T,
-			Src:  a.GenASTVal(instr.Src2),
-		}
-		mov2 := AsmMov{
-			Type: Src1T,
-			Src: Register{
-				Reg: DX,
-			},
-
-			Dst: a.GenASTVal(instr.Dst),
-		}
-		return []AsmInstruction{mov, cdq, idiv, mov2}
-	} else if instr.Op == tackygen.Div || instr.Op == tackygen.Modulo {
-		mov := AsmMov{
-			Type: Src1T,
-			Src:  a.GenASTVal(instr.Src1),
-			Dst:  Register{Reg: AX},
-		}
-		cdq := Cdq{
-			Type: Src1T,
-		}
-		idiv := Idiv{
-			Type: Src1T,
-			Src:  a.GenASTVal(instr.Src2),
-		}
-		mov2 := AsmMov{
-			Type: Src1T,
-			Src: Register{
-				Reg: AX,
-			},
-
-			Dst: a.GenASTVal(instr.Dst),
-		}
-		return []AsmInstruction{mov, cdq, idiv, mov2}
+			Src:  Register{Reg: resultReg},
+			Dst:  a.GenASTVal(instr.Dst),
+		})
+		return irs
 	} else {
 		mov := AsmMov{
 			Type: Src1T,
@@ -615,9 +625,9 @@ func (a *AsmASTGen) GenASTVal(val tackygen.TackyVal) AsmOperand {
 
 func (a *AsmASTGen) ConvType(val mtypes.Type) asmtype.AsmType {
 	switch val.(type) {
-	case *mtypes.Int32Type:
+	case *mtypes.Int32Type, *mtypes.UInt32Type:
 		return &asmtype.LongWord{}
-	case *mtypes.Int64Type:
+	case *mtypes.Int64Type, *mtypes.UInt64Type:
 		return &asmtype.QuadWord{}
 	case *mtypes.VoidType:
 		return &asmtype.LongWord{}

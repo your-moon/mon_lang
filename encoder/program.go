@@ -494,6 +494,8 @@ func encodeBinary(b *Buf, pool *stringPool, ast codegen.AsmBinary) error {
 			b.ImulIR(w, opImm(ast.Src), dst)
 		case oStack:
 			b.ImulMR(w, opDisp(ast.Src), dst)
+		case oRip:
+			b.ImulRipR(w, opRip(ast.Src), dst)
 		default:
 			return fmt.Errorf("imul: unsupported src %T", ast.Src)
 		}

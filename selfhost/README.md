@@ -29,9 +29,8 @@ prototypes) to x86_64 assembly.
 - **Compiles its own source** — `mc` (built by the Go-hosted compiler)
   compiles `mc.mn` into ~7500 lines of assembly, which assembles and links
   into a stage-2 `mc` that runs.
-- **Remaining for exact fixed point**: the stage-2 compiler has one
-  miscompilation (some local-slot / builtin-name computations differ), so
-  stage-2 output is not yet byte-identical to stage-1. Hunting that single
-  bug is the last step to a self-sustaining bootstrap.
+- **Self-hosting fixed point reached**: `mc2` (mc compiled by mc) compiles
+  `mc.mn` to assembly byte-identical to `mc`'s (7553 lines) — the compiler
+  reproduces itself exactly. Verify with `./bootstrap.sh`.
 
 Drive it with `./build.sh <program.mn> <output>` (entry function: үндсэн).

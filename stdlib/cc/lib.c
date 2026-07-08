@@ -6,6 +6,8 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <mach-o/dyld.h>
+#include <mach-o/getsect.h>
 
 // хэвлэ - print 64-bit integer
 void khevle(long n) {
@@ -119,6 +121,19 @@ static void gc_collect(void) {
     char *lo = &stack_top, *hi = gc_stack_bottom;
     if (lo > hi) { char *t = lo; lo = hi; hi = t; }
     gc_mark_range(lo, hi);
+
+    // globals hold long-lived heap pointers too (e.g. a compiler's symbol
+    // tables); scan the main image's writable segments as roots
+    const struct mach_header_64 *img =
+        (const struct mach_header_64 *)_dyld_get_image_header(0);
+    if (img) {
+        unsigned long sz;
+        uint8_t *seg;
+        seg = getsegmentdata(img, "__DATA", &sz);
+        if (seg) gc_mark_range((char *)seg, (char *)seg + sz);
+        seg = getsegmentdata(img, "__DATA_DIRTY", &sz);
+        if (seg) gc_mark_range((char *)seg, (char *)seg + sz);
+    }
 
     GcBlock **link = &gc_head;
     while (*link) {

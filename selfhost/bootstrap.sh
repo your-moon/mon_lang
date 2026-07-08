@@ -7,6 +7,11 @@
 set -e
 here=$(cd "$(dirname "$0")/.." && pwd)
 monc=${MONC:-$here/mon_lang}
+# Build the Go-hosted compiler fresh so we never bootstrap from a stale binary
+# (an old mon_lang missing e.g. [] array syntax fails at stage 0).
+if [ -z "$MONC" ]; then
+    (cd "$here" && go build -o "$monc" .)
+fi
 lib="$here/stdlib/cc/lib.c"
 mc="$here/selfhost/mc.mn"
 tmp=$(mktemp -d); cd "$tmp"

@@ -94,8 +94,12 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 
 		// Bare names (no "/" and no ".mn") are standard-library packages,
 		// resolved from the embedded pkg set - available from any directory.
+		// A path/".mn" import is a LOCAL module: it is part of your program,
+		// so every top-level declaration travels with it (no тунх needed),
+		// mirroring how the self-hosted mc inlines module source directly.
 		var srcText string
-		if !strings.Contains(imp.FilePath, "/") && !strings.HasSuffix(imp.FilePath, ".mn") {
+		isLocal := strings.Contains(imp.FilePath, "/") || strings.HasSuffix(imp.FilePath, ".mn")
+		if !isLocal {
 			pkgSrc, ok := stdlib.StdPackage(imp.FilePath)
 			if !ok {
 				return nil, fmt.Errorf("стандарт багц олдсонгүй: %s", imp.FilePath)
@@ -136,14 +140,14 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 		for _, d := range importedProg.Decls {
 			switch dt := d.(type) {
 			case *parser.FnDecl:
-				if dt.IsPublic || dt.IsExtern {
+				if isLocal || dt.IsPublic || dt.IsExtern {
 					if exports != nil && !dt.IsMethod {
 						exports[dt.Ident] = true
 					}
 					importedDecls = append(importedDecls, dt)
 				}
 			case *parser.VarDecl:
-				if dt.IsPublic {
+				if isLocal || dt.IsPublic {
 					if exports != nil {
 						exports[dt.Ident] = true
 					}

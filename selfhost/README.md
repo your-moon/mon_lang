@@ -15,3 +15,23 @@ Run stage 0:
 
     ./mon_lang gen selfhost/lexer0.mn -o lexer0
     ./lexer0 selfhost/lexer0.mn
+
+
+## Bootstrap status (mc.mn)
+
+`mc.mn` is a working mon_lang compiler written in mon_lang. It compiles a
+self-hostable subset (functions, тоо64, locals/globals, arrays, arithmetic,
+comparisons, if/else-if/while/break, string/char literals, calls, builtins,
+prototypes) to x86_64 assembly.
+
+- **Compiles real programs correctly** — recursion, loops, strings,
+  arithmetic, conditionals — verified end to end (`mc_test.sh`).
+- **Compiles its own source** — `mc` (built by the Go-hosted compiler)
+  compiles `mc.mn` into ~7500 lines of assembly, which assembles and links
+  into a stage-2 `mc` that runs.
+- **Remaining for exact fixed point**: the stage-2 compiler has one
+  miscompilation (some local-slot / builtin-name computations differ), so
+  stage-2 output is not yet byte-identical to stage-1. Hunting that single
+  bug is the last step to a self-sustaining bootstrap.
+
+Drive it with `./build.sh <program.mn> <output>` (entry function: үндсэн).

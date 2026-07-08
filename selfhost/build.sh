@@ -3,7 +3,7 @@
 # with the Go-hosted compiler, then use mc to compile a program.
 #
 #   ./selfhost/build.sh <program.mn> <output>
-# The program's entry function must be named гол.
+# The program's entry function must be named үндсэн.
 set -e
 here=$(cd "$(dirname "$0")/.." && pwd)
 monc=${MONC:-$here/mon_lang}

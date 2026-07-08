@@ -1,0 +1,29 @@
+{
+  "name": "tree-sitter-mon",
+  "version": "0.1.0",
+  "description": "tree-sitter grammar for the mon_lang programming language",
+  "license": "MIT",
+  "main": "bindings/node",
+  "keywords": ["tree-sitter", "parser", "mon_lang"],
+  "dependencies": {
+    "node-addon-api": "^7.0.0",
+    "node-gyp-build": "^4.6.0"
+  },
+  "peerDependencies": {
+    "tree-sitter": "^0.21.0"
+  },
+  "peerDependenciesMeta": {
+    "tree-sitter": { "optional": true }
+  },
+  "devDependencies": {
+    "tree-sitter-cli": "^0.25.0"
+  },
+  "tree-sitter": [
+    {
+      "scope": "source.mon",
+      "file-types": ["mn"],
+      "highlights": "queries/highlights.scm",
+      "locals": "queries/locals.scm"
+    }
+  ]
+}

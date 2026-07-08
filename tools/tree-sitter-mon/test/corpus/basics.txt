@@ -1,0 +1,67 @@
+==================
+function with binary expression
+==================
+
+функц нэмэх(а тоо, б тоо) -> тоо {
+    буц а + б;
+}
+
+---
+
+(source_file
+  (function_declaration
+    name: (identifier)
+    parameters: (parameter_list
+      (parameter name: (identifier) type: (primitive_type))
+      (parameter name: (identifier) type: (primitive_type)))
+    return_type: (primitive_type)
+    body: (block
+      (return_statement
+        value: (binary_expression
+          left: (identifier)
+          right: (identifier))))))
+
+==================
+struct declaration
+==================
+
+бүтэц Цэг {
+    х: тоо,
+    у: тоо64,
+}
+
+---
+
+(source_file
+  (struct_declaration
+    name: (identifier)
+    (field_declaration name: (identifier) type: (primitive_type))
+    (field_declaration name: (identifier) type: (primitive_type))))
+
+==================
+match with wildcard, break and continue
+==================
+
+функц гол() -> хоосон {
+    тааруул х {
+        1 => { зогс; }
+        _ => { үргэлжлүүл; }
+    }
+}
+
+---
+
+(source_file
+  (function_declaration
+    name: (identifier)
+    parameters: (parameter_list)
+    return_type: (primitive_type)
+    body: (block
+      (match_statement
+        value: (identifier)
+        (match_arm
+          pattern: (number_literal)
+          body: (block (break_statement)))
+        (match_arm
+          pattern: (wildcard_pattern)
+          body: (block (continue_statement)))))))

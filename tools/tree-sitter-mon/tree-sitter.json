@@ -1,0 +1,20 @@
+{
+  "grammars": [
+    {
+      "name": "mon",
+      "camelcase": "Mon",
+      "scope": "source.mon",
+      "path": ".",
+      "file-types": ["mn"],
+      "highlights": ["queries/highlights.scm"],
+      "locals": ["queries/locals.scm"],
+      "injection-regex": "^mon$"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "mon_lang grammar for tree-sitter",
+    "authors": [{ "name": "Munkherdene" }]
+  }
+}

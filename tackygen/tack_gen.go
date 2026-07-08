@@ -399,6 +399,35 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 		irs := []Instruction{}
 		irs = append(irs, c.EmitTackyBlock(ast.Block)...)
 		return irs
+	case *parser.ASTMatch:
+		irs := []Instruction{}
+		endLabel := c.makeLabel("match_end")
+
+		// evaluate the scrutinee exactly once
+		val, valIrs := c.EmitExpr(ast.Scrutinee)
+		irs = append(irs, valIrs...)
+		scrutinee := c.makeTemp(ast.Scrutinee.GetType())
+		irs = append(irs, Copy{Src: val, Dst: scrutinee})
+
+		for _, arm := range ast.Arms {
+			if arm.Pattern == nil { // wildcard: unconditional
+				irs = append(irs, c.EmitTackyBlock(arm.Body)...)
+				irs = append(irs, Jump{Target: endLabel.Name})
+				continue
+			}
+			next := c.makeLabel("match_next")
+			patVal, patIrs := c.EmitExpr(arm.Pattern)
+			irs = append(irs, patIrs...)
+			cond := c.makeTemp(&mtypes.Int32Type{})
+			irs = append(irs, Binary{Op: Equal, Src1: scrutinee, Src2: patVal, Dst: cond})
+			irs = append(irs, JumpIfZero{Val: cond, Ident: next.Name})
+			irs = append(irs, c.EmitTackyBlock(arm.Body)...)
+			irs = append(irs, Jump{Target: endLabel.Name})
+			irs = append(irs, Label{Ident: next.Name})
+		}
+
+		irs = append(irs, Label{Ident: endLabel.Name})
+		return irs
 	case *parser.ASTIfStmt:
 		irs := []Instruction{}
 		// no else clause

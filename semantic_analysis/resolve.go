@@ -307,6 +307,28 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt, innerMap IdMap) (parser.A
 		}
 		nodetype.Block = *body
 		return nodetype, nil
+	case *parser.ASTMatch:
+		scrutinee, err := r.ResolveExpr(nodetype.Scrutinee, innerMap)
+		if err != nil {
+			return nil, err
+		}
+		nodetype.Scrutinee = scrutinee
+		for i := range nodetype.Arms {
+			if nodetype.Arms[i].Pattern != nil {
+				pat, err := r.ResolveExpr(nodetype.Arms[i].Pattern, innerMap)
+				if err != nil {
+					return nil, err
+				}
+				nodetype.Arms[i].Pattern = pat
+			}
+			armMap := r.copyIdMap(innerMap)
+			body, err := r.ResolveBlock(&nodetype.Arms[i].Body, armMap)
+			if err != nil {
+				return nil, err
+			}
+			nodetype.Arms[i].Body = *body
+		}
+		return nodetype, nil
 	case *parser.ASTReturnStmt:
 		resolvedReturnValue, err := r.ResolveExpr(nodetype.ReturnValue, innerMap)
 		if err != nil {

@@ -187,3 +187,22 @@ func (a *ASTPrintStmt) PrintAST(depth int) string {
 	}
 	return fmt.Sprintf("%sprint", indent(depth))
 }
+
+// MatchArm is one `хэв => блок` arm; Pattern nil means the `_` wildcard.
+type MatchArm struct {
+	Pattern ASTExpression
+	Body    ASTBlock
+}
+
+// ASTMatch is Rust-style `тааруул утга { хэв => {...} _ => {...} }`.
+type ASTMatch struct {
+	Token     lexer.Token
+	Scrutinee ASTExpression
+	Arms      []MatchArm
+}
+
+func (a *ASTMatch) statementNode()       {}
+func (a *ASTMatch) TokenLiteral() string { return "тааруул" }
+func (a *ASTMatch) PrintAST(depth int) string {
+	return indent(depth) + "тааруул(...)"
+}

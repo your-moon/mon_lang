@@ -284,6 +284,39 @@ func (c *TypeChecker) checkStmt(stmt parser.ASTStmt) (parser.ASTStmt, error) {
 		}
 		typestmt.Body = *block
 		return typestmt, nil
+	case *parser.ASTMatch:
+		scrutinee, err := c.checkExpr(typestmt.Scrutinee)
+		if err != nil {
+			return nil, err
+		}
+		typestmt.Scrutinee = scrutinee
+		if !mtypes.IsInteger(scrutinee.GetType()) {
+			return nil, c.createSemanticError("тааруулах утга бүхэл тоо байх ёстой", typestmt.Token.Line, typestmt.Token.Span)
+		}
+		for i := range typestmt.Arms {
+			if typestmt.Arms[i].Pattern == nil {
+				if i != len(typestmt.Arms)-1 {
+					return nil, c.createSemanticError("'_' хэв хамгийн сүүлд байх ёстой", typestmt.Token.Line, typestmt.Token.Span)
+				}
+				continue
+			}
+			pat, err := c.checkExpr(typestmt.Arms[i].Pattern)
+			if err != nil {
+				return nil, err
+			}
+			if !mtypes.IsInteger(pat.GetType()) {
+				return nil, c.createSemanticError("хэв бүхэл тоо байх ёстой", typestmt.Token.Line, typestmt.Token.Span)
+			}
+			typestmt.Arms[i].Pattern = pat
+		}
+		for i := range typestmt.Arms {
+			block, err := c.checkBlock(&typestmt.Arms[i].Body)
+			if err != nil {
+				return nil, err
+			}
+			typestmt.Arms[i].Body = *block
+		}
+		return typestmt, nil
 	case *parser.ASTCompoundStmt:
 		block, err := c.checkBlock(&typestmt.Block)
 		if err != nil {

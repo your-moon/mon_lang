@@ -22,3 +22,8 @@ func (l *QuadWord) asmtype() {}
 type StringType struct{}
 
 func (s *StringType) asmtype() {}
+
+// Double is a 64-bit IEEE-754 float living in XMM registers.
+type Double struct{}
+
+func (d *Double) asmtype() {}

@@ -183,6 +183,26 @@ const (
 	UGreaterThanEqual TackyBinaryOp = "u>="
 )
 
+// IntToDouble converts a 64-bit signed integer to a double.
+type IntToDouble struct {
+	Src TackyVal
+	Dst TackyVal
+}
+
+func (i IntToDouble) Ir() {
+	fmt.Printf("%s := int2double %s\n", i.Dst.val(), i.Src.val())
+}
+
+// DoubleToInt truncates a double toward zero into a 64-bit integer.
+type DoubleToInt struct {
+	Src TackyVal
+	Dst TackyVal
+}
+
+func (d DoubleToInt) Ir() {
+	fmt.Printf("%s := double2int %s\n", d.Dst.val(), d.Src.val())
+}
+
 // ZeroExtend widens an unsigned 32-bit value to 64 bits.
 type ZeroExtend struct {
 	Src TackyVal

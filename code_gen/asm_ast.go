@@ -33,9 +33,11 @@ const (
 type AsmAstBinaryOp string
 
 const (
-	Add  AsmAstBinaryOp = "addl"
-	Sub  AsmAstBinaryOp = "subl"
-	Mult AsmAstBinaryOp = "imull"
+	Add    AsmAstBinaryOp = "addl"
+	Sub    AsmAstBinaryOp = "subl"
+	Mult   AsmAstBinaryOp = "imull"
+	DivSd  AsmAstBinaryOp = "divsd" // doubles only
+	XorOp  AsmAstBinaryOp = "xor"   // used for double negation via GPR
 )
 
 type AsmUnaryOperator string
@@ -60,7 +62,25 @@ const (
 	R10 AsmRegister = "r10"
 	R11 AsmRegister = "r11"
 	SP  AsmRegister = "sp"
+
+	// SSE registers; XMM14/XMM15 are the double scratch pair (as R10/R11
+	// are for integers)
+	XMM0  AsmRegister = "xmm0"
+	XMM1  AsmRegister = "xmm1"
+	XMM2  AsmRegister = "xmm2"
+	XMM3  AsmRegister = "xmm3"
+	XMM4  AsmRegister = "xmm4"
+	XMM5  AsmRegister = "xmm5"
+	XMM6  AsmRegister = "xmm6"
+	XMM7  AsmRegister = "xmm7"
+	XMM14 AsmRegister = "xmm14"
+	XMM15 AsmRegister = "xmm15"
 )
+
+// IsXmm reports whether the register is an SSE register.
+func (a AsmRegister) IsXmm() bool {
+	return len(a) >= 3 && a[0] == 'x'
+}
 
 func (a AsmRegister) String() string {
 	return string(a)
@@ -359,6 +379,36 @@ type AsmStoreToMem struct {
 
 func (a AsmStoreToMem) Ir() string {
 	return fmt.Sprintf("storemem %s -> (%s)", a.Src.Op(), a.Base)
+}
+
+// DoubleLit is a float64 constant; it lives in the read-only pool and is
+// addressed rip-relative (SSE has no immediates).
+type DoubleLit struct {
+	Bits uint64
+}
+
+func (d DoubleLit) Op() string {
+	return fmt.Sprintf("$double(%d)", d.Bits)
+}
+
+// AsmCvtSi2Sd converts a 64-bit integer to a double: cvtsi2sdq src, dst.
+type AsmCvtSi2Sd struct {
+	Src AsmOperand // GPR or memory
+	Dst AsmOperand // XMM register after fixup
+}
+
+func (a AsmCvtSi2Sd) Ir() string {
+	return fmt.Sprintf("cvtsi2sd %s, %s", a.Src.Op(), a.Dst.Op())
+}
+
+// AsmCvtTsd2Si truncates a double to a 64-bit integer: cvttsd2siq src, dst.
+type AsmCvtTsd2Si struct {
+	Src AsmOperand // XMM or memory
+	Dst AsmOperand // GPR after fixup
+}
+
+func (a AsmCvtTsd2Si) Ir() string {
+	return fmt.Sprintf("cvttsd2si %s, %s", a.Src.Op(), a.Dst.Op())
 }
 
 type GlobalVarAsm struct {

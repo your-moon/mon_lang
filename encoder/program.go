@@ -12,6 +12,7 @@
 package encoder
 
 import (
+	"encoding/binary"
 	"fmt"
 	"maps"
 
@@ -39,6 +40,9 @@ var regMap = map[codegen.AsmRegister]Reg{
 	codegen.AX: RAX, codegen.AL: RAX, codegen.CX: RCX, codegen.DX: RDX,
 	codegen.DI: RDI, codegen.SI: RSI, codegen.R8: R8, codegen.R9: R9,
 	codegen.R10: R10, codegen.R11: R11, codegen.SP: RSP,
+	codegen.XMM0: 0, codegen.XMM1: 1, codegen.XMM2: 2, codegen.XMM3: 3,
+	codegen.XMM4: 4, codegen.XMM5: 5, codegen.XMM6: 6, codegen.XMM7: 7,
+	codegen.XMM14: 14, codegen.XMM15: 15,
 }
 
 func mustReg(r codegen.AsmRegister) Reg {
@@ -63,10 +67,26 @@ func isQuad(t asmtype.AsmType) bool {
 	return false
 }
 
-// stringPool interns string literals, mirroring x86x64.go AddString.
+// stringPool interns string literals and double constants, mirroring
+// x86x64.go's AddString/AddDouble pools.
 type stringPool struct {
-	labels map[string]string
-	order  []string // interned values in first-seen order
+	labels  map[string]string
+	order   []string // interned string values in first-seen order
+	dlabels map[uint64]string
+	dorder  []uint64 // interned double bit patterns
+}
+
+func (p *stringPool) internDouble(bits uint64) string {
+	if p.dlabels == nil {
+		p.dlabels = map[uint64]string{}
+	}
+	if l, ok := p.dlabels[bits]; ok {
+		return l
+	}
+	l := strLabel(fmt.Sprintf("LD%d", len(p.dorder)))
+	p.dlabels[bits] = l
+	p.dorder = append(p.dorder, bits)
+	return l
 }
 
 func (p *stringPool) intern(v string) string {
@@ -129,6 +149,14 @@ func EncodeProgram(prog codegen.AsmProgram) (*Program, error) {
 		ro = append(ro, v...)
 		ro = append(ro, 0)
 	}
+	// double constant pool; movsd allows unaligned scalar loads, so no
+	// padding is needed
+	for _, bits := range pool.dorder {
+		roAddr[pool.dlabels[bits]] = len(ro)
+		var buf [8]byte
+		binary.LittleEndian.PutUint64(buf[:], bits)
+		ro = append(ro, buf[:]...)
+	}
 
 	return &Program{Code: b.Code(), ROData: ro, ROAddr: roAddr,
 		Globals: prog.GlobalVars, buf: b}, nil
@@ -155,11 +183,14 @@ const (
 	oImm
 	oStack
 	oRip
+	oDoubleLit
 	oStr
 )
 
 func classify(op codegen.AsmOperand) opKind {
 	switch op.(type) {
+	case codegen.DoubleLit:
+		return oDoubleLit
 	case codegen.Register:
 		return oReg
 	case codegen.Imm:
@@ -193,7 +224,34 @@ func encodeInstr(b *Buf, pool *stringPool, instr codegen.AsmInstruction) error {
 		return nil
 
 	case codegen.AsmMov:
+		if _, isD := ast.Type.(*asmtype.Double); isD {
+			return encodeMovsd(b, pool, ast)
+		}
 		return encodeMov(b, pool, ast)
+
+	case codegen.AsmCvtSi2Sd:
+		// fixup: dst is xmm reg, src is gpr reg or memory
+		switch classify(ast.Src) {
+		case oReg:
+			b.Cvtsi2sdRR(opReg(ast.Dst), opReg(ast.Src))
+		case oStack:
+			b.Cvtsi2sdMR(opDisp(ast.Src), opReg(ast.Dst))
+		default:
+			return fmt.Errorf("cvtsi2sd: unsupported src %T", ast.Src)
+		}
+		return nil
+
+	case codegen.AsmCvtTsd2Si:
+		// fixup: dst is gpr reg, src is xmm reg or memory
+		switch classify(ast.Src) {
+		case oReg:
+			b.Cvttsd2siRR(opReg(ast.Dst), opReg(ast.Src))
+		case oStack:
+			b.Cvttsd2siMR(opDisp(ast.Src), opReg(ast.Dst))
+		default:
+			return fmt.Errorf("cvttsd2si: unsupported src %T", ast.Src)
+		}
+		return nil
 
 	case codegen.AsmMovSx:
 		switch classify(ast.Src) {
@@ -221,9 +279,24 @@ func encodeInstr(b *Buf, pool *stringPool, instr codegen.AsmInstruction) error {
 		return nil
 
 	case codegen.AsmBinary:
-		return encodeBinary(b, ast)
+		return encodeBinary(b, pool, ast)
 
 	case codegen.Cmp:
+		if _, isD := ast.Type.(*asmtype.Double); isD {
+			// fixup: dst is xmm reg, src is xmm/mem/lit
+			dst := opReg(ast.Dst)
+			switch classify(ast.Src) {
+			case oReg:
+				b.ComisdRR(dst, opReg(ast.Src))
+			case oStack:
+				b.ComisdRM(dst, opDisp(ast.Src))
+			case oDoubleLit:
+				b.ComisdRip(dst, pool.internDouble(ast.Src.(codegen.DoubleLit).Bits))
+			default:
+				return fmt.Errorf("comisd: unsupported src %T", ast.Src)
+			}
+			return nil
+		}
 		return encodeAlu(b, OpCmp, isQuad(ast.Type), ast.Src, ast.Dst)
 
 	case codegen.Unary:
@@ -396,7 +469,14 @@ func encodeMov(b *Buf, pool *stringPool, ast codegen.AsmMov) error {
 	return nil
 }
 
-func encodeBinary(b *Buf, ast codegen.AsmBinary) error {
+func encodeBinary(b *Buf, pool *stringPool, ast codegen.AsmBinary) error {
+	if _, isD := ast.Type.(*asmtype.Double); isD {
+		return encodeSseArith(b, pool, ast)
+	}
+	if ast.Op == codegen.XorOp {
+		b.XorRR(isQuad(ast.Type), opReg(ast.Src), opReg(ast.Dst))
+		return nil
+	}
 	w := isQuad(ast.Type)
 	switch ast.Op {
 	case codegen.Add:
@@ -462,6 +542,45 @@ func encodeAlu(b *Buf, op aluOp, w bool, src, dst codegen.AsmOperand) error {
 		}
 	default:
 		return fmt.Errorf("alu: unsupported src %T", src)
+	}
+	return nil
+}
+
+// encodeMovsd lowers a Double-typed AsmMov. The fixup pass guarantees at
+// most one memory/literal operand (the other is an XMM register).
+func encodeMovsd(b *Buf, pool *stringPool, ast codegen.AsmMov) error {
+	sk, dk := classify(ast.Src), classify(ast.Dst)
+	switch {
+	case sk == oReg && dk == oReg:
+		b.MovsdRR(opReg(ast.Dst), opReg(ast.Src))
+	case sk == oStack && dk == oReg:
+		b.MovsdMR(opDisp(ast.Src), opReg(ast.Dst))
+	case sk == oDoubleLit && dk == oReg:
+		b.MovsdRipR(pool.internDouble(ast.Src.(codegen.DoubleLit).Bits), opReg(ast.Dst))
+	case sk == oReg && dk == oStack:
+		b.MovsdRM(opReg(ast.Src), opDisp(ast.Dst))
+	default:
+		return fmt.Errorf("movsd: unsupported operands %T -> %T", ast.Src, ast.Dst)
+	}
+	return nil
+}
+
+// encodeSseArith lowers a Double-typed AsmBinary; the fixup pass makes the
+// destination an XMM register.
+func encodeSseArith(b *Buf, pool *stringPool, ast codegen.AsmBinary) error {
+	op := map[codegen.AsmAstBinaryOp]byte{
+		codegen.Add: sseAdd, codegen.Sub: sseSub, codegen.Mult: sseMul, codegen.DivSd: sseDiv,
+	}[ast.Op]
+	dst := opReg(ast.Dst)
+	switch classify(ast.Src) {
+	case oReg:
+		b.sseArithRR(op, dst, opReg(ast.Src))
+	case oStack:
+		b.sseArithRM(op, dst, opDisp(ast.Src))
+	case oDoubleLit:
+		b.sseArithRip(op, dst, pool.internDouble(ast.Src.(codegen.DoubleLit).Bits))
+	default:
+		return fmt.Errorf("sse arith: unsupported src %T", ast.Src)
 	}
 	return nil
 }

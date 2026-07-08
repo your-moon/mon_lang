@@ -127,3 +127,19 @@ char *mqrShine(long len) {
     memset(buf, 0, len + 1);
     return buf;
 }
+
+// бутархайХэвлэх - print a double as fixed decimal, 6 truncated fractional
+// digits. Deliberately simple (no dtoa/rounding) so the hand-written
+// native printer can produce byte-identical output.
+void butarkhayKhevlekh(double d) {
+    if (d < 0) { putchar('-'); d = -d; }
+    long ip = (long)d;
+    printf("%ld.", ip);
+    double frac = d - (double)ip;
+    for (int i = 0; i < 6; i++) {
+        frac *= 10.0;
+        int dg = (int)frac;
+        putchar('0' + dg);
+        frac -= (double)dg;
+    }
+}

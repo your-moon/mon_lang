@@ -42,7 +42,46 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction
 	case StringLiteral:
 		// StringLiteral is already properly handled
 		return []AsmInstruction{ast}
+	case AsmCvtSi2Sd:
+		out := []AsmInstruction{}
+		src := ast.Src
+		// cvtsi2sd takes no immediate: stage constants through a GPR
+		if _, isImm := src.(Imm); isImm {
+			out = append(out, AsmMov{Type: &asmtype.QuadWord{}, Src: src, Dst: Register{Reg: R10}})
+			src = Register{Reg: R10}
+		}
+		if _, isReg := ast.Dst.(Register); isReg {
+			return append(out, AsmCvtSi2Sd{Src: src, Dst: ast.Dst})
+		}
+		return append(out,
+			AsmCvtSi2Sd{Src: src, Dst: Register{Reg: XMM14}},
+			AsmMov{Type: &asmtype.Double{}, Src: Register{Reg: XMM14}, Dst: ast.Dst},
+		)
+
+	case AsmCvtTsd2Si:
+		// dst must be a GPR; source may be XMM or memory
+		if _, isReg := ast.Dst.(Register); isReg {
+			return []AsmInstruction{ast}
+		}
+		return []AsmInstruction{
+			AsmCvtTsd2Si{Src: ast.Src, Dst: Register{Reg: R11}},
+			AsmMov{Type: &asmtype.QuadWord{}, Src: Register{Reg: R11}, Dst: ast.Dst},
+		}
+
 	case AsmMov:
+		if _, isD := ast.Type.(*asmtype.Double); isD {
+			// movsd cannot go memory-to-memory or literal-to-memory;
+			// route through the XMM14 scratch when neither end is a register
+			_, srcReg := ast.Src.(Register)
+			_, dstReg := ast.Dst.(Register)
+			if !srcReg && !dstReg {
+				return []AsmInstruction{
+					AsmMov{Type: &asmtype.Double{}, Src: ast.Src, Dst: Register{Reg: XMM14}},
+					AsmMov{Type: &asmtype.Double{}, Src: Register{Reg: XMM14}, Dst: ast.Dst},
+				}
+			}
+			return []AsmInstruction{ast}
+		}
 		// Handle quadword immediate too large for imm32
 		if _, isQuadWord := ast.Type.(*asmtype.QuadWord); isQuadWord {
 			if imm, isImm := ast.Src.(Imm); isImm {
@@ -233,6 +272,13 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction
 		return []AsmInstruction{ast}
 
 	case AsmBinary:
+		if _, isD := ast.Type.(*asmtype.Double); isD {
+			return []AsmInstruction{
+				AsmMov{Type: &asmtype.Double{}, Src: ast.Dst, Dst: Register{Reg: XMM14}},
+				AsmBinary{Op: ast.Op, Type: &asmtype.Double{}, Src: ast.Src, Dst: Register{Reg: XMM14}},
+				AsmMov{Type: &asmtype.Double{}, Src: Register{Reg: XMM14}, Dst: ast.Dst},
+			}
+		}
 		// Handle large immediate source for Add/Sub
 		if ast.Op == Add || ast.Op == Sub {
 			_, isQuadWord := ast.Type.(*asmtype.QuadWord)
@@ -300,6 +346,12 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction
 		return []AsmInstruction{ast}
 
 	case Cmp:
+		if _, isD := ast.Type.(*asmtype.Double); isD {
+			return []AsmInstruction{
+				AsmMov{Type: &asmtype.Double{}, Src: ast.Dst, Dst: Register{Reg: XMM14}},
+				Cmp{Type: &asmtype.Double{}, Src: ast.Src, Dst: Register{Reg: XMM14}},
+			}
+		}
 		// Handle memory-to-memory operands (Stack or RipRelative)
 		if isMemoryOperand(ast.Src) && isMemoryOperand(ast.Dst) {
 			return []AsmInstruction{

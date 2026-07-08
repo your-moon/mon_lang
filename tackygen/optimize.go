@@ -39,6 +39,10 @@ func constOf(v TackyVal) (int64, bool) {
 	if !ok {
 		return 0, false
 	}
+	// float constants carry bit patterns; integer folding rules never apply
+	if _, isFloat := c.Value.(*mconstant.Float64); isFloat {
+		return 0, false
+	}
 	return c.Value.GetValue(), true
 }
 
@@ -268,6 +272,18 @@ func propagateCopies(irs []Instruction) []Instruction {
 				killVar(dst.Name)
 			}
 			out = append(out, instr)
+		case IntToDouble:
+			instr.Src = subst(instr.Src)
+			if dst, ok := instr.Dst.(Var); ok {
+				killVar(dst.Name)
+			}
+			out = append(out, instr)
+		case DoubleToInt:
+			instr.Src = subst(instr.Src)
+			if dst, ok := instr.Dst.(Var); ok {
+				killVar(dst.Name)
+			}
+			out = append(out, instr)
 		case JumpIfZero:
 			instr.Val = subst(instr.Val)
 			out = append(out, instr)
@@ -367,6 +383,10 @@ func dropDeadStores(irs []Instruction) []Instruction {
 			note(instr.Src)
 		case ZeroExtend:
 			note(instr.Src)
+		case IntToDouble:
+			note(instr.Src)
+		case DoubleToInt:
+			note(instr.Src)
 		case JumpIfZero:
 			note(instr.Val)
 		case JumpIfNotZero:
@@ -416,6 +436,14 @@ func dropDeadStores(irs []Instruction) []Instruction {
 				continue
 			}
 		case ZeroExtend:
+			if deadDst(instr.Dst) {
+				continue
+			}
+		case IntToDouble:
+			if deadDst(instr.Dst) {
+				continue
+			}
+		case DoubleToInt:
 			if deadDst(instr.Dst) {
 				continue
 			}

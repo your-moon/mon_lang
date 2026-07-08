@@ -40,6 +40,8 @@ type AsmGen struct {
 	currentFn       string
 	strings         map[string]int
 	stringCount     int
+	doubles         map[uint64]int
+	doubleOrder     []uint64
 }
 
 func NewGenASM(writer io.Writer, osType util.OsType) AsmGen {
@@ -47,7 +49,32 @@ func NewGenASM(writer io.Writer, osType util.OsType) AsmGen {
 		writer:  writer,
 		ostype:  osType,
 		strings: make(map[string]int),
+		doubles: make(map[uint64]int),
 	}
+}
+
+// AddDouble interns a double constant and returns its rip-relative label.
+func (a *AsmGen) AddDouble(bits uint64) string {
+	if id, ok := a.doubles[bits]; ok {
+		return fmt.Sprintf(".LD%d", id)
+	}
+	id := len(a.doubleOrder)
+	a.doubles[bits] = id
+	a.doubleOrder = append(a.doubleOrder, bits)
+	return fmt.Sprintf(".LD%d", id)
+}
+
+// GenDoubleData emits the 8-byte-aligned double constant pool.
+func (a *AsmGen) GenDoubleData() {
+	if len(a.doubleOrder) == 0 {
+		return
+	}
+	a.Write(".section __TEXT,__literal8,8byte_literals")
+	for id, bits := range a.doubleOrder {
+		a.Write(fmt.Sprintf(".LD%d:", id))
+		a.Write(fmt.Sprintf("    .quad %d", int64(bits)))
+	}
+	a.Write("")
 }
 
 func (a *AsmGen) AddString(value string) string {
@@ -151,20 +178,32 @@ func (a *AsmGen) GenGlobalVarData(globalVars []GlobalVarAsm) {
 }
 
 func (a *AsmGen) GenAsm(program AsmProgram) {
+	scanOperand := func(op AsmOperand) {
+		if dl, ok := op.(DoubleLit); ok {
+			a.AddDouble(dl.Bits)
+		}
+		if sl, ok := op.(StringLiteral); ok {
+			a.AddString(sl.Value)
+		}
+	}
 	for _, fn := range program.AsmFnDef {
 		for _, instr := range fn.Irs {
 			switch ast := instr.(type) {
 			case StringLiteral:
 				a.AddString(ast.Value)
 			case AsmMov:
-				if strLit, isStrLit := ast.Src.(StringLiteral); isStrLit {
-					a.AddString(strLit.Value)
-				}
+				scanOperand(ast.Src)
+				scanOperand(ast.Dst)
+			case AsmBinary:
+				scanOperand(ast.Src)
+			case Cmp:
+				scanOperand(ast.Src)
 			}
 		}
 	}
 
 	a.GenStringData()
+	a.GenDoubleData()
 	a.GenGlobalVarData(program.GlobalVars)
 
 	a.Write(".text")
@@ -242,14 +281,23 @@ func (a *AsmGen) GenInstr(instr AsmInstruction) {
 	case Jmp:
 		a.Write(fmt.Sprintf("    jmp .L%s", ast.Ident))
 	case Cmp:
-		a.Write(fmt.Sprintf("    cmp%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
+		if _, isD := ast.Type.(*asmtype.Double); isD {
+			a.Write(fmt.Sprintf("    comisd %s, %s", a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
+		} else {
+			a.Write(fmt.Sprintf("    cmp%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
+		}
 	case AsmBinary:
-		if ast.Op == Mult {
+		if _, isD := ast.Type.(*asmtype.Double); isD {
+			m := map[AsmAstBinaryOp]string{Add: "addsd", Sub: "subsd", Mult: "mulsd", DivSd: "divsd"}[ast.Op]
+			a.Write(fmt.Sprintf("    %s %s, %s", m, a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
+		} else if ast.Op == Mult {
 			a.Write(fmt.Sprintf("    imul%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
 		} else if ast.Op == Add {
 			a.Write(fmt.Sprintf("    add%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
 		} else if ast.Op == Sub {
 			a.Write(fmt.Sprintf("    sub%s %s, %s", a.GenType(ast.Type), a.GenOperand(ast.Src, ast.Type), a.GenOperand(ast.Dst, ast.Type)))
+		} else if ast.Op == XorOp {
+			a.Write(fmt.Sprintf("    xorq %s, %s", a.GenOperand(ast.Src, &asmtype.QuadWord{}), a.GenOperand(ast.Dst, &asmtype.QuadWord{})))
 		}
 	case Cdq:
 		switch ast.Type.(type) {
@@ -279,6 +327,10 @@ func (a *AsmGen) GenInstr(instr AsmInstruction) {
 		a.Write(fmt.Sprintf("    movslq %s, %s", a.GenOperand(ast.Src, &asmtype.LongWord{}), a.GenOperand(ast.Dst, &asmtype.QuadWord{})))
 	case AsmLea:
 		a.Write(fmt.Sprintf("    leaq %s, %s", a.GenOperand(ast.Src, &asmtype.QuadWord{}), a.GenOperand(ast.Dst, &asmtype.QuadWord{})))
+	case AsmCvtSi2Sd:
+		a.Write(fmt.Sprintf("    cvtsi2sdq %s, %s", a.GenOperand(ast.Src, &asmtype.QuadWord{}), a.GenOperand(ast.Dst, &asmtype.Double{})))
+	case AsmCvtTsd2Si:
+		a.Write(fmt.Sprintf("    cvttsd2siq %s, %s", a.GenOperand(ast.Src, &asmtype.Double{}), a.GenOperand(ast.Dst, &asmtype.QuadWord{})))
 	case AsmLoadFromMem:
 		a.Write(fmt.Sprintf("    mov%s (%%r10), %s", a.GenType(ast.Type), a.GenOperand(ast.Dst, ast.Type)))
 	case AsmStoreToMem:
@@ -303,6 +355,8 @@ func (a *AsmGen) GenType(ksmtype asmtype.AsmType) string {
 		return "l"
 	case *asmtype.StringType:
 		return "q"
+	case *asmtype.Double:
+		return "sd"
 	default:
 		panic(fmt.Sprintf("unimplemented gentype: %v, on idx: %d, fn:%s", ksmtype, a.currentInstrIdx, a.currentFn))
 	}
@@ -330,12 +384,17 @@ func (a *AsmGen) GenOperand(op AsmOperand, asmType asmtype.AsmType) string {
 			return fmt.Sprintf("_%s(%%rip)", ast.Label)
 		}
 		return fmt.Sprintf("%s(%%rip)", ast.Label)
+	case DoubleLit:
+		return fmt.Sprintf("%s(%%rip)", a.AddDouble(ast.Bits))
 	default:
 		panic("unimplemented operand")
 	}
 }
 
 func (a *AsmGen) RegisterShow(reg Register, asmType asmtype.AsmType) string {
+	if reg.Reg.IsXmm() {
+		return "%" + string(reg.Reg)
+	}
 	numbered := reg.Reg == R8 || reg.Reg == R9 || reg.Reg == R10 || reg.Reg == R11
 	switch asmType.(type) {
 	case *asmtype.QuadWord, *asmtype.StringType:

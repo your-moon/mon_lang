@@ -440,3 +440,19 @@ func (a *ASTMethodCall) SetType(t mtypes.Type) { a.Type = t }
 func (a *ASTMethodCall) PrintAST(depth int) string {
 	return indent(depth) + a.Inner.PrintAST(0) + "." + a.Method + "(...)"
 }
+
+// ASTConstFloat is a бутархай literal like 3.14.
+type ASTConstFloat struct {
+	Token lexer.Token
+	Value float64
+	Type  mtypes.Type
+}
+
+func (a *ASTConstFloat) expressionNode()       {}
+func (a *ASTConstFloat) constant()             {}
+func (a *ASTConstFloat) TokenLiteral() string  { return "FLOAT" }
+func (a *ASTConstFloat) GetType() mtypes.Type  { return a.Type }
+func (a *ASTConstFloat) SetType(t mtypes.Type) { a.Type = t }
+func (a *ASTConstFloat) PrintAST(depth int) string {
+	return indent(depth) + fmt.Sprintf("%g", a.Value)
+}

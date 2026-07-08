@@ -7,6 +7,8 @@
 
 package mconstant
 
+import "math"
+
 var IntZero = Int32{
 	Value: 0,
 }
@@ -26,6 +28,18 @@ type Int64 struct {
 
 func (i Int64) constant()       {}
 func (i Int64) GetValue() int64 { return i.Value }
+
+type Float64 struct {
+	Value float64
+}
+
+func (f Float64) constant() {}
+
+// GetValue returns the bit pattern; float constants flow through the
+// integer-shaped plumbing as bits and only codegen interprets them.
+func (f Float64) GetValue() int64 {
+	return int64(math.Float64bits(f.Value))
+}
 
 type Int32 struct {
 	Value int32

@@ -1,3 +1,10 @@
+/*
+ * mon_lang - lexer
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package lexer
 
 type TokenType string
@@ -46,23 +53,23 @@ const (
 	EXTERN TokenType = "EXTERN"
 	STATIC TokenType = "STATIC"
 
-	IDENT       TokenType = "IDENT"
-	NUMBER      TokenType = "NUMBER"
-	LONG        TokenType = "LONG"
-	STRING      TokenType = "STRING"
-	FN          TokenType = "FN"
-	VAR_DECL    TokenType = "DECL"
-	OPEN_PAREN  TokenType = "OPEN_PAREN"
-	CLOSE_PAREN TokenType = "CLOSE_PAREN"
-	RIGHT_ARROW TokenType = "RIGHT_ARROW"
+	IDENT         TokenType = "IDENT"
+	NUMBER        TokenType = "NUMBER"
+	LONG          TokenType = "LONG"
+	STRING        TokenType = "STRING"
+	FN            TokenType = "FN"
+	VAR_DECL      TokenType = "DECL"
+	OPEN_PAREN    TokenType = "OPEN_PAREN"
+	CLOSE_PAREN   TokenType = "CLOSE_PAREN"
+	RIGHT_ARROW   TokenType = "RIGHT_ARROW"
 	OPEN_BRACE    TokenType = "OPEN_BRACE"
 	CLOSE_BRACE   TokenType = "CLOSE_BRACE"
 	OPEN_BRACKET  TokenType = "OPEN_BRACKET"  // [
 	CLOSE_BRACKET TokenType = "CLOSE_BRACKET" // ]
-	SEMICOLON   TokenType = "SEMICOLON"
-	COLON       TokenType = "COLON"
-	TILDE       TokenType = "TILDE"
-	EOF         TokenType = "EOF"
+	SEMICOLON     TokenType = "SEMICOLON"
+	COLON         TokenType = "COLON"
+	TILDE         TokenType = "TILDE"
+	EOF           TokenType = "EOF"
 
 	INT_TYPE    TokenType = "INT_TYPE"
 	STRING_TYPE TokenType = "STRING_TYPE"

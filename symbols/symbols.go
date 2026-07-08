@@ -1,3 +1,10 @@
+/*
+ * mon_lang - symbols
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package symbols
 
 import "github.com/your-moon/mon_lang/mtypes"

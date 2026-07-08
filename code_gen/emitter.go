@@ -1,3 +1,10 @@
+/*
+ * mon_lang - code_gen
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package codegen
 
 import (
@@ -124,31 +131,17 @@ func (a *AsmASTGen) GenASTExternFn(fn tackygen.TackyFn) AsmExternFn {
 	return asmfn
 }
 
-func (a *AsmASTGen) passInStack(param tackygen.TackyVal) []AsmInstruction {
-	switch valtype := param.(type) {
-	case tackygen.Var:
-		asmArg := a.GenASTVal(valtype)
-		switch asmArg.(type) {
-		case Register:
-		case Imm:
-			push := Push{
-				Op: asmArg,
-			}
-			return []AsmInstruction{push}
-		default:
-			pType := a.AsmType(param)
-			mov := AsmMov{
-				Type: pType,
-				Src:  asmArg,
-				Dst:  Register{Reg: AX},
-			}
-			push := Push{
-				Op: Register{Reg: AX},
-			}
-			return []AsmInstruction{mov, push}
-		}
+// passInStack loads the i-th stack-passed parameter (0-based among stack
+// params) from its SysV slot: return address and saved rbp sit below, so
+// slots start at 16(%rbp).
+func (a *AsmASTGen) passInStack(stackIdx int, param tackygen.TackyVal) []AsmInstruction {
+	pType := a.AsmType(param)
+	mov := AsmMov{
+		Type: pType,
+		Src:  Stack{Value: 16 + 8*stackIdx},
+		Dst:  a.GenASTVal(param),
 	}
-	return []AsmInstruction{}
+	return []AsmInstruction{mov}
 }
 
 func (a *AsmASTGen) AsmType(val tackygen.TackyVal) asmtype.AsmType {
@@ -212,8 +205,8 @@ func (a *AsmASTGen) passParams(fn tackygen.TackyFn) (tackygen.TackyFn, []AsmInst
 		ir = append(ir, a.passInRegisters(i, param)...)
 	}
 
-	for _, param := range stackParams {
-		ir = append(ir, a.passInStack(param)...)
+	for i, param := range stackParams {
+		ir = append(ir, a.passInStack(i, param)...)
 	}
 
 	return fn, ir
@@ -243,6 +236,14 @@ func (a *AsmASTGen) convertFnCall(fn tackygen.FnCall) []AsmInstruction {
 
 	if len(stackArgs)%2 != 0 {
 		stackPadding = 8
+		// keep rsp 16-aligned at the call: pad before pushing an odd
+		// number of 8-byte args (removed together with the args below)
+		irs = append(irs, AsmBinary{
+			Op:   Sub,
+			Type: &asmtype.QuadWord{},
+			Src:  Imm{Value: 8},
+			Dst:  Register{Reg: SP},
+		})
 	}
 
 	for i, arg := range registerArgs {

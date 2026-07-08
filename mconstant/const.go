@@ -1,3 +1,10 @@
+/*
+ * mon_lang - mconstant
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package mconstant
 
 var IntZero = Int32{

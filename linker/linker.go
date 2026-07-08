@@ -1,7 +1,15 @@
+/*
+ * mon_lang - linker
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package linker
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -88,7 +96,7 @@ func (l *Linker) Link() error {
 
 	defer os.Remove(objFile)
 
-	// Find stdlib/lib.c relative to the executable or current directory
+	// cc compiles the C runtime shim on every link
 	stdlibFile := filepath.Join(STDLIB_DIR, "lib.c")
 
 	// Use cc to link with libc (provides malloc, printf, etc.)
@@ -116,10 +124,25 @@ func (l *Linker) MakeExecutable() error {
 	return os.Chmod(l.outputFile, 0755)
 }
 
+// Run executes the built program, forwarding stdio. The program's exit code
+// comes back as *ExitCodeError so main can propagate it instead of treating
+// a nonzero exit as a compiler failure.
 func (l *Linker) Run() error {
 	cmd := exec.Command(l.outputFile)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
-	return cmd.Run()
+	err := cmd.Run()
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return &ExitCodeError{Code: exitErr.ExitCode()}
+	}
+	return err
+}
+
+// ExitCodeError carries the compiled program's own exit status.
+type ExitCodeError struct{ Code int }
+
+func (e *ExitCodeError) Error() string {
+	return fmt.Sprintf("програм %d кодоор дууслаа", e.Code)
 }

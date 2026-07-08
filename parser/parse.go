@@ -1,3 +1,10 @@
+/*
+ * mon_lang - parser
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package parser
 
 import (
@@ -86,7 +93,8 @@ func (p *Parser) parseDecl(globl bool, extern bool) ASTDecl {
 	case lexer.VAR_DECL:
 		return p.parseVarDecl(globl, extern)
 	default:
-		panic(fmt.Sprintf("unimplemented token: %s", p.current.Type))
+		p.appendError(fmt.Sprintf("гадаад түвшинд зөвхөн функц эсвэл хувьсагч зарлаж болно, олдсон: %s", p.current.Type))
+		return nil
 	}
 }
 
@@ -103,14 +111,18 @@ func (p *Parser) parseImport() *ASTImport {
 	} else if p.expect(lexer.IDENT) {
 		ast.Ident = *p.current.Value
 		for !p.peekIs(lexer.SEMICOLON) {
-			if p.peekIs(lexer.DOT) {
-				p.nextToken()
-				if !p.expect(lexer.IDENT) {
-					p.appendError(ErrMissingIdentifier)
-					return nil
-				}
-				ast.SubImports = append(ast.SubImports, *p.current.Value)
+			if !p.peekIs(lexer.DOT) {
+				// anything but '.' or ';' here is malformed; stop rather
+				// than loop forever
+				p.appendError(ErrMissingSemicolon)
+				return nil
 			}
+			p.nextToken()
+			if !p.expect(lexer.IDENT) {
+				p.appendError(ErrMissingIdentifier)
+				return nil
+			}
+			ast.SubImports = append(ast.SubImports, *p.current.Value)
 		}
 	} else {
 		p.appendError("файлын зам эсвэл нэр байх ёстой")
@@ -230,9 +242,17 @@ func (p *Parser) parseBlockItems() []BlockItem {
 	var items []BlockItem
 
 	// block duustal davtna
-	for !p.peekIs(lexer.CLOSE_BRACE) {
+	for !p.peekIs(lexer.CLOSE_BRACE) && !p.peekIs(lexer.EOF) {
+		before := p.scanner.Cursor
 		stmt := p.parseBlockItem()
-		items = append(items, stmt)
+		if stmt != nil {
+			items = append(items, stmt)
+		}
+		// a failed item that consumed nothing would loop forever; skip one
+		// token so error recovery always makes forward progress
+		if p.scanner.Cursor == before {
+			p.nextToken()
+		}
 	}
 
 	return items
@@ -472,6 +492,9 @@ func (p *Parser) parseWhile() *ASTWhile {
 	// if dont have cond
 	if p.peekIs(lexer.OPEN_BRACE) {
 		block := p.parseBlock()
+		if block == nil {
+			return nil
+		}
 		ast.Body = *block
 	} else {
 		ast.Cond = p.parseExpr(Lowest)
@@ -484,7 +507,11 @@ func (p *Parser) parseWhile() *ASTWhile {
 			return nil
 		}
 
-		ast.Body = *p.parseBlock()
+		block := p.parseBlock()
+		if block == nil {
+			return nil
+		}
+		ast.Body = *block
 	}
 
 	return ast
@@ -535,7 +562,10 @@ func (p *Parser) parseReturn() *ASTReturnStmt {
 	}
 
 	p.nextToken() // consume 'буц'
-	ast.ReturnValue = p.parseExpr(Lowest)
+	// bare `буц;` is a void return
+	if !p.peekIs(lexer.SEMICOLON) {
+		ast.ReturnValue = p.parseExpr(Lowest)
+	}
 
 	if !p.expect(lexer.SEMICOLON) {
 		p.appendError(ErrMissingSemicolon)
@@ -607,6 +637,7 @@ var precedences = map[lexer.TokenType]int{
 	lexer.LOGICOR:          LogicOr,
 	lexer.QUESTIONMARK:     Conditional,
 	lexer.ASSIGN:           Assign,
+	lexer.DOTDOT:           Assign, // range binds loosely, like assignment
 }
 
 func (p *Parser) parseExpr(minPrec int) ASTExpression {
@@ -642,7 +673,7 @@ func (p *Parser) parseExpr(minPrec int) ASTExpression {
 			case *ASTArrayIndex:
 				left = &ASTAssignment{Token: p.current, Left: lhs, Right: right}
 			default:
-				panic("left side of assign must be var or array index")
+				p.appendError(ErrInvalidAssignTarget)
 			}
 		} else if op == ASTBinOp(A_QUESTIONMARK) {
 			middle := p.parseExpr(Lowest)
@@ -678,38 +709,6 @@ func (p *Parser) parseExpr(minPrec int) ASTExpression {
 	return left
 }
 
-func (p *Parser) ParseBinOp() ASTBinOp {
-	next := p.peekToken
-	p.nextToken()
-	switch next.Type {
-	case lexer.PLUS:
-		return ASTBinOp(A_PLUS)
-	case lexer.MINUS:
-		return ASTBinOp(A_MINUS)
-	case lexer.MUL:
-		return ASTBinOp(A_MUL)
-	case lexer.DIV:
-		return ASTBinOp(A_DIV)
-	case lexer.LOGICAND:
-		return ASTBinOp(A_AND)
-	case lexer.LOGICOR:
-		return ASTBinOp(A_OR)
-	case lexer.EQUALTO:
-		return ASTBinOp(A_EQUALTO)
-	case lexer.NOTEQUAL:
-		return ASTBinOp(A_NOTEQUAL)
-	case lexer.LESSTHAN:
-		return ASTBinOp(A_LESSTHAN)
-	case lexer.LESSTHANEQUAL:
-		return ASTBinOp(A_LESSTHANEQUAL)
-	case lexer.GREATERTHAN:
-		return ASTBinOp(A_GREATERTHAN)
-	case lexer.GREATERTHANEQUAL:
-		return ASTBinOp(A_GREATERTHANEQUAL)
-	default:
-		panic(fmt.Sprintf("unknown bin op: %v", p.peekToken.Type))
-	}
-}
 
 func (p *Parser) parseInfixOp(op lexer.TokenType) (ASTBinOp, error) {
 	switch op {
@@ -792,8 +791,19 @@ func (p *Parser) parseArgList() []ASTExpression {
 	args := []ASTExpression{}
 
 	for !p.peekIs(lexer.CLOSE_PAREN) {
-		args = append(args, p.parseExpr(Lowest))
+		if p.peekIs(lexer.EOF) {
+			p.appendError(errors.ErrMissingParenClose)
+			break
+		}
+		before := p.scanner.Cursor
+		arg := p.parseExpr(Lowest)
+		if arg != nil {
+			args = append(args, arg)
+		}
 		if p.peekIs(lexer.COMMA) {
+			p.nextToken()
+		} else if p.scanner.Cursor == before {
+			// nothing consumed and no separator: avoid spinning forever
 			p.nextToken()
 		}
 	}

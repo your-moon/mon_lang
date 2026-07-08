@@ -1,3 +1,10 @@
+/*
+ * mon_lang - semantic_analysis
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package semanticanalysis
 
 import (
@@ -62,13 +69,19 @@ func (c *TypeChecker) checkFnDecl(decl *parser.FnDecl) (*parser.FnDecl, error) {
 	prev := c.symbolTable.GetOptional(decl.Ident)
 	//decl is in symbol table
 	if prev != nil {
-		_, ok := prev.Type.(*mtypes.FnType)
+		prevFn, ok := prev.Type.(*mtypes.FnType)
 		if !ok {
 			return nil, c.createSemanticError("функц %s-ийг өөр төрөлтэйгөөр дахин зарласан байна", decl.Token.Line, decl.Token.Span)
+		}
+		if !sameFnSignature(prevFn, fnType) {
+			return nil, c.createSemanticError(fmt.Sprintf("функц '%s'-ийг өөр гарын үсэгтэйгээр дахин зарласан байна", decl.Ident), decl.Token.Line, decl.Token.Span)
 		}
 		alreadyDefined = prev.IsDefined
 		if alreadyDefined && hasBody {
 			return nil, c.createSemanticError(fmt.Sprintf("функц '%s'-ийг дахин зарласан байна", decl.Ident), decl.Token.Line, decl.Token.Span)
+		}
+		if hasBody {
+			prev.IsDefined = true
 		}
 	} else {
 		c.symbolTable.AddFn(fnType, decl.Ident, hasBody)
@@ -86,6 +99,20 @@ func (c *TypeChecker) checkFnDecl(decl *parser.FnDecl) (*parser.FnDecl, error) {
 	}
 
 	return decl, nil
+}
+
+// sameFnSignature reports whether two function types agree in arity and
+// parameter/return types; redeclarations must match exactly.
+func sameFnSignature(a, b *mtypes.FnType) bool {
+	if len(a.ParamTypes) != len(b.ParamTypes) {
+		return false
+	}
+	for i := range a.ParamTypes {
+		if !mtypes.IsSameType(a.ParamTypes[i], b.ParamTypes[i]) {
+			return false
+		}
+	}
+	return mtypes.IsSameType(a.RetType, b.RetType)
 }
 
 func (c *TypeChecker) checkBlock(block *parser.ASTBlock) (*parser.ASTBlock, error) {
@@ -140,18 +167,39 @@ func (c *TypeChecker) checkStmt(stmt parser.ASTStmt) (parser.ASTStmt, error) {
 		return typestmt, nil
 	case *parser.ASTLoop:
 		if typestmt.Var != nil {
-			dvar, err := c.checkExpr(typestmt.Var)
+			// the loop variable is a fresh declaration, not a lookup
+			if dvar, ok := typestmt.Var.(*parser.ASTVar); ok {
+				c.symbolTable.AddVar(&mtypes.Int32Type{}, dvar.Ident)
+				dvar.SetType(&mtypes.Int32Type{})
+			} else {
+				dvar, err := c.checkExpr(typestmt.Var)
+				if err != nil {
+					return nil, err
+				}
+				typestmt.Var = dvar
+			}
+		}
+
+		// range bounds are plain int expressions; the range node itself
+		// has no type of its own
+		if rangeExpr, ok := typestmt.Expr.(*parser.ASTRangeExpr); ok {
+			start, err := c.checkExpr(rangeExpr.Start)
 			if err != nil {
 				return nil, err
 			}
-			typestmt.Var = dvar
+			rangeExpr.Start = start
+			end, err := c.checkExpr(rangeExpr.End)
+			if err != nil {
+				return nil, err
+			}
+			rangeExpr.End = end
+		} else {
+			expr, err := c.checkExpr(typestmt.Expr)
+			if err != nil {
+				return nil, err
+			}
+			typestmt.Expr = expr
 		}
-
-		expr, err := c.checkExpr(typestmt.Expr)
-		if err != nil {
-			return nil, err
-		}
-		typestmt.Expr = expr
 
 		block, err := c.checkBlock(&typestmt.Body)
 		if err != nil {
@@ -219,11 +267,9 @@ func (c *TypeChecker) checkDecl(decl parser.ASTDecl) (parser.ASTDecl, error) {
 			if err != nil {
 				return nil, err
 			}
-			_, isInt32 := exprCheck.GetType().(*mtypes.Int32Type)
-			declType, isDeclInt64 := decl.VarType.(*mtypes.Int64Type)
-			if isInt32 && isDeclInt64 {
-				exprCheck.SetType(declType)
-			}
+			// keep the expression's true type: tackygen compares it
+			// against the declared type and inserts SignExtend; relabeling
+			// here would silently skip the widening (zero-extend bug)
 			decl.Expr = exprCheck
 		}
 		return decl, nil

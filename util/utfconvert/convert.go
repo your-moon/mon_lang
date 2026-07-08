@@ -1,3 +1,10 @@
+/*
+ * mon_lang - util/utfconvert
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package utfconvert
 
 var utfMapping = map[rune]string{

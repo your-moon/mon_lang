@@ -1,3 +1,10 @@
+/*
+ * mon_lang - compiler driver
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package main
 
 import (

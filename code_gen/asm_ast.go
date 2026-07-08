@@ -1,3 +1,10 @@
+/*
+ * mon_lang - code_gen
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package codegen
 
 import (
@@ -135,14 +142,6 @@ type AsmExternFn struct {
 
 func (a AsmExternFn) Ir() string {
 	return fmt.Sprintf("extern %s", a.Name)
-}
-
-type DeallocateStack struct {
-	Value int
-}
-
-func (a DeallocateStack) Ir() string {
-	return fmt.Sprintf("addq $%d, %s", a.Value, R10)
 }
 
 type Push struct {

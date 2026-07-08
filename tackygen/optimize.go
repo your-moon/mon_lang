@@ -21,13 +21,20 @@ import (
 // folding); instruction equality can't be tested directly because FnCall
 // holds a slice, so the loop is bounded rather than convergence-checked.
 func Optimize(p TackyProgram) TackyProgram {
+	// globals are written in one function and read in another, so the
+	// intra-function passes must never treat a global as a dead store or
+	// track it as a local copy
+	globals := map[string]bool{}
+	for _, g := range p.GlobalVars {
+		globals[g.Name] = true
+	}
 	for i := range p.FnDefs {
 		irs := p.FnDefs[i].Instructions
 		for range [4]int{} {
 			irs = foldConstants(irs)
-			irs = propagateCopies(irs)
+			irs = propagateCopies(irs, globals)
 			irs = dropUnreachable(irs)
-			irs = dropDeadStores(irs)
+			irs = dropDeadStores(irs, globals)
 		}
 		p.FnDefs[i].Instructions = irs
 	}
@@ -197,7 +204,7 @@ func foldConstants(irs []Instruction) []Instruction {
 // TACKY names don't distinguish globals from locals here, calls kill all
 // non-constant knowledge, and stores kill nothing (they write through
 // pointers, never named vars).
-func propagateCopies(irs []Instruction) []Instruction {
+func propagateCopies(irs []Instruction, globals map[string]bool) []Instruction {
 	// address-taken vars can change through any Store: never track them
 	aliased := map[string]bool{}
 	for _, in := range irs {
@@ -235,12 +242,12 @@ func propagateCopies(irs []Instruction) []Instruction {
 			instr.Src = subst(instr.Src)
 			if dst, ok := instr.Dst.(Var); ok {
 				killVar(dst.Name)
-				if !aliased[dst.Name] {
+				if !aliased[dst.Name] && !globals[dst.Name] {
 					switch s := instr.Src.(type) {
 					case Constant:
 						known[dst.Name] = s
 					case Var:
-						if s.Name != dst.Name && !aliased[s.Name] {
+						if s.Name != dst.Name && !aliased[s.Name] && !globals[s.Name] {
 							known[dst.Name] = s
 						}
 					}
@@ -362,7 +369,7 @@ func dropUnreachable(irs []Instruction) []Instruction {
 
 // dropDeadStores removes pure writes to temps that are never read. Address-
 // taken vars are exempt (reads may happen through pointers).
-func dropDeadStores(irs []Instruction) []Instruction {
+func dropDeadStores(irs []Instruction, globals map[string]bool) []Instruction {
 	read := map[string]bool{}
 	aliased := map[string]bool{}
 	note := func(v TackyVal) {
@@ -412,7 +419,7 @@ func dropDeadStores(irs []Instruction) []Instruction {
 	}
 	deadDst := func(dst TackyVal) bool {
 		v, ok := dst.(Var)
-		return ok && !read[v.Name] && !aliased[v.Name]
+		return ok && !read[v.Name] && !aliased[v.Name] && !globals[v.Name]
 	}
 	out := make([]Instruction, 0, len(irs))
 	for _, in := range irs {

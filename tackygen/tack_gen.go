@@ -44,11 +44,12 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	for _, stmt := range node.Decls {
 		switch stmttype := stmt.(type) {
 		case *parser.FnDecl:
-			if !stmttype.IsExtern {
-				program.FnDefs = append(program.FnDefs, c.EmitTackyFn(stmttype))
-			} else {
+			if stmttype.IsExtern {
 				program.ExternDefs = append(program.ExternDefs, c.EmitTackyFn(stmttype))
+			} else if stmttype.Body != nil {
+				program.FnDefs = append(program.FnDefs, c.EmitTackyFn(stmttype))
 			}
+			// a bodyless non-extern decl is a forward prototype: no code
 		case *parser.ASTStructDecl:
 			// layout only; nothing to emit
 		case *parser.VarDecl:

@@ -378,6 +378,12 @@ func (b *Buf) ImulMR(w bool, disp int, dst Reg) { // imul disp(%rbp), dst
 	b.memRBP(dst, disp)
 }
 
+func (b *Buf) ImulRipR(w bool, label string, dst Reg) { // imul label(%rip), dst
+	b.rex(w, dst, RBP)
+	b.byte(0x0F, 0xAF, modrm(0, dst, RBP))
+	b.DataRel32(label)
+}
+
 func (b *Buf) ImulIR(w bool, imm int64, dst Reg) { // imul $imm, dst, dst
 	b.rex(w, dst, dst)
 	b.byte(0x69, modrm(3, dst, dst))

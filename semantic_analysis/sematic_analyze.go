@@ -26,6 +26,7 @@ type SemanticAnalyzer struct {
 	importedFiles map[string]bool
 	baseDir       string
 	stdlibDir     string
+	moduleHandles map[string]map[string]bool // handle -> exported value names
 }
 
 func NewSemanticAnalyzer(source []int32, uniqueGen unique.UniqueGen, table *symbols.SymbolTable, baseDir string, stdlibDir string) *SemanticAnalyzer {
@@ -36,6 +37,7 @@ func NewSemanticAnalyzer(source []int32, uniqueGen unique.UniqueGen, table *symb
 		importedFiles: make(map[string]bool),
 		baseDir:       baseDir,
 		stdlibDir:     stdlibDir,
+		moduleHandles: make(map[string]map[string]bool),
 	}
 }
 
@@ -99,14 +101,28 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 			return nil, fmt.Errorf("импорт парсингийн алдаа: %s: %v", imp.FilePath, err)
 		}
 
+		// named import (гэж нэр): нэр.х becomes a checked alias for the
+		// exported symbol х - qualified access is validated against the
+		// module's export list. Types and methods stay global.
+		var exports map[string]bool
+		if imp.Ident != "" {
+			exports = make(map[string]bool)
+			s.moduleHandles[imp.Ident] = exports
+		}
 		for _, d := range importedProg.Decls {
 			switch dt := d.(type) {
 			case *parser.FnDecl:
 				if dt.IsPublic {
+					if exports != nil && !dt.IsMethod {
+						exports[dt.Ident] = true
+					}
 					importedDecls = append(importedDecls, dt)
 				}
 			case *parser.VarDecl:
 				if dt.IsPublic {
+					if exports != nil {
+						exports[dt.Ident] = true
+					}
 					importedDecls = append(importedDecls, dt)
 				}
 			case *parser.ASTStructDecl:
@@ -126,6 +142,7 @@ func (s *SemanticAnalyzer) Analyze(program *parser.ASTProgram) (*parser.ASTProgr
 		return nil, nil, err
 	}
 
+	s.resolver.moduleHandles = s.moduleHandles
 	program, err = s.resolver.Resolve(program)
 	if err != nil {
 		return nil, nil, err

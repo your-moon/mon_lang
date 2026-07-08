@@ -8,6 +8,11 @@ void khevle(long n) {
     printf("%ld", n);
 }
 
+// эхэвлэ - print unsigned 64-bit integer
+void ekhevle(unsigned long n) {
+    printf("%lu", n);
+}
+
 // мөр_хэвлэх - print string
 void mqr_khevlekh(const char *s) {
     printf("%s", s);

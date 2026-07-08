@@ -162,6 +162,12 @@ func (s *Scanner) ToKeyword() (Token, bool) {
 	if str == string(KeywordInt) {
 		return s.BuildToken(INT_TYPE), true
 	}
+	if str == string(KeywordUInt) {
+		return s.BuildToken(UINT_TYPE), true
+	}
+	if str == string(KeywordULong) {
+		return s.BuildToken(ULONG_TYPE), true
+	}
 	if str == string(KeywordString) {
 		return s.BuildToken(STRING_TYPE), true
 	}

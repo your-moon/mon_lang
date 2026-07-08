@@ -102,11 +102,7 @@ func (c *TypeChecker) checkFnDecl(decl *parser.FnDecl) (*parser.FnDecl, error) {
 }
 
 func isIntType(t mtypes.Type) bool {
-	switch t.(type) {
-	case *mtypes.Int32Type, *mtypes.Int64Type:
-		return true
-	}
-	return false
+	return mtypes.IsInteger(t)
 }
 
 // sameFnSignature reports whether two function types agree in arity and
@@ -503,12 +499,8 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 }
 
 func (c *TypeChecker) typesCompatible(argType, paramType mtypes.Type) bool {
-	// int32 and int64 are compatible (implicit widening)
-	_, argIsInt32 := argType.(*mtypes.Int32Type)
-	_, argIsInt64 := argType.(*mtypes.Int64Type)
-	_, paramIsInt32 := paramType.(*mtypes.Int32Type)
-	_, paramIsInt64 := paramType.(*mtypes.Int64Type)
-	if (argIsInt32 || argIsInt64) && (paramIsInt32 || paramIsInt64) {
+	// the integer family converts freely (widening/reinterpreting)
+	if mtypes.IsInteger(argType) && mtypes.IsInteger(paramType) {
 		return true
 	}
 	// everything else (pointers, strings, arrays) matches structurally -
@@ -528,6 +520,10 @@ func (c *TypeChecker) typeName(t mtypes.Type) string {
 		return "хоосон"
 	case *mtypes.PointerType:
 		return "заагч"
+	case *mtypes.UInt32Type:
+		return "этоо"
+	case *mtypes.UInt64Type:
+		return "этоо64"
 	case *mtypes.ArrayType:
 		return "массив"
 	default:
@@ -535,9 +531,26 @@ func (c *TypeChecker) typeName(t mtypes.Type) string {
 	}
 }
 
+// getCommonType implements the usual arithmetic conversions for the integer
+// family: same type wins; otherwise the wider width wins; at equal width,
+// unsigned wins (C semantics, Sandler ch12).
 func (c *TypeChecker) getCommonType(t1, t2 mtypes.Type) mtypes.Type {
-	if t1 == t2 {
+	if mtypes.IsSameType(t1, t2) {
 		return t1
 	}
-	return &mtypes.Int64Type{}
+	if !mtypes.IsInteger(t1) || !mtypes.IsInteger(t2) {
+		return &mtypes.Int64Type{}
+	}
+	s1, s2 := mtypes.SizeOf(t1), mtypes.SizeOf(t2)
+	if s1 == s2 {
+		if mtypes.IsUnsigned(t1) {
+			return t1
+		}
+		return t2
+	}
+	wider := t1
+	if s2 > s1 {
+		wider = t2
+	}
+	return wider
 }

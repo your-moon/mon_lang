@@ -23,6 +23,32 @@ type Int32Type struct{}
 
 func (t *Int32Type) typecheck() {}
 
+type UInt32Type struct{}
+
+func (t *UInt32Type) typecheck() {}
+
+type UInt64Type struct{}
+
+func (t *UInt64Type) typecheck() {}
+
+// IsUnsigned reports whether t is an unsigned integer type.
+func IsUnsigned(t Type) bool {
+	switch t.(type) {
+	case *UInt32Type, *UInt64Type:
+		return true
+	}
+	return false
+}
+
+// IsInteger reports whether t is any integer type.
+func IsInteger(t Type) bool {
+	switch t.(type) {
+	case *Int32Type, *Int64Type, *UInt32Type, *UInt64Type:
+		return true
+	}
+	return false
+}
+
 type StringType struct{}
 
 func (t *StringType) typecheck() {}
@@ -38,9 +64,9 @@ func (t *ArrayType) typecheck() {}
 // held by reference, so as values they are pointer-sized.
 func SizeOf(t Type) int64 {
 	switch t.(type) {
-	case *Int32Type:
+	case *Int32Type, *UInt32Type:
 		return 4
-	case *Int64Type, *PointerType, *ArrayType, *StringType:
+	case *Int64Type, *UInt64Type, *PointerType, *ArrayType, *StringType:
 		return 8
 	}
 	return 8
@@ -74,6 +100,12 @@ func IsSameType(a, b Type) bool {
 		return ok
 	case *Int32Type:
 		_, ok := b.(*Int32Type)
+		return ok
+	case *UInt32Type:
+		_, ok := b.(*UInt32Type)
+		return ok
+	case *UInt64Type:
+		_, ok := b.(*UInt64Type)
 		return ok
 	case *StringType:
 		_, ok := b.(*StringType)

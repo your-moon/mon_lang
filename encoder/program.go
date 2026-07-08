@@ -52,6 +52,7 @@ func mustReg(r codegen.AsmRegister) Reg {
 var condMap = map[codegen.CondCode]Cond{
 	codegen.E: CondE, codegen.NE: CondNE, codegen.G: CondG,
 	codegen.GE: CondGE, codegen.L: CondL, codegen.LE: CondLE,
+	codegen.A: CondA, codegen.AE: CondAE, codegen.B: CondB, codegen.BE: CondBE,
 }
 
 func isQuad(t asmtype.AsmType) bool {
@@ -249,9 +250,17 @@ func encodeInstr(b *Buf, pool *stringPool, instr codegen.AsmInstruction) error {
 		w := isQuad(ast.Type)
 		switch classify(ast.Src) {
 		case oReg:
-			b.IdivR(w, opReg(ast.Src))
+			if ast.Unsigned {
+				b.DivR(w, opReg(ast.Src))
+			} else {
+				b.IdivR(w, opReg(ast.Src))
+			}
 		case oStack:
-			b.IdivM(w, opDisp(ast.Src))
+			if ast.Unsigned {
+				b.DivM(w, opDisp(ast.Src))
+			} else {
+				b.IdivM(w, opDisp(ast.Src))
+			}
 		default:
 			return fmt.Errorf("idiv: unsupported src %T", ast.Src)
 		}

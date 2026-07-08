@@ -172,6 +172,27 @@ func (l Load) Ir() {
 	fmt.Printf("%s := load %s\n", l.Dst.val(), l.Src.val())
 }
 
+// unsigned variants: same shapes, different machine lowering
+// (div vs idiv, above/below vs greater/less)
+const (
+	UDiv              TackyBinaryOp = "udiv"
+	UModulo           TackyBinaryOp = "umod"
+	ULessThan         TackyBinaryOp = "u<"
+	ULessThanEqual    TackyBinaryOp = "u<="
+	UGreaterThan      TackyBinaryOp = "u>"
+	UGreaterThanEqual TackyBinaryOp = "u>="
+)
+
+// ZeroExtend widens an unsigned 32-bit value to 64 bits.
+type ZeroExtend struct {
+	Src TackyVal
+	Dst TackyVal
+}
+
+func (z ZeroExtend) Ir() {
+	fmt.Printf("%s := zeroextend %s\n", z.Dst.val(), z.Src.val())
+}
+
 type Store struct {
 	Src TackyVal
 	Dst TackyVal

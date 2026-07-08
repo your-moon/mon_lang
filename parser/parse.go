@@ -930,7 +930,14 @@ func (p *Parser) Errors() []error {
 
 func (p *Parser) nextToken() {
 	p.current = p.peekToken
-	p.peekToken, _ = p.scanner.Scan()
+	tok, err := p.scanner.Scan()
+	if err != nil {
+		// surface lexer errors instead of dropping them; EOF stops the
+		// parse so the error isn't followed by a cascade of bogus ones
+		p.appendError(err.Error())
+		tok = lexer.Token{Type: lexer.EOF}
+	}
+	p.peekToken = tok
 }
 
 func (p *Parser) checkOptional(expected lexer.TokenType) bool {

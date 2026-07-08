@@ -132,6 +132,22 @@ func (c *TypeChecker) CheckTopLevel(program *parser.ASTProgram) (*parser.ASTProg
 		}
 	}
 
+	// Pass 2b: register file-scope variable types, so any function body or
+	// initializer may reference a global declared later (e.g. a package using
+	// constants from a package imported after it).
+	for _, decl := range program.Decls {
+		if v, ok := decl.(*parser.VarDecl); ok {
+			if v.VarType != nil {
+				rt, err := c.resolveType(v.VarType, v.Token.Line, v.Token.Span)
+				if err != nil {
+					return nil, err
+				}
+				v.VarType = rt
+			}
+			c.symbolTable.AddVar(v.VarType, v.Ident)
+		}
+	}
+
 	// Pass 3: type-check function bodies and file-scope variables.
 	for i, decl := range program.Decls {
 		switch decltype := decl.(type) {

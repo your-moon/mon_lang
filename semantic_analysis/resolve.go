@@ -89,24 +89,38 @@ func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, erro
 	emptyMap := make(IdMap)
 	var resolveErrors []string
 
-	// Hoist every top-level function name before resolving any body, so a
-	// function may call another declared later in the file (mutual recursion,
-	// forward references) — Go-style order independence. Methods are excluded:
-	// the same method name legitimately recurs across receiver types, and they
-	// are dispatched by the type checker, not this name map. Duplicate-
-	// definition detection stays with the type checker.
+	// Hoist every top-level function and file-scope variable name before
+	// resolving any body, so a declaration may reference another declared later
+	// (mutual recursion, forward references, and — crucially — a package using
+	// symbols from a package imported after it) — Go-style order independence.
+	// Methods are excluded: the same method name legitimately recurs across
+	// receiver types, and they are dispatched by the type checker. Duplicate
+	// FUNCTION detection stays with the type checker; duplicate GLOBALS are
+	// caught here.
+	seenGlobal := make(map[string]bool)
 	for _, decl := range program.Decls {
-		fn, ok := decl.(*parser.FnDecl)
-		if !ok || fn.IsMethod {
-			continue
-		}
-		if _, exists := emptyMap[fn.Ident]; !exists {
-			emptyMap[fn.Ident] = VarEntry{
-				UniqueName:       fn.Ident,
-				fromCurrentScope: true,
-				hasLinkage:       true,
+		switch d := decl.(type) {
+		case *parser.FnDecl:
+			if d.IsMethod {
+				continue
+			}
+			if _, exists := emptyMap[d.Ident]; !exists {
+				emptyMap[d.Ident] = VarEntry{UniqueName: d.Ident, fromCurrentScope: true, hasLinkage: true}
+			}
+		case *parser.VarDecl:
+			if seenGlobal[d.Ident] {
+				resolveErrors = append(resolveErrors,
+					r.createSemanticError(fmt.Sprintf(compilererrors.ErrDuplicateVariable, d.Ident),
+						d.Token.Line, d.Token.Span).Error())
+			}
+			seenGlobal[d.Ident] = true
+			if _, exists := emptyMap[d.Ident]; !exists {
+				emptyMap[d.Ident] = VarEntry{UniqueName: r.makeNamedTemporary(d.Ident), fromCurrentScope: true, hasLinkage: true}
 			}
 		}
+	}
+	if len(resolveErrors) > 0 {
+		return nil, fmt.Errorf("%s", strings.Join(resolveErrors, "\n"))
 	}
 
 	for i, decl := range program.Decls {
@@ -141,19 +155,19 @@ func (r *Resolver) ResolveDecl(decl parser.ASTDecl, innerMap IdMap) (IdMap, pars
 }
 
 func (r *Resolver) ResolveFileScopeVarDecl(varDecl *parser.VarDecl, innerMap IdMap) (IdMap, *parser.VarDecl, error) {
-	if _, exists := innerMap[varDecl.Ident]; exists && innerMap[varDecl.Ident].fromCurrentScope {
-		return nil, nil, r.createSemanticError(
-			fmt.Sprintf(compilererrors.ErrDuplicateVariable, varDecl.Ident),
-			varDecl.Token.Line,
-			varDecl.Token.Span,
-		)
-	}
-
-	uniqueName := r.makeNamedTemporary(varDecl.Ident)
-	innerMap[varDecl.Ident] = VarEntry{
-		UniqueName:       uniqueName,
-		fromCurrentScope: true,
-		hasLinkage:       true,
+	// File-scope variables are hoisted in Resolve's pre-pass, so an entry with
+	// linkage already exists — reuse its unique name (duplicate detection also
+	// happened there). Fall back to fresh assignment if somehow unhoisted.
+	var uniqueName string
+	if entry, exists := innerMap[varDecl.Ident]; exists && entry.hasLinkage {
+		uniqueName = entry.UniqueName
+	} else {
+		uniqueName = r.makeNamedTemporary(varDecl.Ident)
+		innerMap[varDecl.Ident] = VarEntry{
+			UniqueName:       uniqueName,
+			fromCurrentScope: true,
+			hasLinkage:       true,
+		}
 	}
 	varDecl.Ident = uniqueName
 

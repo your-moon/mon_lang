@@ -40,6 +40,7 @@ var regMap = map[codegen.AsmRegister]Reg{
 	codegen.AX: RAX, codegen.AL: RAX, codegen.CX: RCX, codegen.DX: RDX,
 	codegen.DI: RDI, codegen.SI: RSI, codegen.R8: R8, codegen.R9: R9,
 	codegen.R10: R10, codegen.R11: R11, codegen.SP: RSP,
+	codegen.BX: RBX, codegen.R12: 12, codegen.R13: 13, codegen.R14: 14, codegen.R15: 15,
 	codegen.XMM0: 0, codegen.XMM1: 1, codegen.XMM2: 2, codegen.XMM3: 3,
 	codegen.XMM4: 4, codegen.XMM5: 5, codegen.XMM6: 6, codegen.XMM7: 7,
 	codegen.XMM14: 14, codegen.XMM15: 15,

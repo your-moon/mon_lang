@@ -70,6 +70,9 @@ type fixup struct {
 	// rel32 is pc-relative to the end of the field; disp32 fixups (dataRef)
 	// are patched to an absolute delta by the layout stage instead.
 	dataRef bool
+	// rip-relative disp32 is measured from the END of the instruction; when
+	// an immediate follows the disp field, extra is its size in bytes.
+	extra int
 }
 
 // Buf accumulates machine code and resolves labels.
@@ -117,6 +120,14 @@ func (b *Buf) DataRel32(label string) {
 	b.u32(0)
 }
 
+// dataRel32Imm is DataRel32 for instructions where an immediate follows the
+// disp field: the CPU adds disp32 to the address of the NEXT instruction, so
+// the immediate's size must be part of the fixup math.
+func (b *Buf) dataRel32Imm(label string, immSize int) {
+	b.fixups = append(b.fixups, fixup{pos: len(b.code), label: label, dataRef: true, extra: immSize})
+	b.u32(0)
+}
+
 // Resolve patches all code-internal fixups. dataAddr gives the final address
 // of each data label relative to the code start (may be past the code end);
 // callers compute it during layout.
@@ -136,7 +147,7 @@ func (b *Buf) Resolve(dataAddr map[string]int) error {
 			}
 			target = t
 		}
-		rel := int32(target - (f.pos + 4))
+		rel := int32(target - (f.pos + 4 + f.extra))
 		binary.LittleEndian.PutUint32(b.code[f.pos:], uint32(rel))
 	}
 	return nil
@@ -277,7 +288,7 @@ func (b *Buf) MovIRip(w bool, imm int64, label string) { // mov $imm, label(%rip
 	}
 	b.rex(w, 0, RBP)
 	b.byte(0xC7, modrm(0, 0, RBP))
-	b.DataRel32(label)
+	b.dataRel32Imm(label, 4)
 	b.u32(uint32(int32(imm)))
 }
 
@@ -285,7 +296,7 @@ func (b *Buf) MovIRip(w bool, imm int64, label string) { // mov $imm, label(%rip
 func (b *Buf) AluIRip(op aluOp, w bool, imm int64, label string) {
 	b.rex(w, op.slash, RBP)
 	b.byte(0x81, modrm(0, op.slash, RBP))
-	b.DataRel32(label)
+	b.dataRel32Imm(label, 4)
 	b.u32(uint32(int32(imm)))
 }
 

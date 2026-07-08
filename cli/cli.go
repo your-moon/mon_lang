@@ -42,6 +42,7 @@ type CLI struct {
 	genAsm     bool
 	genObj     bool
 	run        bool
+	useCC      bool
 	outputFile string
 }
 
@@ -110,6 +111,7 @@ func (c *CLI) Run(args []string) error {
 	fs.BoolVar(&c.genAsm, "asm", false, "assembly файл үүсгэх")
 	fs.BoolVar(&c.genObj, "obj", false, "object файл үүсгэх")
 	fs.BoolVar(&c.run, "run", false, "компиляц хийгээд ажиллуулах")
+	fs.BoolVar(&c.useCC, "cc", false, "гадаад as/cc хэрэгслээр линк хийх (хуучин зам)")
 	fs.StringVar(&c.outputFile, "o", "", "гаралтын файлын нэр)")
 
 	// two-pass parse so flags may appear before or after the file:
@@ -450,21 +452,29 @@ func (c *CLI) runGen(args []string) error {
 	// the linker owns output-directory creation (it may prefix out/)
 	lnk := linker.NewLinker(outputFile)
 
-	asmBuffer := new(bytes.Buffer)
-	asmWriter := codegen.NewGenASM(asmBuffer, util.GetOsType())
-	asmWriter.GenAsm(asmProgram)
+	// The text emitter only runs for -S output and the legacy --cc path;
+	// the default path encodes machine code directly.
+	if c.genAsm || c.genObj || c.useCC {
+		asmBuffer := new(bytes.Buffer)
+		asmWriter := codegen.NewGenASM(asmBuffer, util.GetOsType())
+		asmWriter.GenAsm(asmProgram)
 
-	if base.Debug {
-		fmt.Println("\n---- ASMAST ----:")
-		fmt.Println(asmBuffer.String())
-	}
+		if base.Debug {
+			fmt.Println("\n---- ASMAST ----:")
+			fmt.Println(asmBuffer.String())
+		}
 
-	lnk.SetAssemblyContent(asmBuffer.String())
-	lnk.SetGenerateAsm(c.genAsm)
-	lnk.SetGenerateObj(c.genObj)
+		lnk.SetAssemblyContent(asmBuffer.String())
+		lnk.SetGenerateAsm(c.genAsm)
+		lnk.SetGenerateObj(c.genObj)
 
-	if err := lnk.Link(); err != nil {
-		return fmt.Errorf("Error linking: %v", err)
+		if err := lnk.Link(); err != nil {
+			return fmt.Errorf("Error linking: %v", err)
+		}
+	} else {
+		if err := lnk.LinkNative(asmProgram); err != nil {
+			return fmt.Errorf("линк алдаа: %v", err)
+		}
 	}
 
 	if !c.genAsm && !c.genObj {

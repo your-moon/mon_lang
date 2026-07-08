@@ -96,8 +96,8 @@ func (l *Linker) Link() error {
 
 	defer os.Remove(objFile)
 
-	// cc compiles the C runtime shim on every link
-	stdlibFile := filepath.Join(STDLIB_DIR, "lib.c")
+	// legacy path only: cc compiles the C runtime shim on every link
+	stdlibFile := filepath.Join(STDLIB_DIR, "cc", "lib.c")
 
 	// Use cc to link with libc (provides malloc, printf, etc.)
 	var linkCmd *exec.Cmd

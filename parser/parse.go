@@ -397,6 +397,8 @@ func (p *Parser) parseType() (mtypes.Type, error) {
 		return &mtypes.UInt32Type{}, nil
 	case lexer.ULONG_TYPE:
 		return &mtypes.UInt64Type{}, nil
+	case lexer.DOUBLE_TYPE:
+		return &mtypes.Float64Type{}, nil
 	case lexer.STRING_TYPE:
 		return &mtypes.StringType{}, nil
 	case lexer.VOID:
@@ -641,6 +643,8 @@ func (p *Parser) parseFactor() ASTExpression {
 		return p.parseIdent()
 	case lexer.NUMBER:
 		return p.parseConst()
+	case lexer.FLOAT:
+		return p.parseFloatConst()
 	case lexer.STRING:
 		return p.parseString()
 	case lexer.NEW:
@@ -1117,6 +1121,21 @@ func (p *Parser) parseConst() ASTConst {
 
 	// Otherwise use ASTConstInt for 32-bit numbers
 	return &ASTConstInt{Token: next, Value: intVal}
+}
+
+func (p *Parser) parseFloatConst() ASTExpression {
+	next := p.peekToken
+	p.nextToken()
+	if next.Value == nil {
+		p.appendError("cannot parse float")
+		return nil
+	}
+	v, err := strconv.ParseFloat(*next.Value, 64)
+	if err != nil {
+		p.appendError("cannot parse float")
+		return nil
+	}
+	return &ASTConstFloat{Token: next, Value: v}
 }
 
 func (p *Parser) peekPrecedence() int {

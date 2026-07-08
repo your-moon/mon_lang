@@ -56,6 +56,7 @@ const (
 
 	IDENT         TokenType = "IDENT"
 	NUMBER        TokenType = "NUMBER"
+	FLOAT         TokenType = "FLOAT"
 	LONG          TokenType = "LONG"
 	STRING        TokenType = "STRING"
 	FN            TokenType = "FN"
@@ -73,6 +74,7 @@ const (
 	EOF           TokenType = "EOF"
 
 	INT_TYPE    TokenType = "INT_TYPE"
+	DOUBLE_TYPE TokenType = "DOUBLE_TYPE" // бутархай
 	UINT_TYPE   TokenType = "UINT_TYPE"  // этоо
 	ULONG_TYPE  TokenType = "ULONG_TYPE" // этоо64
 	STRING_TYPE TokenType = "STRING_TYPE"

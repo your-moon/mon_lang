@@ -23,6 +23,10 @@ type Int32Type struct{}
 
 func (t *Int32Type) typecheck() {}
 
+type Float64Type struct{}
+
+func (t *Float64Type) typecheck() {}
+
 type UInt32Type struct{}
 
 func (t *UInt32Type) typecheck() {}
@@ -66,7 +70,7 @@ func SizeOf(t Type) int64 {
 	switch t.(type) {
 	case *Int32Type, *UInt32Type:
 		return 4
-	case *Int64Type, *UInt64Type, *PointerType, *ArrayType, *StringType, *StructType:
+	case *Int64Type, *UInt64Type, *PointerType, *ArrayType, *StringType, *StructType, *Float64Type:
 		return 8 // structs are references
 	}
 	return 8
@@ -137,6 +141,9 @@ func IsSameType(a, b Type) bool {
 		return ok
 	case *UInt32Type:
 		_, ok := b.(*UInt32Type)
+		return ok
+	case *Float64Type:
+		_, ok := b.(*Float64Type)
 		return ok
 	case *UInt64Type:
 		_, ok := b.(*UInt64Type)

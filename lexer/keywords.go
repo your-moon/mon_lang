@@ -34,6 +34,7 @@ const (
 	KeywordUInt   Keyword = "этоо"   // unsigned 32-bit (эерэг тоо)
 	KeywordULong  Keyword = "этоо64" // unsigned 64-bit
 	KeywordChar   Keyword = "тэмдэгт" // Unicode codepoint, alias of тоо
+	KeywordDouble Keyword = "бутархай" // float64
 	KeywordStruct Keyword = "бүтэц"
 	KeywordImpl   Keyword = "хэрэгжүүл"
 	KeywordMatch  Keyword = "тааруул"

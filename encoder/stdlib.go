@@ -500,6 +500,73 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.MovIR(false, 1, RAX)
 	b.Epilogue()
 
+	/* butarkhayKhevlekh(d in xmm0): fixed decimal, 6 truncated fractional
+	   digits, byte-identical to the C shim. Uses khevle for the integer
+	   part and temdegtKhevlekh for '.' and each digit; d and the loop
+	   state live on the stack across those calls (they clobber xmm/regs).
+	   Constants (0.0/-1.0/10.0/(double)n) are made with cvtsi2sd, so no
+	   double literal pool is needed here. */
+	b.Label(fnLabel("butarkhayKhevlekh"))
+	b.Prologue()
+	b.AluIR(OpSub, true, 32, RSP)
+	b.MovsdRM(0, -8) // save d at [rbp-8]
+
+	// sign: if d < 0, print '-' and negate
+	b.MovsdMR(-8, 0)
+	b.XorRR(true, R10, R10)
+	b.Cvtsi2sdRR(1, R10) // xmm1 = 0.0
+	b.ComisdRR(0, 1)     // d - 0.0
+	b.Jcc(CondAE, "stdlib.dbl.pos")
+	b.MovIR(false, '-', RDI)
+	b.Call(fnLabel("temdegtKhevlekh"))
+	b.MovsdMR(-8, 0)
+	b.MovIR(true, -1, R10)
+	b.Cvtsi2sdRR(1, R10)      // xmm1 = -1.0
+	b.sseArithRR(sseMul, 0, 1) // d *= -1
+	b.MovsdRM(0, -8)
+	b.Label("stdlib.dbl.pos")
+
+	// integer part
+	b.MovsdMR(-8, 0)
+	b.Cvttsd2siRR(RDI, 0) // ip = (long)d
+	b.MovRM(true, RDI, -16)
+	b.Call(fnLabel("khevle"))
+
+	// '.'
+	b.MovIR(false, '.', RDI)
+	b.Call(fnLabel("temdegtKhevlekh"))
+
+	// frac = d - (double)ip
+	b.MovsdMR(-8, 0)
+	b.MovMR(true, -16, R10)
+	b.Cvtsi2sdRR(1, R10)
+	b.sseArithRR(sseSub, 0, 1)
+	b.MovsdRM(0, -8) // frac at [rbp-8]
+
+	// six fractional digits
+	b.MovIM(true, 6, -24) // counter
+	b.Label("stdlib.dbl.loop")
+	b.MovsdMR(-8, 0)
+	b.MovIR(true, 10, R10)
+	b.Cvtsi2sdRR(1, R10)
+	b.sseArithRR(sseMul, 0, 1) // frac *= 10
+	b.Cvttsd2siRR(R11, 0)      // dg = (int)frac
+	b.MovRM(true, R11, -32)
+	b.MovMR(true, -32, R10)
+	b.Cvtsi2sdRR(1, R10)
+	b.sseArithRR(sseSub, 0, 1) // frac -= dg
+	b.MovsdRM(0, -8)
+	b.MovMR(true, -32, RDI)
+	b.AluIR(OpAdd, false, '0', RDI)
+	b.Call(fnLabel("temdegtKhevlekh"))
+	// counter--
+	b.MovMR(true, -24, RAX)
+	b.DecR(true, RAX)
+	b.MovRM(true, RAX, -24)
+	b.TestRR(true, RAX, RAX)
+	b.Jcc(CondNE, "stdlib.dbl.loop")
+	b.Epilogue()
+
 	/* mqrShine(len): mutable string buffer; bump-allocated mmap pages
 	   arrive zeroed, so the buffer is born NUL-terminated everywhere */
 	b.Label(fnLabel("mqrShine"))
@@ -540,5 +607,5 @@ func StdlibFns() []string {
 		"sanamsargwyToo", "odoo", "malloc", "chqlqqlqkh", "khwleekh",
 		"delgetsTseverlekh", "mqrUrt", "bayt", "baytTavikh",
 		"faylUnshikhBwten", "faylBichikh", "argumyentToo", "argumyent",
-		"mqrShine"}
+		"mqrShine", "butarkhayKhevlekh"}
 }

@@ -56,13 +56,18 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 			var initValue int64
 			size := 4 // default Int32
 			if stmttype.Expr != nil {
-				v, ok := foldConstExpr(stmttype.Expr)
-				if !ok {
-					panic(fmt.Sprintf("глобал хувьсагч '%s'-ийн анхны утга тогтмол илэрхийлэл байх ёстой", stmttype.Ident))
-				}
-				initValue = v
-				if _, isLong := stmttype.Expr.(*parser.ASTConstLong); isLong {
+				if f, isFloat := stmttype.Expr.(*parser.ASTConstFloat); isFloat {
+					initValue = (&mconstant.Float64{Value: f.Value}).GetValue() // bit pattern
 					size = 8
+				} else {
+					v, ok := foldConstExpr(stmttype.Expr)
+					if !ok {
+						panic(fmt.Sprintf("глобал хувьсагч '%s'-ийн анхны утга тогтмол илэрхийлэл байх ёстой", stmttype.Ident))
+					}
+					initValue = v
+					if _, isLong := stmttype.Expr.(*parser.ASTConstLong); isLong {
+						size = 8
+					}
 				}
 			}
 			if stmttype.VarType != nil {
@@ -796,6 +801,9 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 			panic("assignment left side must be var or array index")
 		}
 	case parser.ASTConst:
+		if f, isFloat := expr.(*parser.ASTConstFloat); isFloat {
+			return Constant{Value: &mconstant.Float64{Value: f.Value}}, []Instruction{}
+		}
 		exprType := expr.GetType()
 		switch consttype := expr.(type) {
 		case *parser.ASTConstInt:
@@ -857,6 +865,22 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 
 			op = unsignedOp(op, expr.Left.GetType(), expr.Right.GetType())
 
+			// relational ops on doubles: promote operands to double when
+			// either side is one (expr.Type is int32 for comparisons)
+			_, lf := expr.Left.GetType().(*mtypes.Float64Type)
+			_, rf := expr.Right.GetType().(*mtypes.Float64Type)
+			if lf || rf {
+				v1c, v1cIrs := c.maybeSignExtend(v1, expr.Left.GetType(), &mtypes.Float64Type{})
+				irs = append(irs, v1cIrs...)
+				v1 = v1c
+				v2c, v2cIrs := c.maybeSignExtend(v2, expr.Right.GetType(), &mtypes.Float64Type{})
+				irs = append(irs, v2cIrs...)
+				v2 = v2c
+				dst := c.makeTemp(expr.Type)
+				irs = append(irs, Binary{Op: op, Src1: v1, Src2: v2, Dst: dst})
+				return dst, irs
+			}
+
 			// widen if mixed 32/64-bit
 			commonIs64 := mtypes.IsInteger(expr.Type) && mtypes.SizeOf(expr.Type) == 8
 			if commonIs64 {
@@ -910,13 +934,51 @@ func (c *TackyGen) PrettyPrint(program TackyProgram) {
 	}
 }
 
-// maybeSignExtend widens a 32-bit integer to 64 bits when the context
-// demands it: sign-extension for signed sources, zero-extension for
-// unsigned ones. Same-width or non-integer pairs pass through.
+// maybeSignExtend converts a value to the context's numeric type:
+// 32->64 integer widening (sign- or zero-extension by signedness),
+// int->double, and double->int truncation. Same-type pairs pass through.
 func (c *TackyGen) maybeSignExtend(val TackyVal, fromType, toType mtypes.Type) (TackyVal, []Instruction) {
 	if fromType == nil || toType == nil {
 		return val, nil
 	}
+	_, fromF := fromType.(*mtypes.Float64Type)
+	_, toF := toType.(*mtypes.Float64Type)
+
+	switch {
+	case fromF && toF:
+		return val, nil
+	case !fromF && toF:
+		if !mtypes.IsInteger(fromType) {
+			return val, nil
+		}
+		irs := []Instruction{}
+		// widen to 64-bit first; cvtsi2sd takes a full register
+		if mtypes.SizeOf(fromType) == 4 {
+			wide := c.makeTemp(&mtypes.Int64Type{})
+			if mtypes.IsUnsigned(fromType) {
+				irs = append(irs, ZeroExtend{Src: val, Dst: wide})
+			} else {
+				irs = append(irs, SignExtend{Src: val, Dst: wide})
+			}
+			val = wide
+		}
+		dst := c.makeTemp(toType)
+		irs = append(irs, IntToDouble{Src: val, Dst: dst})
+		return dst, irs
+	case fromF && !toF:
+		if !mtypes.IsInteger(toType) {
+			return val, nil
+		}
+		wide := c.makeTemp(&mtypes.Int64Type{})
+		irs := []Instruction{DoubleToInt{Src: val, Dst: wide}}
+		if mtypes.SizeOf(toType) == 4 {
+			narrow := c.makeTemp(toType)
+			irs = append(irs, Copy{Src: wide, Dst: narrow})
+			return narrow, irs
+		}
+		return wide, irs
+	}
+
 	if !mtypes.IsInteger(fromType) || !mtypes.IsInteger(toType) {
 		return val, nil
 	}

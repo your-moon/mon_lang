@@ -530,6 +530,8 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 			extype.Type = &mtypes.Int32Type{}
 		case *parser.ASTConstLong:
 			extype.Type = &mtypes.Int64Type{}
+		case *parser.ASTConstFloat:
+			extype.Type = &mtypes.Float64Type{}
 		}
 		return expr, nil
 	case *parser.ASTStringExpression:
@@ -546,6 +548,14 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 		}
 		expr.Left = left
 		expr.Right = right
+
+		if expr.Op == parser.ASTBinOp(parser.A_MOD) {
+			_, lf := left.GetType().(*mtypes.Float64Type)
+			_, rf := right.GetType().(*mtypes.Float64Type)
+			if lf || rf {
+				return nil, c.createSemanticError("'%' бутархай тоонд хэрэглэж болохгүй", expr.Token.Line, expr.Token.Span)
+			}
+		}
 
 		// pointer arithmetic: ptr±int (and int+ptr) stays a pointer;
 		// ptr-ptr of the same type yields an element count
@@ -569,7 +579,14 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 			}
 		}
 
-		//TODO: HANDLE DIFF CASES AND AND,OR | ADD,OR,MUL,DIV,MOD
+		// relational operators always yield int32, regardless of operand
+		// type (the operands still share a common type for the compare)
+		switch int(expr.Op) {
+		case parser.A_LESSTHAN, parser.A_LESSTHANEQUAL, parser.A_GREATERTHAN,
+			parser.A_GREATERTHANEQUAL, parser.A_EQUALTO, parser.A_NOTEQUAL:
+			expr.Type = &mtypes.Int32Type{}
+			return expr, nil
+		}
 		common := c.getCommonType(left.GetType(), right.GetType())
 		expr.Type = common
 		return expr, nil
@@ -656,8 +673,12 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 }
 
 func (c *TypeChecker) typesCompatible(argType, paramType mtypes.Type) bool {
-	// the integer family converts freely (widening/reinterpreting)
-	if mtypes.IsInteger(argType) && mtypes.IsInteger(paramType) {
+	// the numeric family converts freely (widening/reinterpreting/rounding)
+	isNum := func(t mtypes.Type) bool {
+		_, f := t.(*mtypes.Float64Type)
+		return f || mtypes.IsInteger(t)
+	}
+	if isNum(argType) && isNum(paramType) {
 		return true
 	}
 	// everything else (pointers, strings, arrays) matches structurally -
@@ -685,6 +706,8 @@ func (c *TypeChecker) typeName(t mtypes.Type) string {
 		return t.(*mtypes.StructType).Name
 	case *mtypes.NamedType:
 		return t.(*mtypes.NamedType).Name
+	case *mtypes.Float64Type:
+		return "бутархай"
 	case *mtypes.ArrayType:
 		return "массив"
 	default:
@@ -698,6 +721,11 @@ func (c *TypeChecker) typeName(t mtypes.Type) string {
 func (c *TypeChecker) getCommonType(t1, t2 mtypes.Type) mtypes.Type {
 	if mtypes.IsSameType(t1, t2) {
 		return t1
+	}
+	_, f1 := t1.(*mtypes.Float64Type)
+	_, f2 := t2.(*mtypes.Float64Type)
+	if (f1 && mtypes.IsInteger(t2)) || (f2 && mtypes.IsInteger(t1)) || (f1 && f2) {
+		return &mtypes.Float64Type{}
 	}
 	if !mtypes.IsInteger(t1) || !mtypes.IsInteger(t2) {
 		return &mtypes.Int64Type{}

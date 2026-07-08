@@ -564,3 +564,66 @@ func (b *Buf) Epilogue() {
 	b.PopR(RBP)
 	b.Ret()
 }
+
+/* --- SSE2 (double) encoders ---
+   XMM registers reuse register numbers 0-15; the operand-size prefix
+   (F2 for scalar-double, 66 for comisd) precedes REX. reg is the ModRM.reg
+   field, rm the ModRM.rm field. */
+
+func (b *Buf) ssePrefixRex(prefix byte, w bool, reg, rm Reg) {
+	b.byte(prefix)
+	if w || reg >= R8 || rm >= R8 {
+		b.byte(rexByte(w, reg, rm))
+	}
+}
+
+// sseRR: prefix 0F op with two register operands.
+func (b *Buf) sseRR(prefix byte, w bool, op byte, reg, rm Reg) {
+	b.ssePrefixRex(prefix, w, reg, rm)
+	b.byte(0x0F, op, modrm(3, reg, rm))
+}
+
+// sseRM: reg field register, memory operand disp(%rbp).
+func (b *Buf) sseRM(prefix byte, w bool, op byte, reg Reg, disp int) {
+	b.ssePrefixRex(prefix, w, reg, RBP)
+	b.byte(0x0F, op)
+	b.memRBP(reg, disp)
+}
+
+// sseRip: reg field register, rip-relative memory (double literal pool).
+func (b *Buf) sseRip(prefix byte, w bool, op byte, reg Reg, label string) {
+	b.ssePrefixRex(prefix, w, reg, RBP)
+	b.byte(0x0F, op, modrm(0, reg, RBP))
+	b.DataRel32(label)
+}
+
+// movsd load (dst xmm <- xmm/mem) uses opcode 10; store (mem <- xmm) uses 11.
+func (b *Buf) MovsdRR(dst, src Reg)          { b.sseRR(0xF2, false, 0x10, dst, src) }
+func (b *Buf) MovsdMR(disp int, dst Reg)     { b.sseRM(0xF2, false, 0x10, dst, disp) }
+func (b *Buf) MovsdRipR(label string, dst Reg) { b.sseRip(0xF2, false, 0x10, dst, label) }
+func (b *Buf) MovsdRM(src Reg, disp int)     { b.sseRM(0xF2, false, 0x11, src, disp) }
+
+// arithmetic: dst xmm op= src xmm/mem
+func (b *Buf) sseArithRR(op byte, dst, src Reg)     { b.sseRR(0xF2, false, op, dst, src) }
+func (b *Buf) sseArithRM(op byte, dst Reg, disp int) { b.sseRM(0xF2, false, op, dst, disp) }
+func (b *Buf) sseArithRip(op byte, dst Reg, label string) { b.sseRip(0xF2, false, op, dst, label) }
+
+const (
+	sseAdd byte = 0x58
+	sseMul byte = 0x59
+	sseSub byte = 0x5C
+	sseDiv byte = 0x5E
+)
+
+// comisd (66 0F 2F): compares dst - src, sets EFLAGS like an unsigned cmp.
+func (b *Buf) ComisdRR(dst, src Reg)          { b.sseRR(0x66, false, 0x2F, dst, src) }
+func (b *Buf) ComisdRM(dst Reg, disp int)     { b.sseRM(0x66, false, 0x2F, dst, disp) }
+func (b *Buf) ComisdRip(dst Reg, label string) { b.sseRip(0x66, false, 0x2F, dst, label) }
+
+// cvtsi2sd (F2 REX.W 0F 2A): int64 -> double
+func (b *Buf) Cvtsi2sdRR(dstXmm, srcGpr Reg) { b.sseRR(0xF2, true, 0x2A, dstXmm, srcGpr) }
+func (b *Buf) Cvtsi2sdMR(disp int, dstXmm Reg) { b.sseRM(0xF2, true, 0x2A, dstXmm, disp) }
+
+// cvttsd2si (F2 REX.W 0F 2C): double -> int64 (truncating)
+func (b *Buf) Cvttsd2siRR(dstGpr, srcXmm Reg) { b.sseRR(0xF2, true, 0x2C, dstGpr, srcXmm) }
+func (b *Buf) Cvttsd2siMR(disp int, dstGpr Reg) { b.sseRM(0xF2, true, 0x2C, dstGpr, disp) }

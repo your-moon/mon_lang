@@ -92,8 +92,17 @@ func (s *Scanner) Peek() int32 {
 	return s.Current
 }
 
+// PeekAt looks n runes past the current one without consuming.
+func (s *Scanner) PeekAt(n int) int32 {
+	idx := int(s.Cursor) + n
+	if idx < len(s.Source) {
+		return s.Source[idx]
+	}
+	return 0
+}
+
 func (s *Scanner) BuildToken(ttype TokenType) Token {
-	if ttype == IDENT || ttype == NUMBER || ttype == STRING {
+	if ttype == IDENT || ttype == NUMBER || ttype == FLOAT || ttype == STRING {
 		str := string(s.Source[s.Start:s.Cursor])
 		return BuildToken(ttype, &str, int(s.Line), int(s.Start), int(s.Cursor))
 	}
@@ -179,6 +188,9 @@ func (s *Scanner) ToKeyword() (Token, bool) {
 		// тэмдэгт is an alias of тоо: a codepoint is a 32-bit integer
 		return s.BuildToken(INT_TYPE), true
 	}
+	if str == string(KeywordDouble) {
+		return s.BuildToken(DOUBLE_TYPE), true
+	}
 	if str == string(KeywordUInt) {
 		return s.BuildToken(UINT_TYPE), true
 	}
@@ -207,7 +219,14 @@ func (s *Scanner) ToKeyword() (Token, bool) {
 func (s *Scanner) BuildNumber() (Token, error) {
 	for s.isDigit(s.Peek()) {
 		s.Next()
-
+	}
+	// a '.' followed by a digit makes it a float literal; ".." stays a range
+	if s.Peek() == '.' && s.PeekAt(1) >= '0' && s.PeekAt(1) <= '9' {
+		s.Next() // consume .
+		for s.isDigit(s.Peek()) {
+			s.Next()
+		}
+		return s.BuildToken(FLOAT), nil
 	}
 
 	return s.BuildToken(NUMBER), nil

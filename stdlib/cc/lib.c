@@ -13,6 +13,18 @@ void ekhevle(unsigned long n) {
     printf("%lu", n);
 }
 
+// тэмдэгтХэвлэх - print a Unicode codepoint as UTF-8
+void temdegtKhevlekh(int cp) {
+    unsigned c = (unsigned)cp;
+    char buf[4];
+    int n;
+    if (c < 0x80) { buf[0] = c; n = 1; }
+    else if (c < 0x800) { buf[0] = 0xC0 | (c >> 6); buf[1] = 0x80 | (c & 0x3F); n = 2; }
+    else if (c < 0x10000) { buf[0] = 0xE0 | (c >> 12); buf[1] = 0x80 | ((c >> 6) & 0x3F); buf[2] = 0x80 | (c & 0x3F); n = 3; }
+    else { buf[0] = 0xF0 | (c >> 18); buf[1] = 0x80 | ((c >> 12) & 0x3F); buf[2] = 0x80 | ((c >> 6) & 0x3F); buf[3] = 0x80 | (c & 0x3F); n = 4; }
+    fwrite(buf, 1, n, stdout);
+}
+
 // мөр_хэвлэх - print string
 void mqr_khevlekh(const char *s) {
     printf("%s", s);

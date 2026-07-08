@@ -116,6 +116,71 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.Syscall()
 	b.Epilogue()
 
+	/* temdegtKhevlekh(cp): UTF-8 encode one codepoint and write it */
+	b.Label(fnLabel("temdegtKhevlekh"))
+	b.Prologue()
+	b.AluIR(OpSub, true, 16, RSP)
+	b.MovRR(false, RDI, RAX) // codepoint, zero-extended
+	b.LeaRBP(-16, RSI)       // write cursor
+	b.AluIR(OpCmp, false, 0x80, RAX)
+	b.Jcc(CondB, "stdlib.utf8.b1")
+	b.AluIR(OpCmp, false, 0x800, RAX)
+	b.Jcc(CondB, "stdlib.utf8.b2")
+	b.AluIR(OpCmp, false, 0x10000, RAX)
+	b.Jcc(CondB, "stdlib.utf8.b3")
+	// 4 bytes: F0|cp>>18, 80|cp>>12&3F, 80|cp>>6&3F, 80|cp&3F
+	b.MovRR(false, RAX, RCX)
+	b.ShrIR(false, 18, RCX)
+	b.OrIR(false, 0xF0, RCX)
+	b.StoreByte(RCX, RSI)
+	b.IncR(true, RSI)
+	b.MovRR(false, RAX, RCX)
+	b.ShrIR(false, 12, RCX)
+	b.AndIR(false, 0x3F, RCX)
+	b.OrIR(false, 0x80, RCX)
+	b.StoreByte(RCX, RSI)
+	b.IncR(true, RSI)
+	b.Jmp("stdlib.utf8.tail2")
+	b.Label("stdlib.utf8.b3") // E0|cp>>12, then shared 2-byte tail
+	b.MovRR(false, RAX, RCX)
+	b.ShrIR(false, 12, RCX)
+	b.OrIR(false, 0xE0, RCX)
+	b.StoreByte(RCX, RSI)
+	b.IncR(true, RSI)
+	b.Jmp("stdlib.utf8.tail2")
+	b.Label("stdlib.utf8.b2") // C0|cp>>6, then final continuation byte
+	b.MovRR(false, RAX, RCX)
+	b.ShrIR(false, 6, RCX)
+	b.OrIR(false, 0xC0, RCX)
+	b.StoreByte(RCX, RSI)
+	b.IncR(true, RSI)
+	b.Jmp("stdlib.utf8.tail1")
+	b.Label("stdlib.utf8.tail2") // 80|cp>>6&3F then fall into tail1
+	b.MovRR(false, RAX, RCX)
+	b.ShrIR(false, 6, RCX)
+	b.AndIR(false, 0x3F, RCX)
+	b.OrIR(false, 0x80, RCX)
+	b.StoreByte(RCX, RSI)
+	b.IncR(true, RSI)
+	b.Label("stdlib.utf8.tail1") // 80|cp&3F
+	b.MovRR(false, RAX, RCX)
+	b.AndIR(false, 0x3F, RCX)
+	b.OrIR(false, 0x80, RCX)
+	b.StoreByte(RCX, RSI)
+	b.IncR(true, RSI)
+	b.Jmp("stdlib.utf8.write")
+	b.Label("stdlib.utf8.b1") // ASCII: the codepoint itself
+	b.StoreByte(RAX, RSI)
+	b.IncR(true, RSI)
+	b.Label("stdlib.utf8.write")
+	b.MovRR(true, RSI, RDX) // len = cursor - buf
+	b.LeaRBP(-16, RSI)
+	b.AluRR(OpSub, true, RSI, RDX)
+	b.MovIR(false, 1, RDI)
+	b.MovIR(false, sysWrite, RAX)
+	b.Syscall()
+	b.Epilogue()
+
 	/* mqr_khevlekh(s): write(1, s, strlen(s)) */
 	b.Label(fnLabel("mqr_khevlekh"))
 	b.Prologue()
@@ -323,7 +388,7 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 // StdlibFns lists the function names EmitStdlib defines; the program mapper
 // uses this to know which extern declarations are satisfied internally.
 func StdlibFns() []string {
-	return []string{"khevle", "ekhevle", "mqr_khevlekh", "unsh", "unsh32",
+	return []string{"khevle", "ekhevle", "temdegtKhevlekh", "mqr_khevlekh", "unsh", "unsh32",
 		"sanamsargwyToo", "odoo", "malloc", "chqlqqlqkh", "khwleekh",
 		"delgetsTseverlekh"}
 }

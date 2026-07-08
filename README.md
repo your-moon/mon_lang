@@ -34,7 +34,9 @@ Mon is a small statically-typed programming language with Mongolian keywords. Th
 
 - Control flow: хэрэв/эсвэл, давтах (while), давт..хүртэл (range for), зогс/үргэлжлүүл
 - Modules: `ашигла "файл.mn"` with тунх exports, named imports via `ашигла "файл.mn" гэж нэр` → `нэр.функц()`
-- Pointers with scaled arithmetic, character literals, constant folding and dead-code elimination on by default
+- бутархай (float64) with SSE2 codegen; pointers with scaled arithmetic, character literals
+- Optimizations on by default: constant folding, copy propagation, dead-code elimination, and register allocation
+- Garbage collected (conservative mark-sweep on the C runtime; bump allocator on the self-contained native path)
 - Builtins: printing (хэвлэ, эхэвлэ, мөр_хэвлэх, тэмдэгтХэвлэх), stdin (унш), file I/O (файлУншихБүтэн, файлБичих), bytes (мөрУрт, байт, байтТавих, мөрШинэ), argv (аргумент), time/random/sleep
 - `selfhost/` holds the beginning of the self-hosted compiler: a mon_lang lexer that lexes itself, and a hash map written in mon_lang
 

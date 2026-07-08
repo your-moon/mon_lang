@@ -39,7 +39,7 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	program := TackyProgram{}
 
 	// Only malloc is implicit (used by шинэ keyword internally)
-	program.ExternDefs = append(program.ExternDefs, TackyFn{Name: "malloc", IsExtern: true})
+	program.ExternDefs = append(program.ExternDefs, TackyFn{Name: "monAlloc", IsExtern: true})
 
 	for _, stmt := range node.Decls {
 		switch stmttype := stmt.(type) {
@@ -265,7 +265,7 @@ func (c *TackyGen) EmitVarDecl(node *parser.VarDecl) []Instruction {
 	if arr, isArr := node.VarType.(*mtypes.ArrayType); isArr && arr.Size > 0 && node.Expr == nil {
 		byteSize := arr.Size * mtypes.SizeOf(arr.ElementType)
 		dst := c.makeTemp(&mtypes.Int64Type{})
-		irs = append(irs, FnCall{Name: "malloc",
+		irs = append(irs, FnCall{Name: "monAlloc",
 			Args: []TackyVal{Constant{Value: &mconstant.Int64{Value: byteSize}}}, Dst: dst})
 		irs = append(irs, Copy{Src: dst, Dst: Var{Name: node.Ident}})
 		return irs
@@ -275,7 +275,7 @@ func (c *TackyGen) EmitVarDecl(node *parser.VarDecl) []Instruction {
 	// same way (structs are references)
 	if st, isStruct := node.VarType.(*mtypes.StructType); isStruct && node.Expr == nil {
 		dst := c.makeTemp(&mtypes.Int64Type{})
-		irs = append(irs, FnCall{Name: "malloc",
+		irs = append(irs, FnCall{Name: "monAlloc",
 			Args: []TackyVal{Constant{Value: &mconstant.Int64{Value: st.Size}}}, Dst: dst})
 		irs = append(irs, Copy{Src: dst, Dst: Var{Name: node.Ident}})
 		return irs
@@ -713,7 +713,7 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs = append(irs, Binary{Op: Mul, Src1: size64, Src2: Constant{Value: &mconstant.Int64{Value: elemSize}}, Dst: byteSize})
 		// Call malloc
 		dst := c.makeTemp(&mtypes.Int64Type{})
-		irs = append(irs, FnCall{Name: "malloc", Args: []TackyVal{byteSize}, Dst: dst})
+		irs = append(irs, FnCall{Name: "monAlloc", Args: []TackyVal{byteSize}, Dst: dst})
 		return dst, irs
 
 	case *parser.ASTArrayIndex:

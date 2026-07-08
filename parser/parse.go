@@ -1018,13 +1018,18 @@ func (p *Parser) parseImplBlock() []ASTDecl {
 
 	var decls []ASTDecl
 	for !p.peekIs(lexer.CLOSE_BRACE) && !p.peekIs(lexer.EOF) {
+		isPublic := false
+		if p.peekIs(lexer.PUBLIC) {
+			isPublic = true
+			p.nextToken()
+		}
 		if !p.peekIs(lexer.FN) {
 			p.appendError("хэрэгжүүлэлт дотор зөвхөн функц байна")
 			return decls
 		}
 		p.nextToken() // move onto функц
 		p.implSelfType = typeName
-		fn := p.parseFnDecl(false, false)
+		fn := p.parseFnDecl(isPublic, false)
 		p.implSelfType = ""
 		if fn == nil {
 			return decls

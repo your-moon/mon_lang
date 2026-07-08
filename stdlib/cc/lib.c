@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdint.h>
 
 // хэвлэ - print 64-bit integer
 void khevle(long n) {
@@ -73,4 +76,54 @@ void khwleekh(int ms) {
 void delgetsTseverlekh(void) {
     printf("\033[H\033[2J");
     fflush(stdout);
+}
+
+// мөрУрт - string length in bytes
+long mqrUrt(const char *s) { return (long)strlen(s); }
+
+// байт - byte at index
+int bayt(const char *s, long i) { return (unsigned char)s[i]; }
+
+// байтТавих - store byte at index
+void baytTavikh(char *s, long i, int b) { s[i] = (char)b; }
+
+// файлУншихБүтэн - read a whole file into a NUL-terminated buffer
+char *faylUnshikhBwten(const char *path) {
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) return "";
+    long size = lseek(fd, 0, SEEK_END);
+    lseek(fd, 0, SEEK_SET);
+    char *buf = malloc(size + 1);
+    long n = read(fd, buf, size);
+    if (n < 0) n = 0;
+    buf[n] = 0;
+    close(fd);
+    return buf;
+}
+
+// файлБичих - write a string to a file, returns 0 on success
+int faylBichikh(const char *path, const char *content) {
+    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0) return 1;
+    long len = (long)strlen(content);
+    long n = write(fd, content, len);
+    close(fd);
+    return n == len ? 0 : 1;
+}
+
+// аргументТоо / аргумент - argc/argv access
+static int mon_argc;
+static char **mon_argv;
+__attribute__((constructor)) static void mon_capture_args(int argc, char **argv) {
+    mon_argc = argc;
+    mon_argv = argv;
+}
+int argumyentToo(void) { return mon_argc; }
+char *argumyent(int i) { return (i >= 0 && i < mon_argc) ? mon_argv[i] : ""; }
+
+// мөрШинэ - allocate a mutable string buffer (zeroed, NUL-safe)
+char *mqrShine(long len) {
+    char *buf = malloc(len + 1);
+    memset(buf, 0, len + 1);
+    return buf;
 }

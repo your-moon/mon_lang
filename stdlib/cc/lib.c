@@ -17,8 +17,8 @@ void ekhevle(unsigned long n) {
     printf("%lu", n);
 }
 
-// тэмдэгтХэвлэх - print a Unicode codepoint as UTF-8
-void temdegtKhevlekh(int cp) {
+// тэмдэгт_хэвлэх - print a Unicode codepoint as UTF-8
+void temdegt_khevlekh(int cp) {
     unsigned c = (unsigned)cp;
     char buf[4];
     int n;
@@ -48,8 +48,8 @@ int unsh32(void) {
     return n;
 }
 
-// санамсаргүйТоо - random number (1 to n)
-int sanamsargwyToo(int n) {
+// санамсаргүй_тоо - random number (1 to n)
+int sanamsargwy_too(int n) {
     static int seeded = 0;
     if (!seeded) {
         srand((unsigned int)time(NULL));
@@ -163,23 +163,23 @@ void khwleekh(int ms) {
     usleep(ms * 1000);
 }
 
-// дэлгэцЦэвэрлэх - clear screen (ANSI escape)
-void delgetsTseverlekh(void) {
+// дэлгэц_цэвэрлэх - clear screen (ANSI escape)
+void delgets_tseverlekh(void) {
     printf("\033[H\033[2J");
     fflush(stdout);
 }
 
-// мөрУрт - string length in bytes
-long mqrUrt(const char *s) { return (long)strlen(s); }
+// мөр_урт - string length in bytes
+long mqr_urt(const char *s) { return (long)strlen(s); }
 
 // байт - byte at index
 int bayt(const char *s, long i) { return (unsigned char)s[i]; }
 
-// байтТавих - store byte at index
-void baytTavikh(char *s, long i, int b) { s[i] = (char)b; }
+// байт_тавих - store byte at index
+void bayt_tavikh(char *s, long i, int b) { s[i] = (char)b; }
 
-// файлУншихБүтэн - read a whole file into a NUL-terminated buffer
-char *faylUnshikhBwten(const char *path) {
+// файл_унших_бүтэн - read a whole file into a NUL-terminated buffer
+char *fayl_unshikh_bwten(const char *path) {
     int fd = open(path, O_RDONLY);
     if (fd < 0) return "";
     long size = lseek(fd, 0, SEEK_END);
@@ -192,8 +192,8 @@ char *faylUnshikhBwten(const char *path) {
     return buf;
 }
 
-// файлБичих - write a string to a file, returns 0 on success
-int faylBichikh(const char *path, const char *content) {
+// файл_бичих - write a string to a file, returns 0 on success
+int fayl_bichikh(const char *path, const char *content) {
     int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0) return 1;
     long len = (long)strlen(content);
@@ -202,7 +202,7 @@ int faylBichikh(const char *path, const char *content) {
     return n == len ? 0 : 1;
 }
 
-// аргументТоо / аргумент - argc/argv access
+// аргумент_тоо / аргумент - argc/argv access
 static int mon_argc;
 static char **mon_argv;
 __attribute__((constructor)) static void mon_capture_args(int argc, char **argv) {
@@ -212,20 +212,20 @@ __attribute__((constructor)) static void mon_capture_args(int argc, char **argv)
     char anchor;
     gc_stack_bottom = &anchor;
 }
-int argumyentToo(void) { return mon_argc; }
+int argumyent_too(void) { return mon_argc; }
 char *argumyent(int i) { return (i >= 0 && i < mon_argc) ? mon_argv[i] : ""; }
 
-// мөрШинэ - allocate a mutable string buffer (zeroed, NUL-safe)
-char *mqrShine(long len) {
+// мөр_шинэ - allocate a mutable string buffer (zeroed, NUL-safe)
+char *mqr_shine(long len) {
     char *buf = monAlloc(len + 1);
     memset(buf, 0, len + 1);
     return buf;
 }
 
-// бутархайХэвлэх - print a double as fixed decimal, 6 truncated fractional
+// бутархай_хэвлэх - print a double as fixed decimal, 6 truncated fractional
 // digits. Deliberately simple (no dtoa/rounding) so the hand-written
 // native printer can produce byte-identical output.
-void butarkhayKhevlekh(double d) {
+void butarkhay_khevlekh(double d) {
     if (d < 0) { putchar('-'); d = -d; }
     long ip = (long)d;
     printf("%ld.", ip);

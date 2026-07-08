@@ -316,10 +316,10 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.Label("stdlib.odoo.ret")
 	b.Epilogue()
 
-	/* malloc(n): bump allocator over anonymous mmap chunks. free is a
+	/* monAlloc(n): bump allocator over anonymous mmap chunks. free is a
 	   no-op, so memory is reclaimed only at exit - the right tradeoff for
 	   a teaching language (TCC uses the same simplification for -run). */
-	b.Label(fnLabel("malloc"))
+	b.Label(fnLabel("monAlloc"))
 	b.Prologue()
 	b.AluIR(OpAdd, true, 15, RDI) // round request to 16
 	b.AndIR(true, ^int64(15), RDI)
@@ -452,7 +452,7 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.Syscall()
 	b.MovMR(true, -16, RDI)
 	b.IncR(true, RDI) // +1 for NUL
-	b.Call(fnLabel("malloc"))
+	b.Call(fnLabel("monAlloc"))
 	b.MovRM(true, RAX, -24) // buf
 	b.MovMR(true, -8, RDI)
 	b.MovRR(true, RAX, RSI)
@@ -572,7 +572,7 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.Label(fnLabel("mqrShine"))
 	b.Prologue()
 	b.IncR(true, RDI) // room for NUL
-	b.Call(fnLabel("malloc"))
+	b.Call(fnLabel("monAlloc"))
 	b.Epilogue()
 
 	/* argumyentToo(): argc captured by the entry stub */
@@ -604,7 +604,7 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 // uses this to know which extern declarations are satisfied internally.
 func StdlibFns() []string {
 	return []string{"khevle", "ekhevle", "temdegtKhevlekh", "mqr_khevlekh", "unsh", "unsh32",
-		"sanamsargwyToo", "odoo", "malloc", "chqlqqlqkh", "khwleekh",
+		"sanamsargwyToo", "odoo", "monAlloc", "chqlqqlqkh", "khwleekh",
 		"delgetsTseverlekh", "mqrUrt", "bayt", "baytTavikh",
 		"faylUnshikhBwten", "faylBichikh", "argumyentToo", "argumyent",
 		"mqrShine", "butarkhayKhevlekh"}

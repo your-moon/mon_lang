@@ -1,3 +1,10 @@
+/*
+ * mon_lang - code_gen/asmtype
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package asmtype
 
 type AsmType interface {

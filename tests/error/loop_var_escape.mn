@@ -1,0 +1,8 @@
+// the range-loop variable must not be visible after the loop
+// шалгах: алдаа "зарлаагүй"
+функц үндсэн() -> тоо {
+    давт и бол 1..3 хүртэл {
+        хэвлэ(и);
+    }
+    буц и;
+}

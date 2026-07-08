@@ -1,3 +1,10 @@
+/*
+ * mon_lang - semantic_analysis
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package semanticanalysis
 
 import (
@@ -7,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/your-moon/mon_lang/parser"
+	"github.com/your-moon/mon_lang/stdlib"
 	"github.com/your-moon/mon_lang/symbols"
 	"github.com/your-moon/mon_lang/util/unique"
 )
@@ -46,23 +54,22 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 	var importedDecls []parser.ASTDecl
 	var ownDecls []parser.ASTDecl
 
-	// Auto-import prelude (stdlib declarations)
-	preludePath := filepath.Join(s.stdlibDir, "prelude.mn")
-	if _, err := os.Stat(preludePath); err == nil {
-		data, err := os.ReadFile(preludePath)
-		if err != nil {
-			return nil, fmt.Errorf("prelude уншихад алдаа: %v", err)
-		}
-		runeStr := convertToRuneArray(string(data))
-		p := parser.NewParser(runeStr)
-		preludeProg, err := p.ParseProgram()
-		if err != nil {
-			return nil, fmt.Errorf("prelude парсингийн алдаа: %v", err)
-		}
-		for _, d := range preludeProg.Decls {
-			importedDecls = append(importedDecls, d)
+	// Auto-import the prelude (builtin declarations). It is embedded in the
+	// compiler binary; a stdlibDir override (tests, custom preludes) wins.
+	preludeSrc := stdlib.Prelude
+	if s.stdlibDir != "" {
+		preludePath := filepath.Join(s.stdlibDir, "prelude.mn")
+		if data, err := os.ReadFile(preludePath); err == nil {
+			preludeSrc = string(data)
 		}
 	}
+	runeStr := convertToRuneArray(preludeSrc)
+	p := parser.NewParser(runeStr)
+	preludeProg, err := p.ParseProgram()
+	if err != nil {
+		return nil, fmt.Errorf("prelude парсингийн алдаа: %v", err)
+	}
+	importedDecls = append(importedDecls, preludeProg.Decls...)
 
 	for _, decl := range program.Decls {
 		imp, ok := decl.(*parser.ASTImport)

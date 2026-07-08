@@ -1,3 +1,10 @@
+/*
+ * mon_lang - tackygen
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package tackygen
 
 import (
@@ -16,18 +23,15 @@ type TackyGen struct {
 	LabelCount      uint64
 	UniqueGen       unique.UniqueGen
 	SymbolTable     *symbols.SymbolTable
-	GlobalConstants map[string]mconstant.Const
-	MutableGlobals  map[string]bool
+	currentRetType mtypes.Type // return type of the function being lowered
 }
 
 func NewTackyGen(uniquegen unique.UniqueGen, table *symbols.SymbolTable) TackyGen {
 	return TackyGen{
-		TempCount:       0,
-		LabelCount:      0,
-		UniqueGen:       uniquegen,
-		SymbolTable:     table,
-		GlobalConstants: make(map[string]mconstant.Const),
-		MutableGlobals:  make(map[string]bool),
+		TempCount:   0,
+		LabelCount:  0,
+		UniqueGen:   uniquegen,
+		SymbolTable: table,
 	}
 }
 
@@ -50,11 +54,12 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 			var initValue int64
 			size := 4 // default Int32
 			if stmttype.Expr != nil {
-				switch constExpr := stmttype.Expr.(type) {
-				case *parser.ASTConstInt:
-					initValue = int64(constExpr.Value)
-				case *parser.ASTConstLong:
-					initValue = constExpr.Value
+				v, ok := foldConstExpr(stmttype.Expr)
+				if !ok {
+					panic(fmt.Sprintf("глобал хувьсагч '%s'-ийн анхны утга тогтмол илэрхийлэл байх ёстой", stmttype.Ident))
+				}
+				initValue = v
+				if _, isLong := stmttype.Expr.(*parser.ASTConstLong); isLong {
 					size = 8
 				}
 			}
@@ -63,7 +68,6 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 					size = 8
 				}
 			}
-			c.MutableGlobals[stmttype.Ident] = true
 			program.GlobalVars = append(program.GlobalVars, GlobalVar{
 				Name:      stmttype.Ident,
 				InitValue: initValue,
@@ -75,8 +79,67 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 	return program
 }
 
+// foldConstExpr evaluates a constant initializer expression at compile time.
+// Globals live in .data, so their value must be known before the program
+// runs; anything non-constant is rejected by the caller.
+func foldConstExpr(e parser.ASTExpression) (int64, bool) {
+	switch n := e.(type) {
+	case *parser.ASTConstInt:
+		return int64(n.Value), true
+	case *parser.ASTConstLong:
+		return n.Value, true
+	case *parser.ASTUnary:
+		v, ok := foldConstExpr(n.Inner)
+		if !ok {
+			return 0, false
+		}
+		switch n.Op {
+		case lexer.MINUS:
+			return -v, true
+		case lexer.TILDE:
+			return ^v, true
+		case lexer.NOT:
+			if v == 0 {
+				return 1, true
+			}
+			return 0, true
+		}
+		return 0, false
+	case *parser.ASTBinary:
+		l, ok := foldConstExpr(n.Left)
+		if !ok {
+			return 0, false
+		}
+		r, ok := foldConstExpr(n.Right)
+		if !ok {
+			return 0, false
+		}
+		switch int(n.Op) {
+		case parser.A_PLUS:
+			return l + r, true
+		case parser.A_MINUS:
+			return l - r, true
+		case parser.A_MUL:
+			return l * r, true
+		case parser.A_DIV:
+			if r == 0 {
+				return 0, false
+			}
+			return l / r, true
+		case parser.A_MOD:
+			if r == 0 {
+				return 0, false
+			}
+			return l % r, true
+		}
+		return 0, false
+	}
+	return 0, false
+}
+
 func (c *TackyGen) EmitTackyFn(node *parser.FnDecl) TackyFn {
 	irs := []Instruction{}
+	c.currentRetType = node.ReturnType
 	if node.Body != nil {
 		irs = append(irs, c.EmitTackyBlock(*node.Body)...)
 	}
@@ -176,25 +239,26 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 			if !ok {
 				panic("Expected ASTVar for loop variable")
 			}
+			// operand-defining irs must precede their consumers
+			irs = append(irs, rangeStartIrs...)
 			irs = append(irs, Copy{
 				Src: rangeStart,
 				Dst: Var{Name: loopVar.Ident},
 			})
-			irs = append(irs, rangeStartIrs...)
 
 			irs = append(irs, Label{Ident: startLabel.Name})
 
 			endVal, endValIrs := c.EmitExpr(rangeExpr.End)
 			loopVarVal, loopVarValIrs := c.EmitExpr(ast.Var)
 			temp := c.makeTemp(ast.Var.GetType())
+			irs = append(irs, loopVarValIrs...)
+			irs = append(irs, endValIrs...)
 			irs = append(irs, Binary{
 				Op:   LessThanEqual,
 				Src1: loopVarVal,
 				Src2: endVal,
 				Dst:  temp,
 			})
-			irs = append(irs, loopVarValIrs...)
-			irs = append(irs, endValIrs...)
 			irs = append(irs, JumpIfZero{
 				Val:   temp,
 				Ident: breakLabel.Name,
@@ -223,7 +287,7 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 				Ident: breakLabel.Name,
 			})
 
-			c.EmitTackyBlock(ast.Body)
+			irs = append(irs, c.EmitTackyBlock(ast.Body)...)
 
 			irs = append(irs, Label{Ident: continueLabel.Name})
 			irs = append(irs, Jump{Target: startLabel.Name})
@@ -281,6 +345,11 @@ func (c *TackyGen) EmitTackyStmt(node parser.ASTStmt) []Instruction {
 		if ast.ReturnValue != nil {
 			val, valIrs := c.EmitExpr(ast.ReturnValue)
 			irs = append(irs, valIrs...)
+			if c.currentRetType != nil {
+				widened, widenIrs := c.maybeSignExtend(val, ast.ReturnValue.GetType(), c.currentRetType)
+				irs = append(irs, widenIrs...)
+				val = widened
+			}
 			irs = append(irs, Return{Value: val})
 		} else {
 			irs = append(irs, Return{Value: Constant{Value: &mconstant.IntZero}})
@@ -444,10 +513,21 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs := []Instruction{}
 		dst := c.makeTemp(expr.Type)
 		args := []TackyVal{}
-		for _, arg := range expr.Args {
+		var paramTypes []mtypes.Type
+		if entry := c.SymbolTable.Get(expr.Ident); entry != nil {
+			if fnType, ok := entry.Type.(*mtypes.FnType); ok {
+				paramTypes = fnType.ParamTypes
+			}
+		}
+		for i, arg := range expr.Args {
 			argVal, argIrs := c.EmitExpr(arg)
-			args = append(args, argVal)
 			irs = append(irs, argIrs...)
+			if i < len(paramTypes) {
+				widened, widenIrs := c.maybeSignExtend(argVal, arg.GetType(), paramTypes[i])
+				irs = append(irs, widenIrs...)
+				argVal = widened
+			}
+			args = append(args, argVal)
 		}
 		irs = append(irs, FnCall{Name: expr.Ident, Dst: dst, Args: args})
 		return dst, irs

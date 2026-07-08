@@ -1,3 +1,10 @@
+/*
+ * mon_lang - parser
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package parser
 
 import (
@@ -24,6 +31,9 @@ const (
 	ErrMissingParenClose = "')' хаалт шаардлагатай"
 	ErrMissingArrow      = "'->' тэмдэгт шаардлагатай"
 	ErrMissingIntType    = "'тоо' төрөл шаардлагатай"
+
+	// Semantic-shape errors caught at parse time
+	ErrInvalidAssignTarget = "утга олгох үйлдлийн зүүн тал хувьсагч эсвэл массивын индекс байх ёстой"
 )
 
 // Token type translations to Mongolian

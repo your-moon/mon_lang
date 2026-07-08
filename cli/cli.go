@@ -1,3 +1,10 @@
+/*
+ * mon_lang - cli
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package cli
 
 import (
@@ -35,14 +42,8 @@ type CLI struct {
 	genAsm     bool
 	genObj     bool
 	run        bool
+	useCC      bool
 	outputFile string
-}
-
-type Options struct {
-	InputFile  string
-	OutputFile string
-	GenAsm     bool
-	GenObj     bool
 }
 
 func New() *CLI {
@@ -110,26 +111,21 @@ func (c *CLI) Run(args []string) error {
 	fs.BoolVar(&c.genAsm, "asm", false, "assembly файл үүсгэх")
 	fs.BoolVar(&c.genObj, "obj", false, "object файл үүсгэх")
 	fs.BoolVar(&c.run, "run", false, "компиляц хийгээд ажиллуулах")
+	fs.BoolVar(&c.useCC, "cc", false, "гадаад as/cc хэрэгслээр линк хийх (хуучин зам)")
 	fs.StringVar(&c.outputFile, "o", "", "гаралтын файлын нэр)")
 
-	fileArg := ""
-	flagArgs := args
-	for i, arg := range args {
-		if strings.HasPrefix(arg, "-") {
-			flagArgs = args[i:]
-			if i > 0 {
-				fileArg = args[0]
-			}
-			break
-		}
-		if i == len(args)-1 {
-			fileArg = args[0]
-			flagArgs = args[1:]
-		}
-	}
-
-	if err := fs.Parse(flagArgs); err != nil {
+	// two-pass parse so flags may appear before or after the file:
+	// stdlib flag parsing stops at the first non-flag token, so parse,
+	// take that token as the file, then parse the remainder
+	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("флаг парс хийхэд алдаа гарлаа: %v", err)
+	}
+	fileArg := ""
+	if fs.NArg() > 0 {
+		fileArg = fs.Arg(0)
+		if err := fs.Parse(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("флаг парс хийхэд алдаа гарлаа: %v", err)
+		}
 	}
 
 	base.Debug = c.debug
@@ -375,9 +371,10 @@ func (c *CLI) runCompiler(args []string) error {
 	asmWriter := codegen.NewGenASM(asmBuffer, util.GetOsType())
 	asmWriter.GenAsm(asmast)
 
-	err = os.WriteFile("debug_out.asm", asmBuffer.Bytes(), 0644)
-	if err != nil {
-		fmt.Println("Failed to write debug_out.asm:", err)
+	if base.Debug {
+		if err := os.WriteFile("debug_out.asm", asmBuffer.Bytes(), 0644); err != nil {
+			fmt.Println("Failed to write debug_out.asm:", err)
+		}
 	}
 
 	// linker := linker.NewLinker("out")
@@ -447,44 +444,47 @@ func (c *CLI) runGen(args []string) error {
 	asmGen := codegen.NewAsmGen(table)
 	asmProgram := asmGen.GenASTAsm(tackyProgram, symbolTable, asmTable)
 
-	asmBuffer := new(bytes.Buffer)
-	asmWriter := codegen.NewGenASM(asmBuffer, util.GetOsType())
-	asmWriter.GenAsm(asmProgram)
-
-	if base.Debug {
-		fmt.Println("\n---- ASMAST ----:")
-		fmt.Println(asmBuffer.String())
-	}
-
 	outputFile := c.outputFile
 	if outputFile == "" {
 		outputFile = filepath.Base(strings.TrimSuffix(args[0], ".mn"))
 	}
 
-	if dir := filepath.Dir(outputFile); dir != "." {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return fmt.Errorf("failed to create output directory: %v", err)
+	// the linker owns output-directory creation (it may prefix out/)
+	lnk := linker.NewLinker(outputFile)
+
+	// The text emitter only runs for -S output and the legacy --cc path;
+	// the default path encodes machine code directly.
+	if c.genAsm || c.genObj || c.useCC {
+		asmBuffer := new(bytes.Buffer)
+		asmWriter := codegen.NewGenASM(asmBuffer, util.GetOsType())
+		asmWriter.GenAsm(asmProgram)
+
+		if base.Debug {
+			fmt.Println("\n---- ASMAST ----:")
+			fmt.Println(asmBuffer.String())
+		}
+
+		lnk.SetAssemblyContent(asmBuffer.String())
+		lnk.SetGenerateAsm(c.genAsm)
+		lnk.SetGenerateObj(c.genObj)
+
+		if err := lnk.Link(); err != nil {
+			return fmt.Errorf("Error linking: %v", err)
+		}
+	} else {
+		if err := lnk.LinkNative(asmProgram); err != nil {
+			return fmt.Errorf("линк алдаа: %v", err)
 		}
 	}
 
-	linker := linker.NewLinker(outputFile)
-	linker.SetAssemblyContent(asmBuffer.String())
-	linker.SetGenerateAsm(c.genAsm)
-	linker.SetGenerateObj(c.genObj)
-
-	if err := linker.Link(); err != nil {
-		return fmt.Errorf("Error linking: %v", err)
-	}
-
 	if !c.genAsm && !c.genObj {
-		if err := linker.MakeExecutable(); err != nil {
+		if err := lnk.MakeExecutable(); err != nil {
 			return fmt.Errorf("Error making executable: %v", err)
 		}
 
 		if c.run {
-			if err := linker.Run(); err != nil {
-				return fmt.Errorf("Error running program: %v", err)
-			}
+			// pass ExitCodeError through unwrapped so main can propagate it
+			return lnk.Run()
 		}
 	}
 
@@ -509,28 +509,4 @@ func convertToRuneArray(dataString string) []int32 {
 	}
 	runeString = append(runeString, 0)
 	return runeString
-}
-
-func ParseArgs() (*Options, error) {
-	options := &Options{}
-
-	flag.StringVar(&options.OutputFile, "o", "", "Output file name (default: input file name)")
-	flag.BoolVar(&options.GenAsm, "asm", false, "Generate assembly file")
-	flag.BoolVar(&options.GenObj, "obj", false, "Generate object file")
-	flag.Parse()
-
-	args := flag.Args()
-	if len(args) != 2 || args[0] != "gen" {
-		return nil, fmt.Errorf("usage: %s gen <input_file>", os.Args[0])
-	}
-
-	options.InputFile = args[1]
-
-	if options.OutputFile == "" {
-		base := filepath.Base(options.InputFile)
-		ext := filepath.Ext(base)
-		options.OutputFile = base[:len(base)-len(ext)]
-	}
-
-	return options, nil
 }

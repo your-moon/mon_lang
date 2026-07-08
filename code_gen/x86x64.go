@@ -1,3 +1,10 @@
+/*
+ * mon_lang - code_gen
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package codegen
 
 import (
@@ -323,9 +330,10 @@ func (a *AsmGen) GenOperand(op AsmOperand, asmType asmtype.AsmType) string {
 }
 
 func (a *AsmGen) RegisterShow(reg Register, asmType asmtype.AsmType) string {
+	numbered := reg.Reg == R8 || reg.Reg == R9 || reg.Reg == R10 || reg.Reg == R11
 	switch asmType.(type) {
 	case *asmtype.QuadWord, *asmtype.StringType:
-		if reg.Reg == R10 || reg.Reg == R11 {
+		if numbered {
 			return "%" + string(reg.Reg)
 		}
 		if reg.Reg == SP {
@@ -333,7 +341,7 @@ func (a *AsmGen) RegisterShow(reg Register, asmType asmtype.AsmType) string {
 		}
 		return "%r" + string(reg.Reg)
 	case *asmtype.LongWord:
-		if reg.Reg == R10 || reg.Reg == R11 {
+		if numbered {
 			return "%" + string(reg.Reg) + "d"
 		}
 		if reg.Reg == SP {

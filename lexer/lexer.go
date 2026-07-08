@@ -1,3 +1,10 @@
+/*
+ * mon_lang - lexer
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package lexer
 
 import (
@@ -183,11 +190,7 @@ func (s *Scanner) BuildNumber() (Token, error) {
 	return s.BuildToken(NUMBER), nil
 }
 func (s *Scanner) BuildIdent() (Token, error) {
-	for s.isAlpha(s.Peek()) || s.Peek() == '_' {
-		s.Next()
-	}
-
-	for s.isDigit(s.Peek()) {
+	for s.isAlpha(s.Peek()) || s.isDigit(s.Peek()) || s.Peek() == '_' {
 		s.Next()
 	}
 
@@ -273,8 +276,9 @@ func processEscapes(runes []int32) string {
 }
 
 func (s *Scanner) BuildString() (Token, error) {
+	// Scan() already consumed the opening quote; the cursor sits on the
+	// first content character (or directly on the closing quote for "").
 	tokenStart := s.Start
-	s.Next()
 	for s.Peek() != '"' && !s.isAtEnd() {
 		if s.Peek() == '\n' {
 			s.Line++
@@ -323,10 +327,10 @@ func (s *Scanner) Scan() (Token, error) {
 		return s.BuildString()
 	}
 
-	for s.isAlpha(c) {
+	if s.isAlpha(c) || c == '_' {
 		return s.BuildIdent()
 	}
-	for s.isDigit(c) {
+	if s.isDigit(c) {
 		return s.BuildNumber()
 	}
 

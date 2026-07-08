@@ -1,3 +1,10 @@
+/*
+ * mon_lang - semantic_analysis
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package semanticanalysis
 
 import (
@@ -245,7 +252,9 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt, innerMap IdMap) (parser.A
 			nodetype.Cond = resolvedCond
 		}
 
-		body, err := r.ResolveBlock(&nodetype.Body, innerMap)
+		// loop bodies open their own scope, same as compound statements
+		whileMap := r.copyIdMap(innerMap)
+		body, err := r.ResolveBlock(&nodetype.Body, whileMap)
 		if err != nil {
 			return nil, err
 		}
@@ -258,6 +267,9 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt, innerMap IdMap) (parser.A
 		}
 		nodetype.Expr = resolvedExpr
 
+		// the loop variable and any body declarations live in the loop's
+		// own scope; they must not leak into the enclosing one
+		loopMap := r.copyIdMap(innerMap)
 		if nodetype.Var != nil {
 			varExpr, ok := nodetype.Var.(*parser.ASTVar)
 			if !ok {
@@ -269,7 +281,7 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt, innerMap IdMap) (parser.A
 			}
 
 			uniqueName := r.makeNamedTemporary(varExpr.Ident)
-			innerMap[varExpr.Ident] = VarEntry{
+			loopMap[varExpr.Ident] = VarEntry{
 				UniqueName:       uniqueName,
 				fromCurrentScope: true,
 			}
@@ -277,7 +289,7 @@ func (r *Resolver) ResolveStmt(program parser.ASTStmt, innerMap IdMap) (parser.A
 			nodetype.Var = varExpr
 		}
 
-		body, err := r.ResolveBlock(&nodetype.Body, innerMap)
+		body, err := r.ResolveBlock(&nodetype.Body, loopMap)
 		if err != nil {
 			return nil, err
 		}

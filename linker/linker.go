@@ -1,7 +1,15 @@
+/*
+ * mon_lang - linker
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package linker
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -88,8 +96,8 @@ func (l *Linker) Link() error {
 
 	defer os.Remove(objFile)
 
-	// Find stdlib/lib.c relative to the executable or current directory
-	stdlibFile := filepath.Join(STDLIB_DIR, "lib.c")
+	// legacy path only: cc compiles the C runtime shim on every link
+	stdlibFile := findStdlibCC()
 
 	// Use cc to link with libc (provides malloc, printf, etc.)
 	var linkCmd *exec.Cmd
@@ -112,14 +120,49 @@ func (l *Linker) Link() error {
 	return nil
 }
 
+// findStdlibCC locates the C runtime shim without depending on the working
+// directory: MON_STDLIB env, then CWD (development layout), then next to
+// the compiler executable (installed layout).
+func findStdlibCC() string {
+	if env := os.Getenv("MON_STDLIB"); env != "" {
+		return filepath.Join(env, "cc", "lib.c")
+	}
+	local := filepath.Join(STDLIB_DIR, "cc", "lib.c")
+	if _, err := os.Stat(local); err == nil {
+		return local
+	}
+	if exe, err := os.Executable(); err == nil {
+		installed := filepath.Join(filepath.Dir(exe), STDLIB_DIR, "cc", "lib.c")
+		if _, err := os.Stat(installed); err == nil {
+			return installed
+		}
+	}
+	return local
+}
+
 func (l *Linker) MakeExecutable() error {
 	return os.Chmod(l.outputFile, 0755)
 }
 
+// Run executes the built program, forwarding stdio. The program's exit code
+// comes back as *ExitCodeError so main can propagate it instead of treating
+// a nonzero exit as a compiler failure.
 func (l *Linker) Run() error {
 	cmd := exec.Command(l.outputFile)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
-	return cmd.Run()
+	err := cmd.Run()
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return &ExitCodeError{Code: exitErr.ExitCode()}
+	}
+	return err
+}
+
+// ExitCodeError carries the compiled program's own exit status.
+type ExitCodeError struct{ Code int }
+
+func (e *ExitCodeError) Error() string {
+	return fmt.Sprintf("програм %d кодоор дууслаа", e.Code)
 }

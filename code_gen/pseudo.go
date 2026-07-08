@@ -1,3 +1,10 @@
+/*
+ * mon_lang - code_gen
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package codegen
 
 import (
@@ -52,8 +59,6 @@ func (r *ReplacementPassGen) ReplaceOperand(operand AsmOperand, state Replacemen
 
 func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction, state ReplacementState) (ReplacementState, AsmInstruction) {
 	switch ast := instr.(type) {
-	case DeallocateStack:
-		return state, instr
 	case Label:
 		return state, instr
 	case SetCC:
@@ -146,12 +151,14 @@ func (r *ReplacementPassGen) ReplacePseudosInFn(fn AsmFnDef, state ReplacementSt
 }
 
 func (r *ReplacementPassGen) ReplacePseudosInProgram(program AsmProgram, symbolTable *symbols.SymbolTable) AsmProgram {
-	initState := ReplacementState{
-		CurrentOffset: 0,
-		OffsetMap:     make(map[string]int),
-	}
 	asmFnDefs := []AsmFnDef{}
 	for _, fn := range program.AsmFnDef {
+		// fresh slot map per function: names are globally unique today, but
+		// stack slots must never alias across frames regardless
+		initState := ReplacementState{
+			CurrentOffset: 0,
+			OffsetMap:     make(map[string]int),
+		}
 		finalState, asmFnDef := r.ReplacePseudosInFn(fn, initState)
 		asmFnDefs = append(asmFnDefs, asmFnDef)
 		symbolTable.SetBytesRequired(fn.Ident, util.Abs(finalState.CurrentOffset))

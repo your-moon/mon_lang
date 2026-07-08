@@ -1,3 +1,10 @@
+/*
+ * mon_lang - semantic_analysis
+ *
+ * Copyright (c) 2024-2026 Munkherdene
+ * SPDX-License-Identifier: MIT (see LICENSE)
+ */
+
 package semanticanalysis
 
 import (

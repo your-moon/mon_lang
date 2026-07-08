@@ -9,7 +9,7 @@
 // program, replacing stdlib/lib.c and its cc/libc dependency. Functions
 // follow the SysV ABI so compiler-generated call sites need no changes.
 // Semantics mirror lib.c exactly (khevle prints without newline, unsh
-// skips leading junk like scanf, sanamsargwyToo returns 1..n).
+// skips leading junk like scanf, sanamsargwy_too returns 1..n).
 package encoder
 
 // darwin BSD syscall numbers (class 2 << 24).
@@ -130,8 +130,8 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.Syscall()
 	b.Epilogue()
 
-	/* temdegtKhevlekh(cp): UTF-8 encode one codepoint and write it */
-	b.Label(fnLabel("temdegtKhevlekh"))
+	/* temdegt_khevlekh(cp): UTF-8 encode one codepoint and write it */
+	b.Label(fnLabel("temdegt_khevlekh"))
 	b.Prologue()
 	b.AluIR(OpSub, true, 16, RSP)
 	b.MovRR(false, RDI, RAX) // codepoint, zero-extended
@@ -271,8 +271,8 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.Call(fnLabel("unsh"))
 	b.Epilogue()
 
-	/* sanamsargwyToo(n): xorshift64, seeded lazily from rdtsc; (x % n) + 1 */
-	b.Label(fnLabel("sanamsargwyToo"))
+	/* sanamsargwy_too(n): xorshift64, seeded lazily from rdtsc; (x % n) + 1 */
+	b.Label(fnLabel("sanamsargwy_too"))
 	b.Prologue()
 	b.MovRipR(true, dataLabel("rand_state"), RAX)
 	b.TestRR(true, RAX, RAX)
@@ -388,8 +388,8 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.Syscall()
 	b.Epilogue()
 
-	/* delgetsTseverlekh(): write ANSI home+clear */
-	b.Label(fnLabel("delgetsTseverlekh"))
+	/* delgets_tseverlekh(): write ANSI home+clear */
+	b.Label(fnLabel("delgets_tseverlekh"))
 	b.Prologue()
 	b.LeaRip(RSI, strLabel("clear_seq"))
 	b.MovIR(false, 1, RDI)
@@ -398,8 +398,8 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.Syscall()
 	b.Epilogue()
 
-	/* mqrUrt(s): strlen in bytes */
-	b.Label(fnLabel("mqrUrt"))
+	/* mqr_urt(s): strlen in bytes */
+	b.Label(fnLabel("mqr_urt"))
 	b.Prologue()
 	b.MovRR(true, RDI, R10)
 	b.XorRR(true, RAX, RAX)
@@ -420,17 +420,17 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.LoadByte(RDI, RAX)
 	b.Epilogue()
 
-	/* baytTavikh(s, i, b): store byte at index */
-	b.Label(fnLabel("baytTavikh"))
+	/* bayt_tavikh(s, i, b): store byte at index */
+	b.Label(fnLabel("bayt_tavikh"))
 	b.Prologue()
 	b.AluRR(OpAdd, true, RSI, RDI)
 	b.StoreByte(RDX, RDI)
 	b.Epilogue()
 
-	/* faylUnshikhBwten(path): whole file as a NUL-terminated string.
+	/* fayl_unshikh_bwten(path): whole file as a NUL-terminated string.
 	   open / lseek-end / lseek-0 / malloc(size+1) / read / close.
 	   Errors return "" (the empty string constant). */
-	b.Label(fnLabel("faylUnshikhBwten"))
+	b.Label(fnLabel("fayl_unshikh_bwten"))
 	b.Prologue()
 	b.AluIR(OpSub, true, 32, RSP)
 	b.XorRR(true, RSI, RSI) // O_RDONLY
@@ -473,8 +473,8 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.LeaRip(RAX, strLabel("empty_str"))
 	b.Epilogue()
 
-	/* faylBichikh(path, content): write string to file, 0 on success */
-	b.Label(fnLabel("faylBichikh"))
+	/* fayl_bichikh(path, content): write string to file, 0 on success */
+	b.Label(fnLabel("fayl_bichikh"))
 	b.Prologue()
 	b.AluIR(OpSub, true, 32, RSP)
 	b.MovRM(true, RSI, -16) // content
@@ -485,7 +485,7 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.Jcc(CondB, "stdlib.fwrite.fail")
 	b.MovRM(true, RAX, -8) // fd
 	b.MovMR(true, -16, RDI)
-	b.Call(fnLabel("mqrUrt"))
+	b.Call(fnLabel("mqr_urt"))
 	b.MovRR(true, RAX, RDX) // len
 	b.MovMR(true, -8, RDI)
 	b.MovMR(true, -16, RSI)
@@ -500,13 +500,13 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.MovIR(false, 1, RAX)
 	b.Epilogue()
 
-	/* butarkhayKhevlekh(d in xmm0): fixed decimal, 6 truncated fractional
+	/* butarkhay_khevlekh(d in xmm0): fixed decimal, 6 truncated fractional
 	   digits, byte-identical to the C shim. Uses khevle for the integer
-	   part and temdegtKhevlekh for '.' and each digit; d and the loop
+	   part and temdegt_khevlekh for '.' and each digit; d and the loop
 	   state live on the stack across those calls (they clobber xmm/regs).
 	   Constants (0.0/-1.0/10.0/(double)n) are made with cvtsi2sd, so no
 	   double literal pool is needed here. */
-	b.Label(fnLabel("butarkhayKhevlekh"))
+	b.Label(fnLabel("butarkhay_khevlekh"))
 	b.Prologue()
 	b.AluIR(OpSub, true, 32, RSP)
 	b.MovsdRM(0, -8) // save d at [rbp-8]
@@ -518,7 +518,7 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.ComisdRR(0, 1)     // d - 0.0
 	b.Jcc(CondAE, "stdlib.dbl.pos")
 	b.MovIR(false, '-', RDI)
-	b.Call(fnLabel("temdegtKhevlekh"))
+	b.Call(fnLabel("temdegt_khevlekh"))
 	b.MovsdMR(-8, 0)
 	b.MovIR(true, -1, R10)
 	b.Cvtsi2sdRR(1, R10)      // xmm1 = -1.0
@@ -534,7 +534,7 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 
 	// '.'
 	b.MovIR(false, '.', RDI)
-	b.Call(fnLabel("temdegtKhevlekh"))
+	b.Call(fnLabel("temdegt_khevlekh"))
 
 	// frac = d - (double)ip
 	b.MovsdMR(-8, 0)
@@ -558,7 +558,7 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.MovsdRM(0, -8)
 	b.MovMR(true, -32, RDI)
 	b.AluIR(OpAdd, false, '0', RDI)
-	b.Call(fnLabel("temdegtKhevlekh"))
+	b.Call(fnLabel("temdegt_khevlekh"))
 	// counter--
 	b.MovMR(true, -24, RAX)
 	b.DecR(true, RAX)
@@ -567,16 +567,16 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.Jcc(CondNE, "stdlib.dbl.loop")
 	b.Epilogue()
 
-	/* mqrShine(len): mutable string buffer; bump-allocated mmap pages
+	/* mqr_shine(len): mutable string buffer; bump-allocated mmap pages
 	   arrive zeroed, so the buffer is born NUL-terminated everywhere */
-	b.Label(fnLabel("mqrShine"))
+	b.Label(fnLabel("mqr_shine"))
 	b.Prologue()
 	b.IncR(true, RDI) // room for NUL
 	b.Call(fnLabel("monAlloc"))
 	b.Epilogue()
 
-	/* argumyentToo(): argc captured by the entry stub */
-	b.Label(fnLabel("argumyentToo"))
+	/* argumyent_too(): argc captured by the entry stub */
+	b.Label(fnLabel("argumyent_too"))
 	b.Prologue()
 	b.MovRipR(true, dataLabel("argc"), RAX)
 	b.Epilogue()
@@ -603,9 +603,9 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 // StdlibFns lists the function names EmitStdlib defines; the program mapper
 // uses this to know which extern declarations are satisfied internally.
 func StdlibFns() []string {
-	return []string{"khevle", "ekhevle", "temdegtKhevlekh", "mqr_khevlekh", "unsh", "unsh32",
-		"sanamsargwyToo", "odoo", "monAlloc", "chqlqqlqkh", "khwleekh",
-		"delgetsTseverlekh", "mqrUrt", "bayt", "baytTavikh",
-		"faylUnshikhBwten", "faylBichikh", "argumyentToo", "argumyent",
-		"mqrShine", "butarkhayKhevlekh"}
+	return []string{"khevle", "ekhevle", "temdegt_khevlekh", "mqr_khevlekh", "unsh", "unsh32",
+		"sanamsargwy_too", "odoo", "monAlloc", "chqlqqlqkh", "khwleekh",
+		"delgets_tseverlekh", "mqr_urt", "bayt", "bayt_tavikh",
+		"fayl_unshikh_bwten", "fayl_bichikh", "argumyent_too", "argumyent",
+		"mqr_shine", "butarkhay_khevlekh"}
 }

@@ -1,0 +1,10 @@
+// regression: plain assignment (not declaration) missed int32->int64
+// sign extension; found while testing stores through pointers
+// шалгах: гаралт "-5\n"
+функц үндсэн() -> тоо {
+    зарла д: тоо64 = 0;
+    д = 0 - 5;
+    хэвлэ(д);
+    мөр_хэвлэх("\n");
+    буц 0;
+}

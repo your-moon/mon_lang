@@ -380,12 +380,7 @@ func (s *Scanner) Scan() (Token, error) {
 			s.Next()
 			return s.BuildToken(LOGICAND), nil
 		}
-		return Token{}, fmt.Errorf(
-			"not implemented: got [%c] and line [%d] where [%d]",
-			c,
-			s.Line,
-			s.Column,
-		)
+		return s.BuildToken(AMP), nil
 	case '|':
 		if s.Peek() == '|' {
 			s.Next()

@@ -49,6 +49,10 @@ func (f *TranslatePass) TranslateInInstr(instr AsmInstruction) AsmInstruction {
 		ast.Src = f.translateOperand(ast.Src)
 		ast.Dst = f.translateOperand(ast.Dst)
 		return ast
+	case AsmLea:
+		ast.Src = f.translateOperand(ast.Src)
+		ast.Dst = f.translateOperand(ast.Dst)
+		return ast
 	case SetCC:
 		ast.Op = f.translateOperand(ast.Op)
 		return ast

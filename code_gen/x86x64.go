@@ -273,6 +273,8 @@ func (a *AsmGen) GenInstr(instr AsmInstruction) {
 		}
 	case AsmMovSx:
 		a.Write(fmt.Sprintf("    movslq %s, %s", a.GenOperand(ast.Src, &asmtype.LongWord{}), a.GenOperand(ast.Dst, &asmtype.QuadWord{})))
+	case AsmLea:
+		a.Write(fmt.Sprintf("    leaq %s, %s", a.GenOperand(ast.Src, &asmtype.QuadWord{}), a.GenOperand(ast.Dst, &asmtype.QuadWord{})))
 	case AsmLoadFromMem:
 		a.Write(fmt.Sprintf("    mov%s (%%r10), %s", a.GenType(ast.Type), a.GenOperand(ast.Dst, ast.Type)))
 	case AsmStoreToMem:

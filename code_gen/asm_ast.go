@@ -366,3 +366,13 @@ type AsmProgram struct {
 	AsmExternFn []AsmExternFn
 	GlobalVars  []GlobalVarAsm
 }
+
+// AsmLea computes the address of a memory operand: leaq src, dst.
+type AsmLea struct {
+	Src AsmOperand // Stack or RipRelative (Pseudo before replacement)
+	Dst AsmOperand // register after fixup
+}
+
+func (a AsmLea) Ir() string {
+	return fmt.Sprintf("lea %s, %s", a.Src.Op(), a.Dst.Op())
+}

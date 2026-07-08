@@ -15,6 +15,7 @@ const (
 	MUL   TokenType = "MUL"
 	DIV   TokenType = "DIV"
 	MOD   TokenType = "PERCENT"
+	AMP   TokenType = "AMP" // & (address-of)
 
 	GREATERTHAN      TokenType = "GREATERTHAN"      // >
 	GREATERTHANEQUAL TokenType = "GREATERTHANEQUAL" //>=

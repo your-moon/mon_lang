@@ -33,6 +33,12 @@ type ArrayType struct {
 
 func (t *ArrayType) typecheck() {}
 
+type PointerType struct {
+	Referenced Type
+}
+
+func (t *PointerType) typecheck() {}
+
 type FnType struct {
 	ParamTypes []Type
 	RetType    Type
@@ -62,6 +68,9 @@ func IsSameType(a, b Type) bool {
 	case *ArrayType:
 		bt, ok := b.(*ArrayType)
 		return ok && IsSameType(at.ElementType, bt.ElementType)
+	case *PointerType:
+		bt, ok := b.(*PointerType)
+		return ok && IsSameType(at.Referenced, bt.Referenced)
 	case *FnType:
 		bt, ok := b.(*FnType)
 		if !ok || len(at.ParamTypes) != len(bt.ParamTypes) {

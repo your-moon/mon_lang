@@ -112,6 +112,13 @@ func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction, s
 			Src: src,
 			Dst: dst,
 		}
+	case AsmLea:
+		replacedState, src := r.ReplaceOperand(ast.Src, state)
+		replacedState, dst := r.ReplaceOperand(ast.Dst, replacedState)
+		return replacedState, AsmLea{
+			Src: src,
+			Dst: dst,
+		}
 	case AsmLoadFromMem:
 		replacedState, dst := r.ReplaceOperand(ast.Dst, state)
 		return replacedState, AsmLoadFromMem{

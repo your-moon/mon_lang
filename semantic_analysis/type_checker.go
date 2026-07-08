@@ -270,6 +270,11 @@ func (c *TypeChecker) checkDecl(decl parser.ASTDecl) (parser.ASTDecl, error) {
 			// keep the expression's true type: tackygen compares it
 			// against the declared type and inserts SignExtend; relabeling
 			// here would silently skip the widening (zero-extend bug)
+			if decl.VarType != nil && !c.typesCompatible(exprCheck.GetType(), decl.VarType) {
+				return nil, c.createSemanticError(
+					fmt.Sprintf("'%s' төрлийн хувьсагчид '%s' төрлийн утга олгож болохгүй", c.typeName(decl.VarType), c.typeName(exprCheck.GetType())),
+					decl.Token.Line, decl.Token.Span)
+			}
 			decl.Expr = exprCheck
 		}
 		return decl, nil
@@ -297,6 +302,11 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 		}
 		expr.Left = left
 		expr.Right = right
+		if !c.typesCompatible(right.GetType(), left.GetType()) {
+			return nil, c.createSemanticError(
+				fmt.Sprintf("'%s' төрөлд '%s' төрлийн утга олгож болохгүй", c.typeName(left.GetType()), c.typeName(right.GetType())),
+				expr.Token.Line, expr.Token.Span)
+		}
 		// For array index assignment, the type is the element type
 		expr.Type = left.GetType()
 		return expr, nil
@@ -307,6 +317,32 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 		}
 		expr.Inner = inner
 		expr.Type = &mtypes.Int32Type{}
+		return expr, nil
+	case *parser.ASTAddrOf:
+		inner, err := c.checkExpr(expr.Inner)
+		if err != nil {
+			return nil, err
+		}
+		switch inner.(type) {
+		case *parser.ASTVar, *parser.ASTDeref, *parser.ASTArrayIndex:
+			// addressable
+		default:
+			return nil, c.createSemanticError("'&' зөвхөн хувьсагч, заагчийн утга эсвэл массивын элементэд хэрэглэнэ", expr.Token.Line, expr.Token.Span)
+		}
+		expr.Inner = inner
+		expr.Type = &mtypes.PointerType{Referenced: inner.GetType()}
+		return expr, nil
+	case *parser.ASTDeref:
+		inner, err := c.checkExpr(expr.Inner)
+		if err != nil {
+			return nil, err
+		}
+		ptr, ok := inner.GetType().(*mtypes.PointerType)
+		if !ok {
+			return nil, c.createSemanticError("'*' зөвхөн заагч төрөлд хэрэглэнэ", expr.Token.Line, expr.Token.Span)
+		}
+		expr.Inner = inner
+		expr.Type = ptr.Referenced
 		return expr, nil
 	case *parser.ASTConditional:
 		cond, err := c.checkExpr(expr.Cond)
@@ -444,17 +480,9 @@ func (c *TypeChecker) typesCompatible(argType, paramType mtypes.Type) bool {
 	if (argIsInt32 || argIsInt64) && (paramIsInt32 || paramIsInt64) {
 		return true
 	}
-	// exact match for other types
-	switch paramType.(type) {
-	case *mtypes.StringType:
-		_, ok := argType.(*mtypes.StringType)
-		return ok
-	case *mtypes.ArrayType:
-		_, ok := argType.(*mtypes.ArrayType)
-		return ok
-	default:
-		return true
-	}
+	// everything else (pointers, strings, arrays) matches structurally -
+	// a permissive default here would let integers flow into pointers
+	return mtypes.IsSameType(argType, paramType)
 }
 
 func (c *TypeChecker) typeName(t mtypes.Type) string {
@@ -467,6 +495,8 @@ func (c *TypeChecker) typeName(t mtypes.Type) string {
 		return "мөр"
 	case *mtypes.VoidType:
 		return "хоосон"
+	case *mtypes.PointerType:
+		return "заагч"
 	case *mtypes.ArrayType:
 		return "массив"
 	default:

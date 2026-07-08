@@ -65,3 +65,6 @@ playground/web/out/
 ehthumbs.db
 Thumbs.db
 playground/playground
+
+# built binaries
+/bin/

@@ -9,7 +9,9 @@ package lsp
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -338,6 +340,13 @@ func (s *Server) handleHover(msg *rpcMessage) {
 		})
 		return
 	}
+	// fall back to imported modules / stdlib / prelude
+	if ext, ok := s.resolveExternal(doc, word); ok && ext.sig != "" {
+		s.conn.respond(msg.ID, Hover{
+			Contents: MarkupContent{Kind: "markdown", Value: "```mon\n" + ext.sig + "\n```"},
+		})
+		return
+	}
 	s.conn.respond(msg.ID, nil)
 }
 
@@ -359,6 +368,14 @@ func (s *Server) handleDefinition(msg *rpcMessage) {
 	}
 	if tok, ok := s.declTokenOf(doc, word); ok {
 		s.conn.respond(msg.ID, Location{URI: doc.uri, Range: s.tokenRange(doc, tok)})
+		return
+	}
+	// fall back to imported modules / stdlib / prelude
+	if ext, ok := s.resolveExternal(doc, word); ok {
+		s.conn.respond(msg.ID, Location{
+			URI:   pathToURI(ext.path),
+			Range: tokenRangeIn(ext.lines, ext.tok),
+		})
 		return
 	}
 	s.conn.respond(msg.ID, nil)
@@ -406,32 +423,144 @@ func (s *Server) declTokenOf(doc *document, name string) (lexer.Token, bool) {
 	return lexer.Token{}, false
 }
 
+// ---- external symbols: imports, standard packages, and the prelude ----
+
+type extResult struct {
+	path  string
+	tok   lexer.Token
+	lines []int
+	sig   string
+}
+
+// resolveExternal looks for a top-level `name` in everything the document
+// pulls in: the auto-imported prelude (builtins like хэвлэ), each `ашигла`
+// module (local .mn files), and the standard packages (тэмдэгт_мөр, файл, …).
+func (s *Server) resolveExternal(doc *document, name string) (*extResult, bool) {
+	baseDir := "."
+	if p := uriToPath(doc.uri); p != "" {
+		baseDir = filepath.Dir(p)
+	}
+	stdlibDir := repoStdlibDir(baseDir)
+
+	var candidates []string
+	if stdlibDir != "" {
+		candidates = append(candidates, filepath.Join(stdlibDir, "prelude.mn"))
+	}
+	if doc.prog != nil {
+		for _, d := range doc.prog.Decls {
+			imp, ok := d.(*parser.ASTImport)
+			if !ok || imp.FilePath == "" {
+				continue
+			}
+			if strings.Contains(imp.FilePath, "/") || strings.HasSuffix(imp.FilePath, ".mn") {
+				candidates = append(candidates, filepath.Join(baseDir, imp.FilePath))
+			} else if stdlibDir != "" {
+				candidates = append(candidates, filepath.Join(stdlibDir, "pkg", imp.FilePath+".mn"))
+			}
+		}
+	}
+
+	for _, path := range candidates {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		runes := runesOf(string(data))
+		prog, _ := parser.NewParser(runes).ParseProgram()
+		if prog == nil {
+			continue
+		}
+		lines := lineStarts(runes)
+		for _, d := range prog.Decls {
+			switch dd := d.(type) {
+			case *parser.FnDecl:
+				if dd.Ident == name {
+					return &extResult{path, dd.Token, lines, fnSignature(dd)}, true
+				}
+			case *parser.VarDecl:
+				if dd.Ident == name {
+					return &extResult{path, dd.Token, lines, "зарла " + dd.Ident + ": " + typeString(dd.VarType)}, true
+				}
+			case *parser.ASTStructDecl:
+				if dd.Name == name {
+					return &extResult{path, dd.Token, lines, "бүтэц " + dd.Name}, true
+				}
+			}
+		}
+	}
+	return nil, false
+}
+
+// repoStdlibDir walks up from startDir to find the mon_lang stdlib directory
+// (the one holding prelude.mn), so stdlib jumps land on the real source.
+func repoStdlibDir(startDir string) string {
+	dir := startDir
+	for i := 0; i < 40; i++ {
+		cand := filepath.Join(dir, "stdlib")
+		if _, err := os.Stat(filepath.Join(cand, "prelude.mn")); err == nil {
+			return cand
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
+}
+
+// pathToURI builds a file:// URI, percent-encoding bytes outside the URI
+// unreserved set (mon_lang stdlib filenames are Cyrillic, e.g. тэмдэгт_мөр.mn).
+func pathToURI(path string) string {
+	var b strings.Builder
+	b.WriteString("file://")
+	for i := 0; i < len(path); i++ {
+		c := path[i]
+		if c == '/' || c == '-' || c == '_' || c == '.' || c == '~' ||
+			(c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') {
+			b.WriteByte(c)
+		} else {
+			fmt.Fprintf(&b, "%%%02X", c)
+		}
+	}
+	return b.String()
+}
+
 // ---- position helpers ----
 
 func (s *Server) tokenRange(doc *document, tok lexer.Token) Range {
-	start := s.offsetToPos(doc, tok.Span.Start)
-	end := s.offsetToPos(doc, tok.Span.End)
+	return tokenRangeIn(doc.lines, tok)
+}
+
+func (s *Server) offsetToPos(doc *document, offset int) Position {
+	return offsetToPosition(doc.lines, offset)
+}
+
+// tokenRangeIn maps a token's rune span to an LSP range using a file's line
+// table.
+func tokenRangeIn(lines []int, tok lexer.Token) Range {
+	start := offsetToPosition(lines, tok.Span.Start)
+	end := offsetToPosition(lines, tok.Span.End)
 	if tok.Span.End <= tok.Span.Start {
 		end = start
 	}
 	return Range{Start: start, End: end}
 }
 
-// offsetToPos maps a rune offset to an LSP position. Cyrillic lives in the
-// BMP, so one rune equals one UTF-16 code unit for mon_lang source.
-func (s *Server) offsetToPos(doc *document, offset int) Position {
+// offsetToPosition maps a rune offset to an LSP position. Cyrillic lives in
+// the BMP, so one rune equals one UTF-16 code unit for mon_lang source.
+func offsetToPosition(lines []int, offset int) Position {
 	if offset < 0 {
 		offset = 0
 	}
-	// binary-search-free linear scan: line count is small for source files
 	line := 0
-	for i := 1; i < len(doc.lines); i++ {
-		if doc.lines[i] > offset {
+	for i := 1; i < len(lines); i++ {
+		if lines[i] > offset {
 			break
 		}
 		line = i
 	}
-	return Position{Line: line, Character: offset - doc.lines[line]}
+	return Position{Line: line, Character: offset - lines[line]}
 }
 
 // posToOffset is the inverse: an LSP position to a rune offset.

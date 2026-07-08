@@ -11,9 +11,34 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func readFileString(path string) (string, error) {
+	b, err := os.ReadFile(path)
+	return string(b), err
+}
+
+func absPath(path string) string {
+	a, err := filepath.Abs(path)
+	if err != nil {
+		return path
+	}
+	return a
+}
+
+// findWord returns the (line, utf16-column) of the first occurrence of word.
+func findWord(text, word string) (int, int) {
+	for i, line := range strings.Split(text, "\n") {
+		if idx := strings.Index(line, word); idx >= 0 {
+			return i, len([]rune(line[:idx]))
+		}
+	}
+	return -1, -1
+}
 
 // frame wraps a JSON body in an LSP Content-Length envelope.
 func frame(body string) string {
@@ -204,6 +229,40 @@ func TestGotoDefinition(t *testing.T) {
 	start := rng["start"].(map[string]any)
 	if int(start["line"].(float64)) != 0 {
 		t.Fatalf("нэмэх is defined on line 0, definition pointed at line %v", start["line"])
+	}
+}
+
+func TestGotoDefinitionStdlib(t *testing.T) {
+	// A real repo file so the server can walk up to find stdlib/. structs.mn
+	// calls хэвлэ, a prelude builtin.
+	path := "../tests/run/structs.mn"
+	data, err := readFileString(path)
+	if err != nil {
+		t.Skipf("cannot read fixture: %v", err)
+	}
+	abs := absPath(path)
+	uri := "file://" + abs
+	// find хэвлэ's position in the source
+	line, col := findWord(data, "хэвлэ")
+	if line < 0 {
+		t.Skip("хэвлэ not found in fixture")
+	}
+	msgs := drive(t,
+		request(1, "initialize", map[string]any{}),
+		didOpen(uri, data),
+		request(9, "textDocument/definition", map[string]any{
+			"textDocument": map[string]any{"uri": uri},
+			"position":     map[string]any{"line": line, "character": col + 1},
+		}),
+		`{"jsonrpc":"2.0","method":"exit"}`,
+	)
+	resp := findResponse(msgs, 9)
+	if resp == nil || resp["result"] == nil {
+		t.Fatal("no definition for stdlib builtin хэвлэ")
+	}
+	loc := resp["result"].(map[string]any)
+	if !strings.Contains(loc["uri"].(string), "prelude.mn") {
+		t.Fatalf("хэвлэ should resolve to prelude.mn, got %v", loc["uri"])
 	}
 }
 

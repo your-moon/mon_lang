@@ -110,6 +110,9 @@ func (r *Resolver) ResolveDecl(decl parser.ASTDecl, innerMap IdMap) (IdMap, pars
 		return r.ResolveFnDecl(declType, innerMap)
 	case *parser.VarDecl:
 		return r.ResolveFileScopeVarDecl(declType, innerMap)
+	case *parser.ASTStructDecl:
+		// struct names live in their own namespace; nothing to rename
+		return innerMap, declType, nil
 	default:
 		panic("unimplemented decl type on resolve")
 	}
@@ -497,6 +500,29 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression, innerMap IdMap) (pa
 			return nil, err
 		}
 		nodetype.Inner = resolvedInner
+		return nodetype, nil
+
+	case *parser.ASTMember:
+		resolvedInner, err := r.ResolveExpr(nodetype.Inner, innerMap)
+		if err != nil {
+			return nil, err
+		}
+		nodetype.Inner = resolvedInner
+		return nodetype, nil
+
+	case *parser.ASTMethodCall:
+		resolvedInner, err := r.ResolveExpr(nodetype.Inner, innerMap)
+		if err != nil {
+			return nil, err
+		}
+		nodetype.Inner = resolvedInner
+		for i, arg := range nodetype.Args {
+			resolvedArg, err := r.ResolveExpr(arg, innerMap)
+			if err != nil {
+				return nil, err
+			}
+			nodetype.Args[i] = resolvedArg
+		}
 		return nodetype, nil
 
 	case *parser.ASTDeref:

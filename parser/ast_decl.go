@@ -151,3 +151,21 @@ func (d *Decl) PrintAST(depth int) string {
 func (d *Decl) TokenLiteral() string {
 	return d.Ident
 }
+
+// ASTStructDecl is a top-level `бүтэц Нэр { талбар: төрөл, ... }`.
+type ASTStructDecl struct {
+	Token      lexer.Token
+	Name       string
+	FieldNames []string
+	FieldTypes []mtypes.Type
+}
+
+func (d *ASTStructDecl) declNode()            {}
+func (d *ASTStructDecl) TokenLiteral() string { return "бүтэц" }
+func (d *ASTStructDecl) PrintAST(depth int) string {
+	out := indent(depth) + "бүтэц " + d.Name + " {\n"
+	for _, n := range d.FieldNames {
+		out += indent(depth+1) + n + "\n"
+	}
+	return out + indent(depth) + "}"
+}

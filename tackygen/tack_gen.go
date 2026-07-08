@@ -49,6 +49,8 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 			} else {
 				program.ExternDefs = append(program.ExternDefs, c.EmitTackyFn(stmttype))
 			}
+		case *parser.ASTStructDecl:
+			// layout only; nothing to emit
 		case *parser.VarDecl:
 			// Top-level variable declarations become global variables in .data section
 			var initValue int64
@@ -219,6 +221,20 @@ func (c *TackyGen) emitPointerArith(expr *parser.ASTBinary, op TackyBinaryOp, v1
 	return irs, dst, true
 }
 
+// emitMemberAddr computes &s.f: the struct reference plus the field's
+// laid-out offset.
+func (c *TackyGen) emitMemberAddr(m *parser.ASTMember) (TackyVal, []Instruction) {
+	irs := []Instruction{}
+	base, baseIrs := c.EmitExpr(m.Inner)
+	irs = append(irs, baseIrs...)
+	if m.Offset == 0 {
+		return base, irs
+	}
+	addr := c.makeTemp(&mtypes.Int64Type{})
+	irs = append(irs, Binary{Op: Add, Src1: base, Src2: Constant{Value: &mconstant.Int64{Value: m.Offset}}, Dst: addr})
+	return addr, irs
+}
+
 // emitElementAddr computes &array[index]: base + index * sizeof(element).
 func (c *TackyGen) emitElementAddr(idx *parser.ASTArrayIndex) (TackyVal, []Instruction) {
 	irs := []Instruction{}
@@ -246,6 +262,16 @@ func (c *TackyGen) EmitVarDecl(node *parser.VarDecl) []Instruction {
 		dst := c.makeTemp(&mtypes.Int64Type{})
 		irs = append(irs, FnCall{Name: "malloc",
 			Args: []TackyVal{Constant{Value: &mconstant.Int64{Value: byteSize}}}, Dst: dst})
+		irs = append(irs, Copy{Src: dst, Dst: Var{Name: node.Ident}})
+		return irs
+	}
+
+	// `зарла ц: Цэг;` - struct declarations allocate their payload the
+	// same way (structs are references)
+	if st, isStruct := node.VarType.(*mtypes.StructType); isStruct && node.Expr == nil {
+		dst := c.makeTemp(&mtypes.Int64Type{})
+		irs = append(irs, FnCall{Name: "malloc",
+			Args: []TackyVal{Constant{Value: &mconstant.Int64{Value: st.Size}}}, Dst: dst})
 		irs = append(irs, Copy{Src: dst, Dst: Var{Name: node.Ident}})
 		return irs
 	}
@@ -664,6 +690,14 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs = append(irs, Load{Src: addr, Dst: dst})
 		return dst, irs
 
+	case *parser.ASTMember:
+		irs := []Instruction{}
+		addr, addrIrs := c.emitMemberAddr(expr)
+		irs = append(irs, addrIrs...)
+		dst := c.makeTemp(expr.Type)
+		irs = append(irs, Load{Src: addr, Dst: dst})
+		return dst, irs
+
 	case *parser.ASTAddrOf:
 		irs := []Instruction{}
 		switch inner := expr.Inner.(type) {
@@ -677,6 +711,8 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		case *parser.ASTArrayIndex:
 			// &a[i] is the element address itself
 			return c.emitElementAddr(inner)
+		case *parser.ASTMember:
+			return c.emitMemberAddr(inner)
 		default:
 			panic("addr-of: unsupported operand (semantic pass should reject)")
 		}
@@ -701,6 +737,15 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 			return Var{Name: lhs.Ident}, irs
 		case *parser.ASTArrayIndex:
 			addr, addrIrs := c.emitElementAddr(lhs)
+			irs = append(irs, addrIrs...)
+			rhsResult, rhsIrs := c.EmitExpr(expr.Right)
+			irs = append(irs, rhsIrs...)
+			widened, widenIrs := c.maybeSignExtend(rhsResult, expr.Right.GetType(), lhs.GetType())
+			irs = append(irs, widenIrs...)
+			irs = append(irs, Store{Src: widened, Dst: addr})
+			return widened, irs
+		case *parser.ASTMember:
+			addr, addrIrs := c.emitMemberAddr(lhs)
 			irs = append(irs, addrIrs...)
 			rhsResult, rhsIrs := c.EmitExpr(expr.Right)
 			irs = append(irs, rhsIrs...)

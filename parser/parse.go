@@ -19,11 +19,12 @@ import (
 )
 
 type Parser struct {
-	source      []int32
-	current     lexer.Token
-	peekToken   lexer.Token
-	scanner     lexer.Scanner
-	parseErrors []error
+	source       []int32
+	current      lexer.Token
+	peekToken    lexer.Token
+	scanner      lexer.Scanner
+	parseErrors  []error
+	implSelfType string // set inside хэрэгжүүл blocks: the type of өөрөө
 }
 
 func NewParser(source []int32) *Parser {
@@ -64,6 +65,16 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 			decl := p.parseTopLevelVarDecl()
 			if decl != nil {
 				program.Decls = append(program.Decls, decl)
+			}
+		case lexer.STRUCT:
+			decl := p.parseStructDecl()
+			if decl != nil {
+				program.Decls = append(program.Decls, decl)
+			}
+		case lexer.IMPL:
+			// impl methods flatten into ordinary top-level functions
+			for _, fn := range p.parseImplBlock() {
+				program.Decls = append(program.Decls, fn)
 			}
 		default:
 			decl := p.parseDecl(false, false)
@@ -325,6 +336,16 @@ func (p *Parser) parseParams() ([]Param, error) {
 			return nil, errors.New(ErrMissingIdentifier, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
 		}
 
+		// Rust-style bare self inside an impl block: `функц м(өөрөө, ...)`
+		if p.implSelfType != "" && ident != nil && *ident == string(lexer.KeywordSelf) &&
+			(p.peekIs(lexer.COMMA) || p.peekIs(lexer.CLOSE_PAREN)) {
+			params = append(params, Param{Ident: *ident, Type: &mtypes.NamedType{Name: p.implSelfType}})
+			if p.peekIs(lexer.COMMA) {
+				p.nextToken()
+			}
+			continue
+		}
+
 		// optional colon between ident and type
 		p.checkOptional(lexer.COLON)
 
@@ -369,6 +390,12 @@ func (p *Parser) parseType() (mtypes.Type, error) {
 		return &mtypes.StringType{}, nil
 	case lexer.VOID:
 		return &mtypes.VoidType{}, nil
+	case lexer.IDENT:
+		// a user-defined type name (struct); resolved by the type checker
+		if p.peekToken.Value != nil {
+			return &mtypes.NamedType{Name: *p.peekToken.Value}, nil
+		}
+		return &mtypes.VoidType{}, errors.New(ErrMissingIntType, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
 	default:
 		return &mtypes.VoidType{}, errors.New(ErrMissingIntType, p.current.Line, p.current.Span, p.source, "Синтакс шинжилгээ")
 	}
@@ -711,6 +738,8 @@ func (p *Parser) parseExpr(minPrec int) ASTExpression {
 				left = &ASTAssignment{Token: p.current, Left: lhs, Right: right}
 			case *ASTDeref:
 				left = &ASTAssignment{Token: p.current, Left: lhs, Right: right}
+			case *ASTMember:
+				left = &ASTAssignment{Token: p.current, Left: lhs, Right: right}
 			default:
 				p.appendError(ErrInvalidAssignTarget)
 			}
@@ -878,24 +907,136 @@ func (p *Parser) parseIdent() ASTExpression {
 		return p.parseFnCall()
 	}
 
-	if p.peekIs(lexer.OPEN_BRACKET) {
-		p.nextToken() // consume [
-		index := p.parseExpr(Lowest)
-		if !p.expect(lexer.CLOSE_BRACKET) {
-			p.appendError("']' байх ёстой")
-			return nil
-		}
-		return &ASTArrayIndex{
-			Token: next,
-			Array: &ASTVar{Token: next, Ident: *next.Value},
-			Index: index,
-		}
-	}
-
-	return &ASTVar{
+	var expr ASTExpression = &ASTVar{
 		Token: next,
 		Ident: *next.Value,
 	}
+
+	// postfix chain: a[i], a.x, a.м(...), a[i].x ...
+	for {
+		switch {
+		case p.peekIs(lexer.OPEN_BRACKET):
+			p.nextToken() // consume [
+			index := p.parseExpr(Lowest)
+			if !p.expect(lexer.CLOSE_BRACKET) {
+				p.appendError("']' байх ёстой")
+				return nil
+			}
+			expr = &ASTArrayIndex{Token: next, Array: expr, Index: index}
+		case p.peekIs(lexer.DOT):
+			p.nextToken() // consume .
+			if !p.expect(lexer.IDENT) || p.current.Value == nil {
+				p.appendError("'.'-ийн араас талбар эсвэл функцийн нэр байх ёстой")
+				return nil
+			}
+			name := *p.current.Value
+			tok := p.current
+			if p.peekIs(lexer.OPEN_PAREN) {
+				p.nextToken() // consume (
+				args := p.parseArgList()
+				if !p.expect(lexer.CLOSE_PAREN) {
+					p.appendError(errors.ErrMissingParenClose)
+					return nil
+				}
+				expr = &ASTMethodCall{Token: tok, Inner: expr, Method: name, Args: args}
+			} else {
+				expr = &ASTMember{Token: tok, Inner: expr, Field: name}
+			}
+		default:
+			return expr
+		}
+	}
+}
+
+// parseStructDecl parses `бүтэц Нэр { талбар: төрөл, ... }`.
+func (p *Parser) parseStructDecl() *ASTStructDecl {
+	ast := &ASTStructDecl{Token: p.current}
+
+	if !p.expect(lexer.IDENT) || p.current.Value == nil {
+		p.appendError("бүтэцийн нэр байх ёстой")
+		return nil
+	}
+	ast.Name = *p.current.Value
+
+	if !p.expect(lexer.OPEN_BRACE) {
+		p.appendError(ErrMissingBraceOpen)
+		return nil
+	}
+
+	for !p.peekIs(lexer.CLOSE_BRACE) && !p.peekIs(lexer.EOF) {
+		if !p.expect(lexer.IDENT) || p.current.Value == nil {
+			p.appendError("талбарын нэр байх ёстой")
+			return nil
+		}
+		fieldName := *p.current.Value
+		if !p.expect(lexer.COLON) {
+			p.appendError(ErrMissingColon)
+			return nil
+		}
+		fieldType, err := p.parseType()
+		if err != nil {
+			p.appendError(err.Error())
+			return nil
+		}
+		p.nextToken() // consume type token
+		fieldType = p.tryParseArrayType(fieldType)
+		ast.FieldNames = append(ast.FieldNames, fieldName)
+		ast.FieldTypes = append(ast.FieldTypes, fieldType)
+		if !p.peekIs(lexer.COMMA) {
+			break
+		}
+		p.nextToken() // consume ,
+	}
+
+	if !p.expect(lexer.CLOSE_BRACE) {
+		p.appendError(ErrMissingBraceClose)
+		return nil
+	}
+	return ast
+}
+
+// MethodName mangles a method into its top-level function name.
+func MethodName(typeName, method string) string {
+	return typeName + "_" + method
+}
+
+// parseImplBlock parses `хэрэгжүүл Нэр { функц ... }`, Rust-style. Each
+// method becomes an ordinary function named Нэр_метод; a leading bare
+// `өөрөө` parameter becomes `өөрөө: Нэр` (structs are references, so self
+// mutation works naturally).
+func (p *Parser) parseImplBlock() []ASTDecl {
+	if !p.expect(lexer.IDENT) || p.current.Value == nil {
+		p.appendError("хэрэгжүүлэх бүтэцийн нэр байх ёстой")
+		return nil
+	}
+	typeName := *p.current.Value
+
+	if !p.expect(lexer.OPEN_BRACE) {
+		p.appendError(ErrMissingBraceOpen)
+		return nil
+	}
+
+	var decls []ASTDecl
+	for !p.peekIs(lexer.CLOSE_BRACE) && !p.peekIs(lexer.EOF) {
+		if !p.peekIs(lexer.FN) {
+			p.appendError("хэрэгжүүлэлт дотор зөвхөн функц байна")
+			return decls
+		}
+		p.nextToken() // move onto функц
+		p.implSelfType = typeName
+		fn := p.parseFnDecl(false, false)
+		p.implSelfType = ""
+		if fn == nil {
+			return decls
+		}
+		fn.Ident = MethodName(typeName, fn.Ident)
+		decls = append(decls, fn)
+	}
+
+	if !p.expect(lexer.CLOSE_BRACE) {
+		p.appendError(ErrMissingBraceClose)
+	}
+	return decls
 }
 
 func (p *Parser) parseConst() ASTConst {

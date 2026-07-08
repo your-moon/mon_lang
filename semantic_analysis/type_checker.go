@@ -22,10 +22,69 @@ type TypeChecker struct {
 	source      []int32
 	uniqueGen   unique.UniqueGen
 	symbolTable *symbols.SymbolTable
+	structs     map[string]*mtypes.StructType
 }
 
 func NewTypeChecker(source []int32, uniqueGen unique.UniqueGen, table *symbols.SymbolTable) *TypeChecker {
-	return &TypeChecker{source: source, uniqueGen: uniqueGen, symbolTable: table}
+	return &TypeChecker{source: source, uniqueGen: uniqueGen, symbolTable: table,
+		structs: map[string]*mtypes.StructType{}}
+}
+
+// resolveType replaces NamedType references with their registered struct
+// types, recursing through pointers and arrays.
+func (c *TypeChecker) resolveType(t mtypes.Type, line int, span lexer.Span) (mtypes.Type, error) {
+	switch tt := t.(type) {
+	case *mtypes.NamedType:
+		st, ok := c.structs[tt.Name]
+		if !ok {
+			return nil, c.createSemanticError(fmt.Sprintf("'%s' нэртэй бүтэц олдсонгүй", tt.Name), line, span)
+		}
+		return st, nil
+	case *mtypes.PointerType:
+		inner, err := c.resolveType(tt.Referenced, line, span)
+		if err != nil {
+			return nil, err
+		}
+		return &mtypes.PointerType{Referenced: inner}, nil
+	case *mtypes.ArrayType:
+		inner, err := c.resolveType(tt.ElementType, line, span)
+		if err != nil {
+			return nil, err
+		}
+		return &mtypes.ArrayType{ElementType: inner, Size: tt.Size}, nil
+	}
+	return t, nil
+}
+
+// checkStructDecl computes the struct layout: fields at offsets aligned to
+// their own size, total size rounded up to 8.
+func (c *TypeChecker) checkStructDecl(decl *parser.ASTStructDecl) error {
+	if _, dup := c.structs[decl.Name]; dup {
+		return c.createSemanticError(fmt.Sprintf("бүтэц '%s'-ийг дахин зарласан байна", decl.Name), decl.Token.Line, decl.Token.Span)
+	}
+	st := &mtypes.StructType{Name: decl.Name}
+	var off int64
+	seen := map[string]bool{}
+	for i, name := range decl.FieldNames {
+		if seen[name] {
+			return c.createSemanticError(fmt.Sprintf("талбар '%s' давхардсан байна", name), decl.Token.Line, decl.Token.Span)
+		}
+		seen[name] = true
+		ft, err := c.resolveType(decl.FieldTypes[i], decl.Token.Line, decl.Token.Span)
+		if err != nil {
+			return err
+		}
+		size := mtypes.SizeOf(ft)
+		off = (off + size - 1) &^ (size - 1)
+		st.Fields = append(st.Fields, mtypes.StructField{Name: name, Type: ft, Offset: off})
+		off += size
+	}
+	st.Size = (off + 7) &^ 7
+	if st.Size == 0 {
+		st.Size = 8 // malloc(0) portability: an empty struct still owns a slot
+	}
+	c.structs[decl.Name] = st
+	return nil
 }
 
 func (c *TypeChecker) createSemanticError(message string, line int, span lexer.Span) error {
@@ -47,6 +106,10 @@ func (c *TypeChecker) CheckTopLevel(program *parser.ASTProgram) (*parser.ASTProg
 				return nil, err
 			}
 			program.Decls[i] = decl
+		case *parser.ASTStructDecl:
+			if err := c.checkStructDecl(decltype); err != nil {
+				return nil, err
+			}
 		default:
 			panic(fmt.Sprintf("unsupported top-level declaration: %T", decl))
 		}
@@ -57,7 +120,17 @@ func (c *TypeChecker) CheckTopLevel(program *parser.ASTProgram) (*parser.ASTProg
 func (c *TypeChecker) checkFnDecl(decl *parser.FnDecl) (*parser.FnDecl, error) {
 	paramTypes := make([]mtypes.Type, len(decl.Params))
 	for i, param := range decl.Params {
-		paramTypes[i] = param.Type
+		rt, err := c.resolveType(param.Type, decl.Token.Line, decl.Token.Span)
+		if err != nil {
+			return nil, err
+		}
+		decl.Params[i].Type = rt
+		paramTypes[i] = rt
+	}
+	if rt, err := c.resolveType(decl.ReturnType, decl.Token.Line, decl.Token.Span); err != nil {
+		return nil, err
+	} else {
+		decl.ReturnType = rt
 	}
 	fnType := &mtypes.FnType{
 		ParamTypes: paramTypes,
@@ -265,6 +338,13 @@ func (c *TypeChecker) checkStmt(stmt parser.ASTStmt) (parser.ASTStmt, error) {
 func (c *TypeChecker) checkDecl(decl parser.ASTDecl) (parser.ASTDecl, error) {
 	switch decl := decl.(type) {
 	case *parser.VarDecl:
+		if decl.VarType != nil {
+			rt, err := c.resolveType(decl.VarType, decl.Token.Line, decl.Token.Span)
+			if err != nil {
+				return nil, err
+			}
+			decl.VarType = rt
+		}
 		c.symbolTable.AddVar(decl.VarType, decl.Ident)
 		if decl.Expr != nil {
 			exprCheck, err := c.checkExpr(decl.Expr)
@@ -322,13 +402,57 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 		expr.Inner = inner
 		expr.Type = &mtypes.Int32Type{}
 		return expr, nil
+	case *parser.ASTMember:
+		inner, err := c.checkExpr(expr.Inner)
+		if err != nil {
+			return nil, err
+		}
+		st, ok := inner.GetType().(*mtypes.StructType)
+		if !ok {
+			if ptr, isPtr := inner.GetType().(*mtypes.PointerType); isPtr {
+				st, ok = ptr.Referenced.(*mtypes.StructType) // auto-deref
+			}
+		}
+		if !ok || st == nil {
+			return nil, c.createSemanticError("'.' зөвхөн бүтэц дээр хэрэглэнэ", expr.Token.Line, expr.Token.Span)
+		}
+		f := st.Field(expr.Field)
+		if f == nil {
+			return nil, c.createSemanticError(fmt.Sprintf("бүтэц '%s'-д '%s' талбар байхгүй", st.Name, expr.Field), expr.Token.Line, expr.Token.Span)
+		}
+		expr.Inner = inner
+		expr.Offset = f.Offset
+		expr.Type = f.Type
+		return expr, nil
+
+	case *parser.ASTMethodCall:
+		inner, err := c.checkExpr(expr.Inner)
+		if err != nil {
+			return nil, err
+		}
+		st, ok := inner.GetType().(*mtypes.StructType)
+		if !ok {
+			return nil, c.createSemanticError("метод зөвхөн бүтэц дээр дуудаж болно", expr.Token.Line, expr.Token.Span)
+		}
+		mangled := parser.MethodName(st.Name, expr.Method)
+		if c.symbolTable.GetOptional(mangled) == nil {
+			return nil, c.createSemanticError(fmt.Sprintf("бүтэц '%s'-д '%s' метод байхгүй", st.Name, expr.Method), expr.Token.Line, expr.Token.Span)
+		}
+		// rewrite to a plain call with self as the first argument
+		call := &parser.ASTFnCall{
+			Token: expr.Token,
+			Ident: mangled,
+			Args:  append([]parser.ASTExpression{inner}, expr.Args...),
+		}
+		return c.checkExpr(call)
+
 	case *parser.ASTAddrOf:
 		inner, err := c.checkExpr(expr.Inner)
 		if err != nil {
 			return nil, err
 		}
 		switch inner.(type) {
-		case *parser.ASTVar, *parser.ASTDeref, *parser.ASTArrayIndex:
+		case *parser.ASTVar, *parser.ASTDeref, *parser.ASTArrayIndex, *parser.ASTMember:
 			// addressable
 		default:
 			return nil, c.createSemanticError("'&' зөвхөн хувьсагч, заагчийн утга эсвэл массивын элементэд хэрэглэнэ", expr.Token.Line, expr.Token.Span)
@@ -524,6 +648,10 @@ func (c *TypeChecker) typeName(t mtypes.Type) string {
 		return "этоо"
 	case *mtypes.UInt64Type:
 		return "этоо64"
+	case *mtypes.StructType:
+		return t.(*mtypes.StructType).Name
+	case *mtypes.NamedType:
+		return t.(*mtypes.NamedType).Name
 	case *mtypes.ArrayType:
 		return "массив"
 	default:

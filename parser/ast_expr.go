@@ -405,3 +405,38 @@ func (a *ASTDeref) SetType(t mtypes.Type) { a.Type = t }
 func (a *ASTDeref) PrintAST(depth int) string {
 	return indent(depth) + "*" + a.Inner.PrintAST(0)
 }
+
+// ASTMember is `expr.талбар` on a struct (or pointer to struct).
+type ASTMember struct {
+	Token  lexer.Token
+	Inner  ASTExpression
+	Field  string
+	Offset int64 // filled by the type checker from the struct layout
+	Type   mtypes.Type
+}
+
+func (a *ASTMember) expressionNode()       {}
+func (a *ASTMember) TokenLiteral() string  { return "." + a.Field }
+func (a *ASTMember) GetType() mtypes.Type  { return a.Type }
+func (a *ASTMember) SetType(t mtypes.Type) { a.Type = t }
+func (a *ASTMember) PrintAST(depth int) string {
+	return indent(depth) + a.Inner.PrintAST(0) + "." + a.Field
+}
+
+// ASTMethodCall is `expr.метод(args)`; the type checker rewrites it into a
+// plain call of the mangled method function with expr as first argument.
+type ASTMethodCall struct {
+	Token  lexer.Token
+	Inner  ASTExpression
+	Method string
+	Args   []ASTExpression
+	Type   mtypes.Type
+}
+
+func (a *ASTMethodCall) expressionNode()       {}
+func (a *ASTMethodCall) TokenLiteral() string  { return "." + a.Method + "()" }
+func (a *ASTMethodCall) GetType() mtypes.Type  { return a.Type }
+func (a *ASTMethodCall) SetType(t mtypes.Type) { a.Type = t }
+func (a *ASTMethodCall) PrintAST(depth int) string {
+	return indent(depth) + a.Inner.PrintAST(0) + "." + a.Method + "(...)"
+}

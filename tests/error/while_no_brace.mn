@@ -1,0 +1,5 @@
+// regression: this used to SIGSEGV the compiler
+// шалгах: алдаа "хаалт"
+функц үндсэн() -> тоо {
+    давтах 1 бол буц 0;
+}

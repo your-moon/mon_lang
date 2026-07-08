@@ -1,0 +1,5 @@
+// regression: redeclaration with a different signature was accepted
+// шалгах: алдаа "гарын үсэг"
+функц нэмэх(а тоо, б тоо) -> тоо
+функц нэмэх(а тоо) -> тоо { буц а; }
+функц үндсэн() -> тоо { буц нэмэх(1); }

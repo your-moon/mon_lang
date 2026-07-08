@@ -1,0 +1,3 @@
+// regression: missing '}' used to hang the parser forever
+// шалгах: алдаа "хаалт"
+функц үндсэн() -> тоо { буц 1;

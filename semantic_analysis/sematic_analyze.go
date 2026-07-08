@@ -109,6 +109,9 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 				if dt.IsPublic {
 					importedDecls = append(importedDecls, dt)
 				}
+			case *parser.ASTStructDecl:
+				// struct layouts always travel with the module
+				importedDecls = append(importedDecls, dt)
 			}
 		}
 	}

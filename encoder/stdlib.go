@@ -20,6 +20,9 @@ const (
 	sysSelect       = 0x200005D
 	sysGettimeofday = 0x2000074
 	sysMmap         = 0x20000C5
+	sysOpen         = 0x2000005
+	sysClose        = 0x2000006
+	sysLseek        = 0x20000C7
 )
 
 const heapChunk = 1 << 20 // mmap granularity for the bump allocator
@@ -37,17 +40,28 @@ func StdlibDataDefs() []StdlibData {
 		{Label: "rand_state", Size: 8, Init: 0},
 		{Label: "heap_ptr", Size: 8, Init: 0},
 		{Label: "heap_end", Size: 8, Init: 0},
+		{Label: "argc", Size: 8, Init: 0},
+		{Label: "argv", Size: 8, Init: 0},
 	}
 }
 
 // StdlibStrings returns string constants the stdlib references.
 func StdlibStrings() map[string]string { // label -> bytes
-	return map[string]string{"clear_seq": "\x1b[H\x1b[2J"}
+	return map[string]string{
+		"clear_seq": "\x1b[H\x1b[2J",
+		"empty_str": "",
+	}
 }
 
-// EmitEntry writes the process entry stub: call user main (wndsen), pass its
-// return value to exit(2). Must be emitted at code offset 0.
-func (b *Buf) EmitEntry(mainLabel string) {
+// EmitEntry writes the process entry stub: capture argc/argv from the
+// kernel-provided stack layout ([rsp]=argc, rsp+8=argv), call user main
+// (wndsen), pass its return value to exit(2). Must be at code offset 0.
+func (b *Buf) EmitEntry(mainLabel string, dataLabel func(string) string) {
+	b.LoadBaseR(true, RSP, RAX) // argc
+	b.MovRRip(true, RAX, dataLabel("argc"))
+	b.MovRR(true, RSP, RAX)
+	b.AluIR(OpAdd, true, 8, RAX) // &argv[0]
+	b.MovRRip(true, RAX, dataLabel("argv"))
 	b.Call(mainLabel)
 	b.MovRR(false, RAX, RDI) // exit code = wndsen() result (low 32 bits)
 	b.MovIR(false, sysExit, RAX)
@@ -383,6 +397,140 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.MovIR(false, sysWrite, RAX)
 	b.Syscall()
 	b.Epilogue()
+
+	/* mqrUrt(s): strlen in bytes */
+	b.Label(fnLabel("mqrUrt"))
+	b.Prologue()
+	b.MovRR(true, RDI, R10)
+	b.XorRR(true, RAX, RAX)
+	b.Label("stdlib.strlen.loop")
+	b.LoadByte(R10, RCX)
+	b.TestRR(false, RCX, RCX)
+	b.Jcc(CondE, "stdlib.strlen.done")
+	b.IncR(true, R10)
+	b.IncR(true, RAX)
+	b.Jmp("stdlib.strlen.loop")
+	b.Label("stdlib.strlen.done")
+	b.Epilogue()
+
+	/* bayt(s, i): unsigned byte at index */
+	b.Label(fnLabel("bayt"))
+	b.Prologue()
+	b.AluRR(OpAdd, true, RSI, RDI)
+	b.LoadByte(RDI, RAX)
+	b.Epilogue()
+
+	/* baytTavikh(s, i, b): store byte at index */
+	b.Label(fnLabel("baytTavikh"))
+	b.Prologue()
+	b.AluRR(OpAdd, true, RSI, RDI)
+	b.StoreByte(RDX, RDI)
+	b.Epilogue()
+
+	/* faylUnshikhBwten(path): whole file as a NUL-terminated string.
+	   open / lseek-end / lseek-0 / malloc(size+1) / read / close.
+	   Errors return "" (the empty string constant). */
+	b.Label(fnLabel("faylUnshikhBwten"))
+	b.Prologue()
+	b.AluIR(OpSub, true, 32, RSP)
+	b.XorRR(true, RSI, RSI) // O_RDONLY
+	b.XorRR(true, RDX, RDX)
+	b.MovIR(false, sysOpen, RAX)
+	b.Syscall()
+	b.Jcc(CondB, "stdlib.fread.fail")
+	b.MovRM(true, RAX, -8) // fd
+	b.MovRR(true, RAX, RDI)
+	b.XorRR(true, RSI, RSI)
+	b.MovIR(false, 2, RDX) // SEEK_END
+	b.MovIR(false, sysLseek, RAX)
+	b.Syscall()
+	b.MovRM(true, RAX, -16) // size
+	b.MovMR(true, -8, RDI)
+	b.XorRR(true, RSI, RSI)
+	b.XorRR(true, RDX, RDX) // SEEK_SET
+	b.MovIR(false, sysLseek, RAX)
+	b.Syscall()
+	b.MovMR(true, -16, RDI)
+	b.IncR(true, RDI) // +1 for NUL
+	b.Call(fnLabel("malloc"))
+	b.MovRM(true, RAX, -24) // buf
+	b.MovMR(true, -8, RDI)
+	b.MovRR(true, RAX, RSI)
+	b.MovMR(true, -16, RDX)
+	b.MovIR(false, sysRead, RAX)
+	b.Syscall()
+	// NUL-terminate at the actually-read length
+	b.MovMR(true, -24, RCX)
+	b.AluRR(OpAdd, true, RAX, RCX)
+	b.XorRR(true, RDX, RDX)
+	b.StoreByte(RDX, RCX)
+	b.MovMR(true, -8, RDI)
+	b.MovIR(false, sysClose, RAX)
+	b.Syscall()
+	b.MovMR(true, -24, RAX)
+	b.Epilogue()
+	b.Label("stdlib.fread.fail")
+	b.LeaRip(RAX, strLabel("empty_str"))
+	b.Epilogue()
+
+	/* faylBichikh(path, content): write string to file, 0 on success */
+	b.Label(fnLabel("faylBichikh"))
+	b.Prologue()
+	b.AluIR(OpSub, true, 32, RSP)
+	b.MovRM(true, RSI, -16) // content
+	b.MovIR(false, 0x601, RSI) // O_WRONLY|O_CREAT|O_TRUNC
+	b.MovIR(false, 0o644, RDX)
+	b.MovIR(false, sysOpen, RAX)
+	b.Syscall()
+	b.Jcc(CondB, "stdlib.fwrite.fail")
+	b.MovRM(true, RAX, -8) // fd
+	b.MovMR(true, -16, RDI)
+	b.Call(fnLabel("mqrUrt"))
+	b.MovRR(true, RAX, RDX) // len
+	b.MovMR(true, -8, RDI)
+	b.MovMR(true, -16, RSI)
+	b.MovIR(false, sysWrite, RAX)
+	b.Syscall()
+	b.MovMR(true, -8, RDI)
+	b.MovIR(false, sysClose, RAX)
+	b.Syscall()
+	b.XorRR(true, RAX, RAX)
+	b.Epilogue()
+	b.Label("stdlib.fwrite.fail")
+	b.MovIR(false, 1, RAX)
+	b.Epilogue()
+
+	/* mqrShine(len): mutable string buffer; bump-allocated mmap pages
+	   arrive zeroed, so the buffer is born NUL-terminated everywhere */
+	b.Label(fnLabel("mqrShine"))
+	b.Prologue()
+	b.IncR(true, RDI) // room for NUL
+	b.Call(fnLabel("malloc"))
+	b.Epilogue()
+
+	/* argumyentToo(): argc captured by the entry stub */
+	b.Label(fnLabel("argumyentToo"))
+	b.Prologue()
+	b.MovRipR(true, dataLabel("argc"), RAX)
+	b.Epilogue()
+
+	/* argumyent(i): argv[i], "" when out of range */
+	b.Label(fnLabel("argumyent"))
+	b.Prologue()
+	b.MovsxdRR(RDI, RCX)
+	b.TestRR(true, RCX, RCX)
+	b.Jcc(CondS, "stdlib.argv.bad")
+	b.MovRipR(true, dataLabel("argc"), RAX)
+	b.AluRR(OpCmp, true, RAX, RCX) // cmp rax, rcx: sets flags for rcx-rax
+	b.Jcc(CondGE, "stdlib.argv.bad")
+	b.MovRipR(true, dataLabel("argv"), RAX)
+	b.ShlIR(true, 3, RCX)
+	b.AluRR(OpAdd, true, RCX, RAX)
+	b.LoadBaseR(true, RAX, RAX)
+	b.Epilogue()
+	b.Label("stdlib.argv.bad")
+	b.LeaRip(RAX, strLabel("empty_str"))
+	b.Epilogue()
 }
 
 // StdlibFns lists the function names EmitStdlib defines; the program mapper
@@ -390,5 +538,7 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 func StdlibFns() []string {
 	return []string{"khevle", "ekhevle", "temdegtKhevlekh", "mqr_khevlekh", "unsh", "unsh32",
 		"sanamsargwyToo", "odoo", "malloc", "chqlqqlqkh", "khwleekh",
-		"delgetsTseverlekh"}
+		"delgetsTseverlekh", "mqrUrt", "bayt", "baytTavikh",
+		"faylUnshikhBwten", "faylBichikh", "argumyentToo", "argumyent",
+		"mqrShine"}
 }

@@ -195,10 +195,18 @@ func (b *Buf) memRBP(reg Reg, disp int) {
 	}
 }
 
-// memBase encodes (base) with no displacement; base must not be RSP/RBP/R12/R13
-// except R10/R11 which this compiler uses.
+// memBase encodes (base) with no displacement. rm=100 escapes to a SIB
+// byte (rsp/r12) and rm=101 with mod=00 means rip-relative (rbp/r13), so
+// both need their standard workarounds.
 func (b *Buf) memBase(reg, base Reg) {
-	b.byte(modrm(0, reg, base))
+	switch base & 7 {
+	case RSP: // needs SIB: scale=0, index=none(100), base=rsp
+		b.byte(modrm(0, reg, base), 0x24)
+	case RBP: // (rbp)/(r13) must use disp8=0 form
+		b.byte(modrm(1, reg, base), 0)
+	default:
+		b.byte(modrm(0, reg, base))
+	}
 }
 
 /* --- register-register / register-memory forms ---

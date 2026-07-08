@@ -102,7 +102,7 @@ func EncodeProgram(prog codegen.AsmProgram) (*Program, error) {
 		}
 	}
 
-	b.EmitEntry(fnLabel("wndsen"))
+	b.EmitEntry(fnLabel("wndsen"), dataLabel)
 
 	for _, fn := range prog.AsmFnDef {
 		b.Label(fnLabel(fn.Ident))

@@ -43,10 +43,16 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction
 		// StringLiteral is already properly handled
 		return []AsmInstruction{ast}
 	case AsmMov:
-		// Handle quadword immediate to register
+		// Handle quadword immediate too large for imm32
 		if _, isQuadWord := ast.Type.(*asmtype.QuadWord); isQuadWord {
 			if imm, isImm := ast.Src.(Imm); isImm {
 				if isLarge(imm.Value) {
+					// a register destination takes movabs directly; going
+					// through R10 here would clobber it for sequences that
+					// already hold an address in R10 (Store lowering)
+					if _, isReg := ast.Dst.(Register); isReg {
+						return []AsmInstruction{ast}
+					}
 					return []AsmInstruction{
 						AsmMov{
 							Type: &asmtype.QuadWord{},

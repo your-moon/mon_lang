@@ -433,6 +433,7 @@ func (c *CLI) runGen(args []string) error {
 
 	tackyGen := tackygen.NewTackyGen(uniqueGen, table)
 	tackyProgram := tackyGen.EmitTacky(resolvedAst)
+	tackyProgram = tackygen.Optimize(tackyProgram)
 
 	if base.Debug {
 		fmt.Println("\n---- TACKY IR ----:")

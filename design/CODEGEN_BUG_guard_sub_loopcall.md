@@ -26,14 +26,59 @@ Expected `1`. Native encoder prints `0`; the `--cc` path **segfaults** (exit 139
 
 ## What triggers it
 
-Both of these are required — removing either makes it pass:
+A **comparison statement placed immediately before a loop that contains function
+calls** corrupts a value the loop relies on. Both required:
 
-1. the guard compares a **subtraction** (`(т - э) != у`), and
+1. a guard comparison before the loop (`хэрэв разн != у бол { ... }`), and
 2. the following `давтах` loop contains a **function call** (`байт(...)`).
 
-Adding any intervening statement that spills (e.g. a `хэвлэ`) also masks it.
-Isolated (guard alone, or loop alone, or `т != у` without the subtraction, or a
-loop with no call) all compile and run correctly.
+Narrowed reproduction (values are provably correct, yet the loop misbehaves):
+
+```mon
+функц кв(эх мөр, э тоо, т тоо, к мөр) -> тоо {
+    зарла у: тоо = мөр_урт(к);        // 10
+    зарла разн: тоо = т - э;          // 10
+    // Returning `разн * 1000 + у` here yields 10010 — both values correct.
+    хэрэв разн != у бол { буц 111; }  // 10 != 10 is false → must NOT fire (it doesn't)
+    зарла и: тоо = 0;
+    давтах и < у бол {
+        хэрэв байт(эх, э + и) != байт(к, и) бол { буц 999; }  // WRONGLY fires
+        и = и + 1;
+    }
+    буц 222;
+}
+// кв("функц нэм", 0, 10, "функц") returns 999; without the guard line it
+// completes the loop and returns 222.
+```
+
+The guard itself evaluates correctly (does not return 111), but its mere
+presence makes the subsequent byte comparison in the loop report a mismatch on
+bytes that are equal. Removing the guard, or the call inside the loop, fixes it.
+Any intervening spill (e.g. a `хэвлэ`) also masks it.
+
+Strongly suggests a **frame-slot allocation / liveness bug** in
+`code_gen` — a temporary from the guard aliases a stack slot that is still live
+across the loop's calls.
+
+## Precise diagnosis
+
+Instrumenting the loop (return `и` and the two byte values on mismatch) shows
+the mismatch fires on the **first** iteration (`и = 0`):
+
+- `байт(эх, э + и)` = `209` (correct: first byte of `ф` in "функц нэм")
+- `байт(к, и)`      = `207` (WRONG: should also be `209`)
+
+So parameter **`к` is corrupted** by the time the loop runs — its byte 0 reads
+`0xCF` (207) instead of `0xD1` (209), a value not present in "функц" at all, i.e.
+`к` no longer points where it should. The corruption only happens when the
+guard comparison precedes the loop. Conclusion: a temporary introduced by the
+guard is assigned a stack slot that overlaps the still-live parameter `к`
+(or otherwise clobbers it) across the loop's calls.
+
+Next step: dump `AsmProgram` before/after `ReplacePseudosInProgram`
+(`code_gen/pseudo.go`) for `кв` and check which pseudo shares `к`'s offset —
+the slot allocator (`ReplaceOperand` / `CurrentOffset`) is over-reusing an
+offset that is still live.
 
 ## What was ruled out
 

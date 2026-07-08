@@ -36,6 +36,7 @@ const (
 	KeywordChar   Keyword = "тэмдэгт" // Unicode codepoint, alias of тоо
 	KeywordStruct Keyword = "бүтэц"
 	KeywordImpl   Keyword = "хэрэгжүүл"
+	KeywordMatch  Keyword = "тааруул"
 	KeywordSelf   Keyword = "өөрөө"
 	KeywordVoid   Keyword = "хоосон"
 	KeywordString Keyword = "мөр"

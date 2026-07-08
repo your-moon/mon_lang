@@ -200,6 +200,8 @@ func (p *Parser) parseStmt() ASTStmt {
 		return p.parseReturn()
 	case lexer.IF:
 		return p.parseIf()
+	case lexer.MATCH:
+		return p.parseMatch()
 	case lexer.OPEN_BRACE:
 		return p.parseCompoundStmt()
 	default:
@@ -946,6 +948,50 @@ func (p *Parser) parseIdent() ASTExpression {
 			return expr
 		}
 	}
+}
+
+// parseMatch parses `тааруул утга { хэв => блок ... _ => блок }`.
+// Patterns are constant expressions; a bare `_` is the wildcard arm.
+func (p *Parser) parseMatch() *ASTMatch {
+	ast := &ASTMatch{Token: p.peekToken}
+	p.nextToken() // consume тааруул
+
+	ast.Scrutinee = p.parseExpr(Lowest)
+	if ast.Scrutinee == nil {
+		return nil
+	}
+
+	if !p.expect(lexer.OPEN_BRACE) {
+		p.appendError(ErrMissingBraceOpen)
+		return nil
+	}
+
+	for !p.peekIs(lexer.CLOSE_BRACE) && !p.peekIs(lexer.EOF) {
+		var pattern ASTExpression
+		if p.peekIs(lexer.IDENT) && p.peekToken.Value != nil && *p.peekToken.Value == "_" {
+			p.nextToken() // wildcard
+		} else {
+			pattern = p.parseExpr(Lowest)
+			if pattern == nil {
+				return nil
+			}
+		}
+		if !p.expect(lexer.FATARROW) {
+			p.appendError("'=>' тэмдэгт шаардлагатай")
+			return nil
+		}
+		block := p.parseBlock()
+		if block == nil {
+			return nil
+		}
+		ast.Arms = append(ast.Arms, MatchArm{Pattern: pattern, Body: *block})
+	}
+
+	if !p.expect(lexer.CLOSE_BRACE) {
+		p.appendError(ErrMissingBraceClose)
+		return nil
+	}
+	return ast
 }
 
 // parseStructDecl parses `бүтэц Нэр { талбар: төрөл, ... }`.

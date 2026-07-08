@@ -80,6 +80,8 @@ const (
 	NEW         TokenType = "NEW"    // шинэ
 	STRUCT      TokenType = "STRUCT" // бүтэц
 	IMPL        TokenType = "IMPL"   // хэрэгжүүл
+	MATCH       TokenType = "MATCH"  // тааруул
+	FATARROW    TokenType = "FATARROW" // =>
 	ELSE        TokenType = "ELSE" // эсвэл
 	ERROR       TokenType = "ERROR"
 )

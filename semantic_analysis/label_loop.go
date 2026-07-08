@@ -136,6 +136,15 @@ func (r *LoopPass) LabelStmt(currentLabel string, program parser.ASTStmt) (parse
 		}
 		nodetype.Block = *block
 		return nodetype, nil
+	case *parser.ASTMatch:
+		for i := range nodetype.Arms {
+			body, err := r.LabelBlock(currentLabel, &nodetype.Arms[i].Body)
+			if err != nil {
+				return nil, err
+			}
+			nodetype.Arms[i].Body = *body
+		}
+		return nodetype, nil
 	case *parser.ASTIfStmt:
 		then, err := r.LabelStmt(currentLabel, nodetype.Then)
 		if err != nil {

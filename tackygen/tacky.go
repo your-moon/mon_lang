@@ -258,3 +258,13 @@ func (f FnCall) Ir() {
 	}
 	fmt.Printf("%s := call %s(%s)\n", f.Dst.val(), f.Name, args)
 }
+
+// GetAddress materializes the address of a named variable (Sandler ch14).
+type GetAddress struct {
+	Src TackyVal // Var whose storage address is taken
+	Dst TackyVal
+}
+
+func (g GetAddress) Ir() {
+	fmt.Printf("%s := &%s\n", g.Dst.val(), g.Src.val())
+}

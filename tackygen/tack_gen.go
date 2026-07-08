@@ -611,13 +611,37 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		irs = append(irs, Load{Src: addr, Dst: dst})
 		return dst, irs
 
+	case *parser.ASTAddrOf:
+		irs := []Instruction{}
+		switch inner := expr.Inner.(type) {
+		case *parser.ASTVar:
+			dst := c.makeTemp(expr.Type)
+			irs = append(irs, GetAddress{Src: Var{Name: inner.Ident}, Dst: dst})
+			return dst, irs
+		case *parser.ASTDeref:
+			// &*p is just p
+			return c.EmitExpr(inner.Inner)
+		default:
+			panic("addr-of: unsupported operand (semantic pass should reject)")
+		}
+
+	case *parser.ASTDeref:
+		irs := []Instruction{}
+		ptr, ptrIrs := c.EmitExpr(expr.Inner)
+		irs = append(irs, ptrIrs...)
+		dst := c.makeTemp(expr.Type)
+		irs = append(irs, Load{Src: ptr, Dst: dst})
+		return dst, irs
+
 	case *parser.ASTAssignment:
 		irs := []Instruction{}
 		switch lhs := expr.Left.(type) {
 		case *parser.ASTVar:
 			rhsResult, rhsIrs := c.EmitExpr(expr.Right)
 			irs = append(irs, rhsIrs...)
-			irs = append(irs, Copy{Src: rhsResult, Dst: Var{Name: lhs.Ident}})
+			widened, widenIrs := c.maybeSignExtend(rhsResult, expr.Right.GetType(), lhs.GetType())
+			irs = append(irs, widenIrs...)
+			irs = append(irs, Copy{Src: widened, Dst: Var{Name: lhs.Ident}})
 			return Var{Name: lhs.Ident}, irs
 		case *parser.ASTArrayIndex:
 			// Compute address
@@ -638,6 +662,16 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 			// Store
 			irs = append(irs, Store{Src: rhsResult, Dst: addr})
 			return rhsResult, irs
+		case *parser.ASTDeref:
+			// *p = rhs: evaluate the pointer, then store through it
+			ptr, ptrIrs := c.EmitExpr(lhs.Inner)
+			irs = append(irs, ptrIrs...)
+			rhsResult, rhsIrs := c.EmitExpr(expr.Right)
+			irs = append(irs, rhsIrs...)
+			widened, widenIrs := c.maybeSignExtend(rhsResult, expr.Right.GetType(), lhs.GetType())
+			irs = append(irs, widenIrs...)
+			irs = append(irs, Store{Src: widened, Dst: ptr})
+			return widened, irs
 		default:
 			panic("assignment left side must be var or array index")
 		}

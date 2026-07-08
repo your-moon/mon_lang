@@ -382,6 +382,20 @@ func (f *FixUpPassGen) FixUpInInstruction(instr AsmInstruction) []AsmInstruction
 		}
 		return []AsmInstruction{ast}
 
+	case AsmLea:
+		// lea destination must be a register
+		if _, isReg := ast.Dst.(Register); !isReg {
+			return []AsmInstruction{
+				AsmLea{Src: ast.Src, Dst: Register{Reg: R11}},
+				AsmMov{
+					Type: &asmtype.QuadWord{},
+					Src:  Register{Reg: R11},
+					Dst:  ast.Dst,
+				},
+			}
+		}
+		return []AsmInstruction{ast}
+
 	default:
 		return []AsmInstruction{instr}
 	}

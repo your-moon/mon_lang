@@ -386,6 +386,12 @@ func (a *AsmASTGen) GenASTInstr(instr tackygen.Instruction) []AsmInstruction {
 			Dst: a.GenASTVal(ast.Dst),
 		}
 		return []AsmInstruction{movsx}
+	case tackygen.GetAddress:
+		lea := AsmLea{
+			Src: a.GenASTVal(ast.Src),
+			Dst: a.GenASTVal(ast.Dst),
+		}
+		return []AsmInstruction{lea}
 	case tackygen.Load:
 		// Move pointer to R10, load from memory to R11, then move to dst
 		dstType := a.AsmType(ast.Dst)
@@ -619,6 +625,8 @@ func (a *AsmASTGen) ConvType(val mtypes.Type) asmtype.AsmType {
 		return &asmtype.StringType{}
 	case *mtypes.ArrayType:
 		return &asmtype.QuadWord{} // arrays are pointers
+	case *mtypes.PointerType:
+		return &asmtype.QuadWord{}
 	case *mtypes.FnType:
 		panic("fn type should not be here")
 	default:

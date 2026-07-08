@@ -207,6 +207,18 @@ func encodeInstr(b *Buf, pool *stringPool, instr codegen.AsmInstruction) error {
 		}
 		return nil
 
+	case codegen.AsmLea:
+		dst := opReg(ast.Dst) // fixup guarantees a register destination
+		switch classify(ast.Src) {
+		case oStack:
+			b.LeaRBP(opDisp(ast.Src), dst)
+		case oRip:
+			b.LeaRip(dst, opRip(ast.Src))
+		default:
+			return fmt.Errorf("lea: unsupported src %T", ast.Src)
+		}
+		return nil
+
 	case codegen.AsmBinary:
 		return encodeBinary(b, ast)
 

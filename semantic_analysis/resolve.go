@@ -491,6 +491,22 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression, innerMap IdMap) (pa
 			Op:    nodetype.Op,
 		}, nil
 
+	case *parser.ASTAddrOf:
+		resolvedInner, err := r.ResolveExpr(nodetype.Inner, innerMap)
+		if err != nil {
+			return nil, err
+		}
+		nodetype.Inner = resolvedInner
+		return nodetype, nil
+
+	case *parser.ASTDeref:
+		resolvedInner, err := r.ResolveExpr(nodetype.Inner, innerMap)
+		if err != nil {
+			return nil, err
+		}
+		nodetype.Inner = resolvedInner
+		return nodetype, nil
+
 	case *parser.ASTBinary:
 		resolvedLeft, err := r.ResolveExpr(nodetype.Left, innerMap)
 		if err != nil {

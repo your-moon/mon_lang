@@ -370,8 +370,13 @@ func (p *Parser) parseType() (mtypes.Type, error) {
 	}
 }
 
-// tryParseArrayType checks for [] suffix after a base type and wraps it in ArrayType
+// tryParseArrayType wraps type suffixes: `тоо*` pointer levels first, then
+// an optional `[]` array marker (so `тоо*[]` is an array of pointers).
 func (p *Parser) tryParseArrayType(baseType mtypes.Type) mtypes.Type {
+	for p.peekIs(lexer.MUL) {
+		p.nextToken() // consume *
+		baseType = &mtypes.PointerType{Referenced: baseType}
+	}
 	if p.peekIs(lexer.OPEN_BRACKET) {
 		p.nextToken() // consume [
 		p.expect(lexer.CLOSE_BRACKET)
@@ -588,6 +593,22 @@ func (p *Parser) parseFactor() ASTExpression {
 		return p.parseNewArray()
 	case lexer.MINUS, lexer.TILDE, lexer.NOT:
 		return p.parseUnary(next.Type)
+	case lexer.AMP:
+		p.nextToken() // consume &
+		tok := p.current
+		inner := p.parseFactor()
+		if inner == nil {
+			return nil
+		}
+		return &ASTAddrOf{Token: tok, Inner: inner}
+	case lexer.MUL:
+		p.nextToken() // consume *
+		tok := p.current
+		inner := p.parseFactor()
+		if inner == nil {
+			return nil
+		}
+		return &ASTDeref{Token: tok, Inner: inner}
 	case lexer.OPEN_PAREN:
 		return p.parseGrouping()
 	default:
@@ -671,6 +692,8 @@ func (p *Parser) parseExpr(minPrec int) ASTExpression {
 			case *ASTVar:
 				left = &ASTAssignment{Token: p.current, Left: lhs, Right: right}
 			case *ASTArrayIndex:
+				left = &ASTAssignment{Token: p.current, Left: lhs, Right: right}
+			case *ASTDeref:
 				left = &ASTAssignment{Token: p.current, Left: lhs, Right: right}
 			default:
 				p.appendError(ErrInvalidAssignTarget)

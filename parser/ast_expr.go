@@ -374,3 +374,34 @@ func (a *ASTNewArray) SetType(t mtypes.Type) { a.Type = t }
 func (a *ASTNewArray) PrintAST(depth int) string {
 	return fmt.Sprintf("%sшинэ %s[%s]", indent(depth), a.ElementType, a.Size.PrintAST(0))
 }
+
+// ASTAddrOf is &expr: the address of an lvalue.
+type ASTAddrOf struct {
+	Token lexer.Token
+	Inner ASTExpression
+	Type  mtypes.Type
+}
+
+func (a *ASTAddrOf) expressionNode()       {}
+func (a *ASTAddrOf) TokenLiteral() string  { return "&" }
+func (a *ASTAddrOf) GetType() mtypes.Type  { return a.Type }
+func (a *ASTAddrOf) SetType(t mtypes.Type) { a.Type = t }
+func (a *ASTAddrOf) PrintAST(depth int) string {
+	return indent(depth) + "&" + a.Inner.PrintAST(0)
+}
+
+// ASTDeref is *expr: the object a pointer refers to. Valid both as a value
+// and as an assignment target.
+type ASTDeref struct {
+	Token lexer.Token
+	Inner ASTExpression
+	Type  mtypes.Type
+}
+
+func (a *ASTDeref) expressionNode()       {}
+func (a *ASTDeref) TokenLiteral() string  { return "*" }
+func (a *ASTDeref) GetType() mtypes.Type  { return a.Type }
+func (a *ASTDeref) SetType(t mtypes.Type) { a.Type = t }
+func (a *ASTDeref) PrintAST(depth int) string {
+	return indent(depth) + "*" + a.Inner.PrintAST(0)
+}

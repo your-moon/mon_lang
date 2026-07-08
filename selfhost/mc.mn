@@ -1,0 +1,94 @@
+// mc — the mon_lang compiler, written in mon_lang.
+//
+// Compiles a self-hostable subset of mon_lang (functions, тоо64, locals and
+// globals, arithmetic, comparisons, if/while, arrays, strings, byte ops,
+// file I/O, calls) to x86_64 AT&T assembly. Single pass: parse and emit at
+// once. No AST — a stack machine whose "stack" is a region of each frame,
+// so rsp never moves and every call is 16-byte aligned. Symbol tables are
+// parallel global arrays; mc uses no structs, so mc can compile itself.
+//
+// Usage: mc <source.mn>   (writes <source.mn>.s)
+
+// ---- source + lexer state ----
+зарла эх: мөр;
+зарла эхУрт: тоо64;
+зарла байр: тоо64;
+
+зарла тТөрөл: тоо64;   // current token kind
+зарла тТоо: тоо64;     // numeric / char value
+зарла тЭхлэл: тоо64;   // ident/string byte range in эх
+зарла тТөгсгөл: тоо64;
+
+// token kinds
+// 0 eof  1 num  2 ident  3 +  4 -  5 *  6 /  7 %  8 (  9 )  10 {  11 }
+// 12 ;  13 ,  14 =  15 ==  16 !=  17 <  18 >  19 <=  20 >=  21 string
+// 22 ->  23 :  24 [  25 ]  26 &&  27 ||
+
+// ---- output buffer ----
+зарла гарц: мөр;
+зарла гарцБайр: тоо64;
+зарла мдэо: мөр;      // rodata (string literals) buffer
+зарла мдэоБайр: тоо64;
+зарла шошгоТоо: тоо64; // label counter
+
+// ---- function table (parallel arrays) ----
+зарла фнЭхлэл: тоо64[256];
+зарла фнТөгсгөл: тоо64[256];
+зарла фнТоо: тоо64;
+
+// ---- global variable table ----
+зарла глНэр: мөр[256];
+зарла глМассив: тоо64[256];  // 1 if array
+зарла глТоо: тоо64;
+
+// ---- locals (per function) ----
+зарла лоНэр: мөр[128];
+зарла лоТоо: тоо64;
+зарла гүн: тоо64;  // expression-stack depth
+
+функц тэмдэгт(и тоо64) -> тоо64 {
+    хэрэв и >= эхУрт бол { буц 0; }
+    буц байт(эх, и);
+}
+
+функц үсэгҮү(б тоо64) -> тоо64 {
+    хэрэв б >= 97 бол { хэрэв б <= 122 бол { буц 1; } }
+    хэрэв б >= 65 бол { хэрэв б <= 90 бол { буц 1; } }
+    хэрэв б == 95 бол { буц 1; }
+    хэрэв б >= 128 бол { буц 1; }
+    буц 0;
+}
+
+функц цифрҮү(б тоо64) -> тоо64 {
+    хэрэв б >= 48 бол { хэрэв б <= 57 бол { буц 1; } }
+    буц 0;
+}
+
+// advance to the next token
+функц дараах() -> хоосон {
+    // skip whitespace and // comments
+    давтах байр < эхУрт бол {
+        зарла в: тоо64 = тэмдэгт(байр);
+        хэрэв в == 32 бол { байр = байр + 1; }
+        эсвэл { хэрэв в == 10 бол { байр = байр + 1; }
+        эсвэл { хэрэв в == 9 бол { байр = байр + 1; }
+        эсвэл { хэрэв в == 13 бол { байр = байр + 1; }
+        эсвэл {
+            хэрэв в == 47 бол {
+                хэрэв тэмдэгт(байр + 1) == 47 бол {
+                    давтах байр < эхУрт бол {
+                        хэрэв тэмдэгт(байр) == 10 бол { байр = байр; }
+                        эсвэл { байр = байр + 1; }
+                        хэрэв тэмдэгт(байр) == 10 бол { байр = эхУрт + эхУрт; }
+                    }
+                    байр = байр;
+                } эсвэл { байр = эхУрт + 1000000; }
+            } эсвэл { байр = эхУрт + 1000000; }
+        }}}}
+        хэрэв байр >= эхУрт бол { байр = байр; }
+        хэрэв в > 13 бол { хэрэв в != 32 бол { хэрэв в != 47 бол { байр = байр; } } }
+        // break out once we hit a non-skippable char
+        хэрэв цагаанБусУу(в) == 1 бол { давталтТаслагч(); }
+    }
+    буц;
+}

@@ -37,6 +37,7 @@ type FnDecl struct {
 	StorageClass StorageClass
 	IsPublic     bool
 	IsExtern     bool
+	IsMethod     bool // defined in a хэрэгжүүл block; stays with its type
 }
 
 func (d *FnDecl) declNode() {}

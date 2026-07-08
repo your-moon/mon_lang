@@ -119,6 +119,15 @@ func (p *Parser) parseImport() *ASTImport {
 		if p.current.Value != nil {
 			ast.FilePath = *p.current.Value
 		}
+		// optional named import: ашигла "файл.mn" гэж нэр;
+		if p.peekIs(lexer.AS) {
+			p.nextToken()
+			if !p.expect(lexer.IDENT) || p.current.Value == nil {
+				p.appendError("'гэж'-ийн араас модулийн нэр байх ёстой")
+				return nil
+			}
+			ast.Ident = *p.current.Value
+		}
 	} else if p.expect(lexer.IDENT) {
 		ast.Ident = *p.current.Value
 		for !p.peekIs(lexer.SEMICOLON) {
@@ -1081,6 +1090,7 @@ func (p *Parser) parseImplBlock() []ASTDecl {
 			return decls
 		}
 		fn.Ident = MethodName(typeName, fn.Ident)
+		fn.IsMethod = true
 		decls = append(decls, fn)
 	}
 

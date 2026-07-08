@@ -37,10 +37,11 @@ type VariableMap struct {
 }
 
 type Resolver struct {
-	tempCounter int
-	source      []int32
-	uniqueGen   unique.UniqueGen
-	errors      []compilererrors.CompilerError
+	tempCounter   int
+	source        []int32
+	uniqueGen     unique.UniqueGen
+	errors        []compilererrors.CompilerError
+	moduleHandles map[string]map[string]bool // handle -> exported value names
 }
 
 func NewResolver(source []int32, uniqueGen unique.UniqueGen) *Resolver {
@@ -525,6 +526,18 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression, innerMap IdMap) (pa
 		return nodetype, nil
 
 	case *parser.ASTMember:
+		if v, ok := nodetype.Inner.(*parser.ASTVar); ok && r.moduleHandles[v.Ident] != nil {
+			// нэр.глобал - a module-qualified global, not a field access
+			if !r.moduleHandles[v.Ident][nodetype.Field] {
+				return nil, r.createSemanticError(
+					fmt.Sprintf("модуль '%s'-д '%s' нэртэй тунх зүйл байхгүй", v.Ident, nodetype.Field),
+					nodetype.Token.Line, nodetype.Token.Span)
+			}
+			return r.ResolveExpr(&parser.ASTVar{
+				Token: nodetype.Token,
+				Ident: nodetype.Field,
+			}, innerMap)
+		}
 		resolvedInner, err := r.ResolveExpr(nodetype.Inner, innerMap)
 		if err != nil {
 			return nil, err
@@ -533,6 +546,20 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression, innerMap IdMap) (pa
 		return nodetype, nil
 
 	case *parser.ASTMethodCall:
+		if v, ok := nodetype.Inner.(*parser.ASTVar); ok && r.moduleHandles[v.Ident] != nil {
+			// нэр.функц(...) - a module-qualified call, no self argument
+			if !r.moduleHandles[v.Ident][nodetype.Method] {
+				return nil, r.createSemanticError(
+					fmt.Sprintf("модуль '%s'-д '%s' нэртэй тунх функц байхгүй", v.Ident, nodetype.Method),
+					nodetype.Token.Line, nodetype.Token.Span)
+			}
+			call := &parser.ASTFnCall{
+				Token: nodetype.Token,
+				Ident: nodetype.Method,
+				Args:  nodetype.Args,
+			}
+			return r.ResolveExpr(call, innerMap)
+		}
 		resolvedInner, err := r.ResolveExpr(nodetype.Inner, innerMap)
 		if err != nil {
 			return nil, err

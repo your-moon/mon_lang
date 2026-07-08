@@ -82,6 +82,7 @@ const (
 	IMPL        TokenType = "IMPL"   // хэрэгжүүл
 	MATCH       TokenType = "MATCH"  // тааруул
 	FATARROW    TokenType = "FATARROW" // =>
+	AS          TokenType = "AS"       // гэж
 	ELSE        TokenType = "ELSE" // эсвэл
 	ERROR       TokenType = "ERROR"
 )

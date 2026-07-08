@@ -37,6 +37,7 @@ const (
 	KeywordStruct Keyword = "бүтэц"
 	KeywordImpl   Keyword = "хэрэгжүүл"
 	KeywordMatch  Keyword = "тааруул"
+	KeywordAs     Keyword = "гэж"
 	KeywordSelf   Keyword = "өөрөө"
 	KeywordVoid   Keyword = "хоосон"
 	KeywordString Keyword = "мөр"

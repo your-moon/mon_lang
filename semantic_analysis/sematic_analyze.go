@@ -68,10 +68,10 @@ type importUnit struct {
 //   - "лексер"           → a folder package (every .mn in baseDir/лексер), or,
 //     if no such directory exists, the embedded stdlib package of that name
 //   - "лексер/дэд"       → a local sub-package directory
-func (s *SemanticAnalyzer) resolveImport(path string) ([]importUnit, error) {
+func (s *SemanticAnalyzer) resolveImport(path string, baseDir string) ([]importUnit, error) {
 	// single local file
 	if strings.HasSuffix(path, ".mn") {
-		full := filepath.Join(s.baseDir, path)
+		full := filepath.Join(baseDir, path)
 		data, err := os.ReadFile(full)
 		if err != nil {
 			return nil, fmt.Errorf("импорт файл уншихад алдаа: %s: %v", path, err)
@@ -80,7 +80,7 @@ func (s *SemanticAnalyzer) resolveImport(path string) ([]importUnit, error) {
 	}
 
 	// a directory under baseDir is a folder package
-	dir := filepath.Join(s.baseDir, path)
+	dir := filepath.Join(baseDir, path)
 	if info, err := os.Stat(dir); err == nil && info.IsDir() {
 		return s.readPackageDir(dir)
 	}
@@ -145,21 +145,28 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 	}
 	importedDecls = append(importedDecls, preludeProg.Decls...)
 
-	// worklist of pending imports; imported files can add more
-	var queue []*parser.ASTImport
+	// worklist of pending imports; imported files can add more. Each carries
+	// the directory it was written in, so a package's relative imports resolve
+	// against that package's location, not the entry file's.
+	type pendingImport struct {
+		path    string
+		ident   string
+		baseDir string
+	}
+	var queue []pendingImport
 	for _, decl := range program.Decls {
 		imp, ok := decl.(*parser.ASTImport)
 		if !ok {
 			ownDecls = append(ownDecls, decl)
 			continue
 		}
-		queue = append(queue, imp)
+		queue = append(queue, pendingImport{path: imp.FilePath, ident: imp.Ident, baseDir: s.baseDir})
 	}
 
 	for len(queue) > 0 {
 		imp := queue[0]
 		queue = queue[1:]
-		if imp.FilePath == "" {
+		if imp.path == "" {
 			continue
 		}
 
@@ -167,7 +174,7 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 		// single local file; a bare name or slash path that names a directory
 		// is a folder package (every .mn file in it, Rust/Go style); a bare
 		// name that is not a local directory is an embedded stdlib package.
-		units, err := s.resolveImport(imp.FilePath)
+		units, err := s.resolveImport(imp.path, imp.baseDir)
 		if err != nil {
 			return nil, err
 		}
@@ -176,9 +183,9 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 		// exported symbol х - qualified access is validated against the
 		// package's combined export list. Types and methods stay global.
 		var exports map[string]bool
-		if imp.Ident != "" {
+		if imp.ident != "" {
 			exports = make(map[string]bool)
-			s.moduleHandles[imp.Ident] = exports
+			s.moduleHandles[imp.ident] = exports
 		}
 
 		for _, u := range units {
@@ -191,7 +198,15 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 			p := parser.NewParser(runeStr)
 			importedProg, err := p.ParseProgram()
 			if err != nil {
-				return nil, fmt.Errorf("импорт парсингийн алдаа: %s: %v", imp.FilePath, err)
+				return nil, fmt.Errorf("импорт парсингийн алдаа: %s: %v", imp.path, err)
+			}
+
+			// a local package file's relative imports resolve against its own
+			// directory; stdlib units keep the current base (their imports are
+			// bare stdlib names anyway).
+			unitDir := imp.baseDir
+			if u.isLocal {
+				unitDir = filepath.Dir(u.key)
 			}
 
 			for _, d := range importedProg.Decls {
@@ -215,9 +230,10 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 					importedDecls = append(importedDecls, dt)
 				case *parser.ASTImport:
 					// transitive import: process it too (a package may import
-					// another package). Named-import handles don't nest.
+					// another package), resolved relative to this file's dir.
+					// Named-import handles don't nest.
 					if dt.FilePath != "" {
-						queue = append(queue, &parser.ASTImport{FilePath: dt.FilePath})
+						queue = append(queue, pendingImport{path: dt.FilePath, baseDir: unitDir})
 					}
 				}
 			}

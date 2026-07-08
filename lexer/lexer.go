@@ -163,6 +163,12 @@ func (s *Scanner) ToKeyword() (Token, bool) {
 	if str == string(KeywordInt) {
 		return s.BuildToken(INT_TYPE), true
 	}
+	if str == string(KeywordStruct) {
+		return s.BuildToken(STRUCT), true
+	}
+	if str == string(KeywordImpl) {
+		return s.BuildToken(IMPL), true
+	}
 	if str == string(KeywordChar) {
 		// тэмдэгт is an alias of тоо: a codepoint is a 32-bit integer
 		return s.BuildToken(INT_TYPE), true

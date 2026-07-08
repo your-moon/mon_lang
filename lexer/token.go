@@ -77,7 +77,9 @@ const (
 	ULONG_TYPE  TokenType = "ULONG_TYPE" // этоо64
 	STRING_TYPE TokenType = "STRING_TYPE"
 	VOID        TokenType = "VOID"
-	NEW         TokenType = "NEW"  // шинэ
+	NEW         TokenType = "NEW"    // шинэ
+	STRUCT      TokenType = "STRUCT" // бүтэц
+	IMPL        TokenType = "IMPL"   // хэрэгжүүл
 	ELSE        TokenType = "ELSE" // эсвэл
 	ERROR       TokenType = "ERROR"
 )

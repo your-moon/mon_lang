@@ -637,6 +637,8 @@ func (a *AsmASTGen) ConvType(val mtypes.Type) asmtype.AsmType {
 		return &asmtype.QuadWord{} // arrays are pointers
 	case *mtypes.PointerType:
 		return &asmtype.QuadWord{}
+	case *mtypes.StructType:
+		return &asmtype.QuadWord{} // structs are references
 	case *mtypes.FnType:
 		panic("fn type should not be here")
 	default:

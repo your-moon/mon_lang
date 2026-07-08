@@ -66,8 +66,8 @@ func SizeOf(t Type) int64 {
 	switch t.(type) {
 	case *Int32Type, *UInt32Type:
 		return 4
-	case *Int64Type, *UInt64Type, *PointerType, *ArrayType, *StringType:
-		return 8
+	case *Int64Type, *UInt64Type, *PointerType, *ArrayType, *StringType, *StructType:
+		return 8 // structs are references
 	}
 	return 8
 }
@@ -77,6 +77,40 @@ type PointerType struct {
 }
 
 func (t *PointerType) typecheck() {}
+
+// NamedType is an unresolved type reference (e.g. a struct name in source);
+// the type checker replaces it with the real type.
+type NamedType struct {
+	Name string
+}
+
+func (t *NamedType) typecheck() {}
+
+type StructField struct {
+	Name   string
+	Type   Type
+	Offset int64
+}
+
+// StructType has reference semantics like arrays: a value of struct type is
+// a pointer to its heap storage, so codegen only ever moves 8-byte handles.
+type StructType struct {
+	Name   string
+	Fields []StructField
+	Size   int64 // laid-out payload size in bytes
+}
+
+func (t *StructType) typecheck() {}
+
+// Field returns the named field, or nil.
+func (t *StructType) Field(name string) *StructField {
+	for i := range t.Fields {
+		if t.Fields[i].Name == name {
+			return &t.Fields[i]
+		}
+	}
+	return nil
+}
 
 type FnType struct {
 	ParamTypes []Type
@@ -120,6 +154,12 @@ func IsSameType(a, b Type) bool {
 	case *PointerType:
 		bt, ok := b.(*PointerType)
 		return ok && IsSameType(at.Referenced, bt.Referenced)
+	case *StructType:
+		bt, ok := b.(*StructType)
+		return ok && at.Name == bt.Name
+	case *NamedType:
+		bt, ok := b.(*NamedType)
+		return ok && at.Name == bt.Name
 	case *FnType:
 		bt, ok := b.(*FnType)
 		if !ok || len(at.ParamTypes) != len(bt.ParamTypes) {

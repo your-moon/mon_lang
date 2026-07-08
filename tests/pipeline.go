@@ -22,6 +22,10 @@ func tackygenNew(u unique.UniqueGen, table *symbols.SymbolTable) tackygen.TackyG
 	return tackygen.NewTackyGen(u, table)
 }
 
+func tackygenOptimize(p tackygen.TackyProgram) tackygen.TackyProgram {
+	return tackygen.Optimize(p)
+}
+
 // compileCC links through the legacy external as/cc path for the
 // differential mode (MON_TEST_CC=1).
 func compileCC(lnk *linker.Linker, prog codegen.AsmProgram) error {

@@ -152,6 +152,11 @@ func compile(srcPath, outPath string, useCC bool) (err error) {
 
 	tackyGen := tackygenNew(uniqueGen, table)
 	tackyProgram := tackyGen.EmitTacky(resolvedAst)
+	if !useCC {
+		// optimize only the native path: differential mode then compares
+		// optimized output against the unoptimized legacy toolchain
+		tackyProgram = tackygenOptimize(tackyProgram)
+	}
 
 	asmGen := codegen.NewAsmGen(table)
 	asmProgram := asmGen.GenASTAsm(tackyProgram, symbolTable, asmsymbol.NewAsmSymbolTable())

@@ -371,7 +371,8 @@ func (p *Parser) parseType() (mtypes.Type, error) {
 }
 
 // tryParseArrayType wraps type suffixes: `тоо*` pointer levels first, then
-// an optional `[]` array marker (so `тоо*[]` is an array of pointers).
+// an optional `[]` or sized `[N]` array marker (so `тоо*[]` is an array of
+// pointers).
 func (p *Parser) tryParseArrayType(baseType mtypes.Type) mtypes.Type {
 	for p.peekIs(lexer.MUL) {
 		p.nextToken() // consume *
@@ -379,8 +380,19 @@ func (p *Parser) tryParseArrayType(baseType mtypes.Type) mtypes.Type {
 	}
 	if p.peekIs(lexer.OPEN_BRACKET) {
 		p.nextToken() // consume [
+		var size int64
+		if p.peekIs(lexer.NUMBER) {
+			p.nextToken()
+			if p.current.Value != nil {
+				n, err := strconv.ParseInt(*p.current.Value, 10, 64)
+				if err != nil || n <= 0 {
+					p.appendError("массивын хэмжээ эерэг тоо байх ёстой")
+				}
+				size = n
+			}
+		}
 		p.expect(lexer.CLOSE_BRACKET)
-		return &mtypes.ArrayType{ElementType: baseType}
+		return &mtypes.ArrayType{ElementType: baseType, Size: size}
 	}
 	return baseType
 }

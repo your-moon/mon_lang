@@ -29,9 +29,22 @@ func (t *StringType) typecheck() {}
 
 type ArrayType struct {
 	ElementType Type
+	Size        int64 // 0 = size not part of the type (unsized/decayed)
 }
 
 func (t *ArrayType) typecheck() {}
+
+// SizeOf returns a type's storage size in bytes. Arrays are heap-backed and
+// held by reference, so as values they are pointer-sized.
+func SizeOf(t Type) int64 {
+	switch t.(type) {
+	case *Int32Type:
+		return 4
+	case *Int64Type, *PointerType, *ArrayType, *StringType:
+		return 8
+	}
+	return 8
+}
 
 type PointerType struct {
 	Referenced Type
@@ -67,7 +80,11 @@ func IsSameType(a, b Type) bool {
 		return ok
 	case *ArrayType:
 		bt, ok := b.(*ArrayType)
-		return ok && IsSameType(at.ElementType, bt.ElementType)
+		if !ok || !IsSameType(at.ElementType, bt.ElementType) {
+			return false
+		}
+		// an unsized array type matches any size (decay)
+		return at.Size == 0 || bt.Size == 0 || at.Size == bt.Size
 	case *PointerType:
 		bt, ok := b.(*PointerType)
 		return ok && IsSameType(at.Referenced, bt.Referenced)

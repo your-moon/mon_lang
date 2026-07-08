@@ -101,6 +101,14 @@ func (c *TypeChecker) checkFnDecl(decl *parser.FnDecl) (*parser.FnDecl, error) {
 	return decl, nil
 }
 
+func isIntType(t mtypes.Type) bool {
+	switch t.(type) {
+	case *mtypes.Int32Type, *mtypes.Int64Type:
+		return true
+	}
+	return false
+}
+
 // sameFnSignature reports whether two function types agree in arity and
 // parameter/return types; redeclarations must match exactly.
 func sameFnSignature(a, b *mtypes.FnType) bool {
@@ -385,6 +393,29 @@ func (c *TypeChecker) checkExpr(expr parser.ASTExpression) (parser.ASTExpression
 		}
 		expr.Left = left
 		expr.Right = right
+
+		// pointer arithmetic: ptr±int (and int+ptr) stays a pointer;
+		// ptr-ptr of the same type yields an element count
+		lPtr, lIsPtr := left.GetType().(*mtypes.PointerType)
+		rPtr, rIsPtr := right.GetType().(*mtypes.PointerType)
+		if lIsPtr || rIsPtr {
+			isAdd := expr.Op == parser.ASTBinOp(parser.A_PLUS)
+			isSub := expr.Op == parser.ASTBinOp(parser.A_MINUS)
+			switch {
+			case lIsPtr && rIsPtr && isSub && mtypes.IsSameType(lPtr, rPtr):
+				expr.Type = &mtypes.Int64Type{}
+				return expr, nil
+			case lIsPtr && !rIsPtr && (isAdd || isSub) && isIntType(right.GetType()):
+				expr.Type = left.GetType()
+				return expr, nil
+			case !lIsPtr && rIsPtr && isAdd && isIntType(left.GetType()):
+				expr.Type = right.GetType()
+				return expr, nil
+			default:
+				return nil, c.createSemanticError("заагч дээр зөвхөн нэмэх, хасах үйлдэл хийж болно", expr.Token.Line, expr.Token.Span)
+			}
+		}
+
 		//TODO: HANDLE DIFF CASES AND AND,OR | ADD,OR,MUL,DIV,MOD
 		common := c.getCommonType(left.GetType(), right.GetType())
 		expr.Type = common

@@ -183,8 +183,73 @@ func (c *TackyGen) EmitTackyLocalDecl(node parser.ASTDecl) []Instruction {
 	return []Instruction{}
 }
 
+// emitPointerArith lowers ptr±int (integer scaled by element size) and
+// ptr-ptr (byte difference divided down to an element count).
+func (c *TackyGen) emitPointerArith(expr *parser.ASTBinary, op TackyBinaryOp, v1, v2 TackyVal) ([]Instruction, TackyVal, bool) {
+	lPtr, lIsPtr := expr.Left.GetType().(*mtypes.PointerType)
+	_, rIsPtr := expr.Right.GetType().(*mtypes.PointerType)
+	if !lIsPtr && !rIsPtr {
+		return nil, nil, false
+	}
+	irs := []Instruction{}
+
+	if lIsPtr && rIsPtr { // ptr - ptr
+		diff := c.makeTemp(&mtypes.Int64Type{})
+		irs = append(irs, Binary{Op: Sub, Src1: v1, Src2: v2, Dst: diff})
+		dst := c.makeTemp(&mtypes.Int64Type{})
+		size := mtypes.SizeOf(lPtr.Referenced)
+		irs = append(irs, Binary{Op: Div, Src1: diff, Src2: Constant{Value: &mconstant.Int64{Value: size}}, Dst: dst})
+		return irs, dst, true
+	}
+
+	// normalize to ptr op int
+	ptrVal, intVal, intType := v1, v2, expr.Right.GetType()
+	if rIsPtr {
+		ptrVal, intVal, intType = v2, v1, expr.Left.GetType()
+	}
+	ptrType := expr.Type.(*mtypes.PointerType)
+
+	idx64, extIrs := c.maybeSignExtend(intVal, intType, &mtypes.Int64Type{})
+	irs = append(irs, extIrs...)
+	size := mtypes.SizeOf(ptrType.Referenced)
+	offset := c.makeTemp(&mtypes.Int64Type{})
+	irs = append(irs, Binary{Op: Mul, Src1: idx64, Src2: Constant{Value: &mconstant.Int64{Value: size}}, Dst: offset})
+	dst := c.makeTemp(expr.Type)
+	irs = append(irs, Binary{Op: op, Src1: ptrVal, Src2: offset, Dst: dst})
+	return irs, dst, true
+}
+
+// emitElementAddr computes &array[index]: base + index * sizeof(element).
+func (c *TackyGen) emitElementAddr(idx *parser.ASTArrayIndex) (TackyVal, []Instruction) {
+	irs := []Instruction{}
+	basePtr, baseIrs := c.EmitExpr(idx.Array)
+	irs = append(irs, baseIrs...)
+	indexVal, indexIrs := c.EmitExpr(idx.Index)
+	irs = append(irs, indexIrs...)
+	idx64 := c.makeTemp(&mtypes.Int64Type{})
+	irs = append(irs, SignExtend{Src: indexVal, Dst: idx64})
+	elemSize := mtypes.SizeOf(idx.GetType())
+	offset := c.makeTemp(&mtypes.Int64Type{})
+	irs = append(irs, Binary{Op: Mul, Src1: idx64, Src2: Constant{Value: &mconstant.Int64{Value: elemSize}}, Dst: offset})
+	addr := c.makeTemp(&mtypes.Int64Type{})
+	irs = append(irs, Binary{Op: Add, Src1: basePtr, Src2: offset, Dst: addr})
+	return addr, irs
+}
+
 func (c *TackyGen) EmitVarDecl(node *parser.VarDecl) []Instruction {
 	irs := []Instruction{}
+
+	// `зарла а: тоо[5];` - a sized array declaration allocates its backing
+	// store immediately (heap-backed, like шинэ тоо[5])
+	if arr, isArr := node.VarType.(*mtypes.ArrayType); isArr && arr.Size > 0 && node.Expr == nil {
+		byteSize := arr.Size * mtypes.SizeOf(arr.ElementType)
+		dst := c.makeTemp(&mtypes.Int64Type{})
+		irs = append(irs, FnCall{Name: "malloc",
+			Args: []TackyVal{Constant{Value: &mconstant.Int64{Value: byteSize}}}, Dst: dst})
+		irs = append(irs, Copy{Src: dst, Dst: Var{Name: node.Ident}})
+		return irs
+	}
+
 	haveInit := node.Expr != nil
 	if haveInit {
 		rhsResult, rhsValIrs := c.EmitExpr(node.Expr)
@@ -583,9 +648,9 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		// Sign-extend size to 64-bit if needed
 		size64 := c.makeTemp(&mtypes.Int64Type{})
 		irs = append(irs, SignExtend{Src: sizeVal, Dst: size64})
-		// byteSize = size * 4 (element size for Int32)
+		elemSize := mtypes.SizeOf(expr.ElementType)
 		byteSize := c.makeTemp(&mtypes.Int64Type{})
-		irs = append(irs, Binary{Op: Mul, Src1: size64, Src2: Constant{Value: &mconstant.Int64{Value: 4}}, Dst: byteSize})
+		irs = append(irs, Binary{Op: Mul, Src1: size64, Src2: Constant{Value: &mconstant.Int64{Value: elemSize}}, Dst: byteSize})
 		// Call malloc
 		dst := c.makeTemp(&mtypes.Int64Type{})
 		irs = append(irs, FnCall{Name: "malloc", Args: []TackyVal{byteSize}, Dst: dst})
@@ -593,20 +658,8 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 
 	case *parser.ASTArrayIndex:
 		irs := []Instruction{}
-		basePtr, baseIrs := c.EmitExpr(expr.Array)
-		irs = append(irs, baseIrs...)
-		indexVal, indexIrs := c.EmitExpr(expr.Index)
-		irs = append(irs, indexIrs...)
-		// Sign-extend index to 64-bit
-		idx64 := c.makeTemp(&mtypes.Int64Type{})
-		irs = append(irs, SignExtend{Src: indexVal, Dst: idx64})
-		// offset = index * 4
-		offset := c.makeTemp(&mtypes.Int64Type{})
-		irs = append(irs, Binary{Op: Mul, Src1: idx64, Src2: Constant{Value: &mconstant.Int64{Value: 4}}, Dst: offset})
-		// addr = base + offset
-		addr := c.makeTemp(&mtypes.Int64Type{})
-		irs = append(irs, Binary{Op: Add, Src1: basePtr, Src2: offset, Dst: addr})
-		// Load value from memory
+		addr, addrIrs := c.emitElementAddr(expr)
+		irs = append(irs, addrIrs...)
 		dst := c.makeTemp(expr.Type)
 		irs = append(irs, Load{Src: addr, Dst: dst})
 		return dst, irs
@@ -621,6 +674,9 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 		case *parser.ASTDeref:
 			// &*p is just p
 			return c.EmitExpr(inner.Inner)
+		case *parser.ASTArrayIndex:
+			// &a[i] is the element address itself
+			return c.emitElementAddr(inner)
 		default:
 			panic("addr-of: unsupported operand (semantic pass should reject)")
 		}
@@ -644,24 +700,14 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 			irs = append(irs, Copy{Src: widened, Dst: Var{Name: lhs.Ident}})
 			return Var{Name: lhs.Ident}, irs
 		case *parser.ASTArrayIndex:
-			// Compute address
-			basePtr, baseIrs := c.EmitExpr(lhs.Array)
-			irs = append(irs, baseIrs...)
-			indexVal, indexIrs := c.EmitExpr(lhs.Index)
-			irs = append(irs, indexIrs...)
-			// Sign-extend index to 64-bit
-			idx64 := c.makeTemp(&mtypes.Int64Type{})
-			irs = append(irs, SignExtend{Src: indexVal, Dst: idx64})
-			offset := c.makeTemp(&mtypes.Int64Type{})
-			irs = append(irs, Binary{Op: Mul, Src1: idx64, Src2: Constant{Value: &mconstant.Int64{Value: 4}}, Dst: offset})
-			addr := c.makeTemp(&mtypes.Int64Type{})
-			irs = append(irs, Binary{Op: Add, Src1: basePtr, Src2: offset, Dst: addr})
-			// Evaluate RHS
+			addr, addrIrs := c.emitElementAddr(lhs)
+			irs = append(irs, addrIrs...)
 			rhsResult, rhsIrs := c.EmitExpr(expr.Right)
 			irs = append(irs, rhsIrs...)
-			// Store
-			irs = append(irs, Store{Src: rhsResult, Dst: addr})
-			return rhsResult, irs
+			widened, widenIrs := c.maybeSignExtend(rhsResult, expr.Right.GetType(), lhs.GetType())
+			irs = append(irs, widenIrs...)
+			irs = append(irs, Store{Src: widened, Dst: addr})
+			return widened, irs
 		case *parser.ASTDeref:
 			// *p = rhs: evaluate the pointer, then store through it
 			ptr, ptrIrs := c.EmitExpr(lhs.Inner)
@@ -729,6 +775,11 @@ func (c *TackyGen) EmitExpr(node parser.ASTExpression) (TackyVal, []Instruction)
 			irs = append(irs, v1Irs...)
 			v2, v2Irs := c.EmitExpr(expr.Right)
 			irs = append(irs, v2Irs...)
+
+			if ptrIrs, dst, isPtrArith := c.emitPointerArith(expr, op, v1, v2); isPtrArith {
+				irs = append(irs, ptrIrs...)
+				return dst, irs
+			}
 
 			// Sign-extend if mixed 32/64-bit
 			_, commonIs64 := expr.Type.(*mtypes.Int64Type)

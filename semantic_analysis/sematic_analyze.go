@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -53,6 +54,76 @@ func convertToRuneArray(dataString string) []int32 {
 	return runeString
 }
 
+// importUnit is one source file pulled in by an import: local code brings in
+// every declaration, whereas a stdlib package exports only public/extern ones.
+type importUnit struct {
+	key     string // dedup key (absolute path, or "std:name")
+	text    string // source text
+	isLocal bool
+}
+
+// resolveImport turns an import path into concrete source units.
+//
+//   - "лексер/токен.mn"  → a single local file
+//   - "лексер"           → a folder package (every .mn in baseDir/лексер), or,
+//     if no such directory exists, the embedded stdlib package of that name
+//   - "лексер/дэд"       → a local sub-package directory
+func (s *SemanticAnalyzer) resolveImport(path string) ([]importUnit, error) {
+	// single local file
+	if strings.HasSuffix(path, ".mn") {
+		full := filepath.Join(s.baseDir, path)
+		data, err := os.ReadFile(full)
+		if err != nil {
+			return nil, fmt.Errorf("импорт файл уншихад алдаа: %s: %v", path, err)
+		}
+		return []importUnit{{key: full, text: string(data), isLocal: true}}, nil
+	}
+
+	// a directory under baseDir is a folder package
+	dir := filepath.Join(s.baseDir, path)
+	if info, err := os.Stat(dir); err == nil && info.IsDir() {
+		return s.readPackageDir(dir)
+	}
+
+	// a slash path that is neither a .mn file nor a directory is an error
+	if strings.Contains(path, "/") {
+		return nil, fmt.Errorf("багц олдсонгүй: %s", path)
+	}
+
+	// bare name → embedded standard-library package
+	pkgSrc, ok := stdlib.StdPackage(path)
+	if !ok {
+		return nil, fmt.Errorf("стандарт багц олдсонгүй: %s", path)
+	}
+	return []importUnit{{key: "std:" + path, text: pkgSrc, isLocal: false}}, nil
+}
+
+// readPackageDir reads every .mn file in a folder package, in a deterministic
+// order so merged declarations are stable across runs.
+func (s *SemanticAnalyzer) readPackageDir(dir string) ([]importUnit, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("багц уншихад алдаа: %s: %v", dir, err)
+	}
+	var names []string
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".mn") {
+			names = append(names, e.Name())
+		}
+	}
+	sort.Strings(names)
+	units := make([]importUnit, 0, len(names))
+	for _, name := range names {
+		full := filepath.Join(dir, name)
+		data, err := os.ReadFile(full)
+		if err != nil {
+			return nil, fmt.Errorf("импорт файл уншихад алдаа: %s: %v", full, err)
+		}
+		units = append(units, importUnit{key: full, text: string(data), isLocal: true})
+	}
+	return units, nil
+}
+
 func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.ASTProgram, error) {
 	var importedDecls []parser.ASTDecl
 	var ownDecls []parser.ASTDecl
@@ -92,75 +163,62 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 			continue
 		}
 
-		// Bare names (no "/" and no ".mn") are standard-library packages,
-		// resolved from the embedded pkg set - available from any directory.
-		// A path/".mn" import is a LOCAL module: it is part of your program,
-		// so every top-level declaration travels with it (no тунх needed),
-		// mirroring how the self-hosted mc inlines module source directly.
-		var srcText string
-		isLocal := strings.Contains(imp.FilePath, "/") || strings.HasSuffix(imp.FilePath, ".mn")
-		if !isLocal {
-			pkgSrc, ok := stdlib.StdPackage(imp.FilePath)
-			if !ok {
-				return nil, fmt.Errorf("стандарт багц олдсонгүй: %s", imp.FilePath)
-			}
-			if s.importedFiles["std:"+imp.FilePath] {
-				continue
-			}
-			s.importedFiles["std:"+imp.FilePath] = true
-			srcText = pkgSrc
-		} else {
-			filePath := filepath.Join(s.baseDir, imp.FilePath)
-			if s.importedFiles[filePath] {
-				continue
-			}
-			s.importedFiles[filePath] = true
-			data, err := os.ReadFile(filePath)
-			if err != nil {
-				return nil, fmt.Errorf("импорт файл уншихад алдаа: %s: %v", imp.FilePath, err)
-			}
-			srcText = string(data)
-		}
-
-		runeStr := convertToRuneArray(srcText)
-		p := parser.NewParser(runeStr)
-		importedProg, err := p.ParseProgram()
+		// Resolve an import to one or more source units. A ".mn" path is a
+		// single local file; a bare name or slash path that names a directory
+		// is a folder package (every .mn file in it, Rust/Go style); a bare
+		// name that is not a local directory is an embedded stdlib package.
+		units, err := s.resolveImport(imp.FilePath)
 		if err != nil {
-			return nil, fmt.Errorf("импорт парсингийн алдаа: %s: %v", imp.FilePath, err)
+			return nil, err
 		}
 
 		// named import (гэж нэр): нэр.х becomes a checked alias for the
 		// exported symbol х - qualified access is validated against the
-		// module's export list. Types and methods stay global.
+		// package's combined export list. Types and methods stay global.
 		var exports map[string]bool
 		if imp.Ident != "" {
 			exports = make(map[string]bool)
 			s.moduleHandles[imp.Ident] = exports
 		}
-		for _, d := range importedProg.Decls {
-			switch dt := d.(type) {
-			case *parser.FnDecl:
-				if isLocal || dt.IsPublic || dt.IsExtern {
-					if exports != nil && !dt.IsMethod {
-						exports[dt.Ident] = true
+
+		for _, u := range units {
+			if s.importedFiles[u.key] {
+				continue
+			}
+			s.importedFiles[u.key] = true
+
+			runeStr := convertToRuneArray(u.text)
+			p := parser.NewParser(runeStr)
+			importedProg, err := p.ParseProgram()
+			if err != nil {
+				return nil, fmt.Errorf("импорт парсингийн алдаа: %s: %v", imp.FilePath, err)
+			}
+
+			for _, d := range importedProg.Decls {
+				switch dt := d.(type) {
+				case *parser.FnDecl:
+					if u.isLocal || dt.IsPublic || dt.IsExtern {
+						if exports != nil && !dt.IsMethod {
+							exports[dt.Ident] = true
+						}
+						importedDecls = append(importedDecls, dt)
 					}
-					importedDecls = append(importedDecls, dt)
-				}
-			case *parser.VarDecl:
-				if isLocal || dt.IsPublic {
-					if exports != nil {
-						exports[dt.Ident] = true
+				case *parser.VarDecl:
+					if u.isLocal || dt.IsPublic {
+						if exports != nil {
+							exports[dt.Ident] = true
+						}
+						importedDecls = append(importedDecls, dt)
 					}
+				case *parser.ASTStructDecl:
+					// struct layouts always travel with the module
 					importedDecls = append(importedDecls, dt)
-				}
-			case *parser.ASTStructDecl:
-				// struct layouts always travel with the module
-				importedDecls = append(importedDecls, dt)
-			case *parser.ASTImport:
-				// transitive import: process it too (a package may import
-				// another package). Named-import handles don't nest.
-				if dt.FilePath != "" {
-					queue = append(queue, &parser.ASTImport{FilePath: dt.FilePath})
+				case *parser.ASTImport:
+					// transitive import: process it too (a package may import
+					// another package). Named-import handles don't nest.
+					if dt.FilePath != "" {
+						queue = append(queue, &parser.ASTImport{FilePath: dt.FilePath})
+					}
 				}
 			}
 		}

@@ -92,6 +92,28 @@ func (c *TypeChecker) createSemanticError(message string, line int, span lexer.S
 }
 
 func (c *TypeChecker) CheckTopLevel(program *parser.ASTProgram) (*parser.ASTProgram, error) {
+	// Pass 1: register every struct layout, so a signature may reference a
+	// struct declared later in the file.
+	for _, decl := range program.Decls {
+		if s, ok := decl.(*parser.ASTStructDecl); ok {
+			if err := c.checkStructDecl(s); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Pass 2: register every function signature (methods included — their
+	// names are type-mangled and unique) so bodies may call functions and
+	// methods declared later. Top-level order becomes irrelevant.
+	for _, decl := range program.Decls {
+		if fn, ok := decl.(*parser.FnDecl); ok {
+			if err := c.declareFnSignature(fn); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Pass 3: type-check function bodies and file-scope variables.
 	for i, decl := range program.Decls {
 		switch decltype := decl.(type) {
 		case *parser.FnDecl:
@@ -107,14 +129,47 @@ func (c *TypeChecker) CheckTopLevel(program *parser.ASTProgram) (*parser.ASTProg
 			}
 			program.Decls[i] = decl
 		case *parser.ASTStructDecl:
-			if err := c.checkStructDecl(decltype); err != nil {
-				return nil, err
-			}
+			// already registered in pass 1
 		default:
 			panic(fmt.Sprintf("unsupported top-level declaration: %T", decl))
 		}
 	}
 	return program, nil
+}
+
+// declareFnSignature resolves a function's parameter and return types and
+// registers its signature (without a body) so forward and mutually-recursive
+// calls type-check. checkFnDecl later re-resolves (idempotent) and marks the
+// definition once it checks the body.
+func (c *TypeChecker) declareFnSignature(decl *parser.FnDecl) error {
+	paramTypes := make([]mtypes.Type, len(decl.Params))
+	for i, param := range decl.Params {
+		rt, err := c.resolveType(param.Type, decl.Token.Line, decl.Token.Span)
+		if err != nil {
+			return err
+		}
+		decl.Params[i].Type = rt
+		paramTypes[i] = rt
+	}
+	rt, err := c.resolveType(decl.ReturnType, decl.Token.Line, decl.Token.Span)
+	if err != nil {
+		return err
+	}
+	decl.ReturnType = rt
+	fnType := &mtypes.FnType{ParamTypes: paramTypes, RetType: decl.ReturnType}
+
+	if prev := c.symbolTable.GetOptional(decl.Ident); prev != nil {
+		prevFn, ok := prev.Type.(*mtypes.FnType)
+		if !ok {
+			return c.createSemanticError("функц %s-ийг өөр төрөлтэйгөөр дахин зарласан байна", decl.Token.Line, decl.Token.Span)
+		}
+		if !sameFnSignature(prevFn, fnType) {
+			return c.createSemanticError(fmt.Sprintf("функц '%s'-ийг өөр гарын үсэгтэйгээр дахин зарласан байна", decl.Ident), decl.Token.Line, decl.Token.Span)
+		}
+		return nil
+	}
+	c.symbolTable.AddFn(fnType, decl.Ident, false) // signature only
+	return nil
 }
 
 func (c *TypeChecker) checkFnDecl(decl *parser.FnDecl) (*parser.FnDecl, error) {

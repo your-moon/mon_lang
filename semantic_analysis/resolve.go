@@ -88,6 +88,27 @@ func (r *Resolver) resolveParams(params []parser.Param, innerMap map[string]VarE
 func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, error) {
 	emptyMap := make(IdMap)
 	var resolveErrors []string
+
+	// Hoist every top-level function name before resolving any body, so a
+	// function may call another declared later in the file (mutual recursion,
+	// forward references) — Go-style order independence. Methods are excluded:
+	// the same method name legitimately recurs across receiver types, and they
+	// are dispatched by the type checker, not this name map. Duplicate-
+	// definition detection stays with the type checker.
+	for _, decl := range program.Decls {
+		fn, ok := decl.(*parser.FnDecl)
+		if !ok || fn.IsMethod {
+			continue
+		}
+		if _, exists := emptyMap[fn.Ident]; !exists {
+			emptyMap[fn.Ident] = VarEntry{
+				UniqueName:       fn.Ident,
+				fromCurrentScope: true,
+				hasLinkage:       true,
+			}
+		}
+	}
+
 	for i, decl := range program.Decls {
 		newMap, resolvedDecl, err := r.ResolveDecl(decl, emptyMap)
 		if err != nil {

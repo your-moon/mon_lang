@@ -1,6 +1,21 @@
-# Known codegen bug: subtraction-in-guard + call-in-following-loop
+# Codegen bugs: register allocator (FIXED) + guard-before-loop (worked around)
 
-Status: **open** — blocks the multistage compiler's parser stage (`mc/парсер`).
+Status: two distinct bugs.
+
+1. **Register allocator corrupts values across method calls — FIXED.** The
+   "linear-scan-lite" allocator in `code_gen/pseudo.go` assigned callee-saved
+   registers without liveness analysis, so a value still live across a
+   `өөрөө.method(arg)` call in a loop got clobbered (segfault / wrong bytes).
+   This was pervasive — every struct method that calls another in a loop was
+   affected. **Fix:** empty `calleeSaved` (disable the allocator; everything
+   lives on the stack). Full suite green, self-hosting intact, and the method
+   reproducers below now return correct results. A principled replacement is
+   `mc/ир` (SSA + real liveness + linear-scan; see BACKEND_REDESIGN.md).
+
+2. **Guard-with-subtraction before a call-loop — still open, worked around.**
+   The scalar case below still miscompiles even with the allocator disabled, so
+   `mc/парсер`'s `кв` moves its length check *after* the byte loop. Documented
+   here for a proper fix.
 
 ## Minimal reproduction
 

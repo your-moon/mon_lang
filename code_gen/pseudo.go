@@ -163,10 +163,17 @@ func (r *ReplacementPassGen) ReplacePseudosInInstruction(instr AsmInstruction, s
 	}
 }
 
-// calleeSaved is the pool the allocator draws from; each register is
-// preserved across calls by the callee contract, so a value assigned to one
-// survives the whole function with no live-range analysis needed.
-var calleeSaved = []AsmRegister{BX, R12, R13, R14, R15}
+// calleeSaved WAS the pool this "linear-scan-lite" allocator drew from — the
+// idea being that a callee-saved register survives calls "with no live-range
+// analysis needed". That assumption is unsound: without real liveness, the
+// allocator hands registers to values that are still live across method calls
+// with arguments, corrupting them (segfaults / wrong bytes — reproduced in
+// design/CODEGEN_BUG_guard_sub_loopcall.md). Emptying the pool disables the
+// allocator entirely (everything lives on the stack): slower, but correct, and
+// it keeps the full suite green and self-hosting intact. A principled
+// replacement — SSA + real liveness + linear-scan — is being built in
+// mc/ир (see design/BACKEND_REDESIGN.md).
+var calleeSaved = []AsmRegister{}
 
 // collectPseudoUses counts how often each non-double pseudo appears; double
 // pseudos are excluded (they need XMM registers, not GPRs).

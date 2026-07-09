@@ -209,6 +209,26 @@ func (g *gen) stdFaylBichikh() {
 	b.Svc()
 	b.MovImm(x0, 0)
 	b.Epilogue(16)
+
+	// файл_бичих_байт(зам, буф, урт): write урт raw bytes (NULs included).
+	b.Label(fnLabel("файл_бичих_байт"))
+	b.Prologue(32)
+	b.StrFrame(1, sp, 0) // buf
+	b.StrFrame(2, sp, 8) // len
+	b.MovImm(1, 0x601)
+	b.MovImm(2, 0o644)
+	b.MovImm(x16, sysOpen)
+	b.Svc() // x0 = fd
+	b.StrFrame(x0, sp, 16)
+	b.LdrFrame(1, sp, 0) // buf
+	b.LdrFrame(2, sp, 8) // len
+	b.MovImm(x16, sysWrite)
+	b.Svc()
+	b.LdrFrame(x0, sp, 16) // fd
+	b.MovImm(x16, sysClose)
+	b.Svc()
+	b.MovImm(x0, 0)
+	b.Epilogue(32)
 }
 
 // stdUnsh: унш() reads bytes from stdin, skips leading junk, then parses an

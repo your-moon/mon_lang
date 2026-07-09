@@ -217,6 +217,14 @@ int fayl_bichikh(const char *path, const char *content) {
     return n == len ? 0 : 1;
 }
 
+int fayl_bichikh_bayt(const char *path, const char *buf, long len) {
+    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0) return 1;
+    long n = write(fd, buf, len);
+    close(fd);
+    return n == len ? 0 : 1;
+}
+
 // аргумент_тоо / аргумент - argc/argv access
 static int mon_argc;
 static char **mon_argv;

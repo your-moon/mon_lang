@@ -500,6 +500,32 @@ func (b *Buf) EmitStdlib(fnLabel func(string) string, dataLabel func(string) str
 	b.MovIR(false, 1, RAX)
 	b.Epilogue()
 
+	/* fayl_bichikh_bayt(path, buf, len): write len raw bytes (NULs included) */
+	b.Label(fnLabel("fayl_bichikh_bayt"))
+	b.Prologue()
+	b.AluIR(OpSub, true, 32, RSP)
+	b.MovRM(true, RSI, -16) // buf
+	b.MovRM(true, RDX, -24) // len
+	b.MovIR(false, 0x601, RSI)
+	b.MovIR(false, 0o644, RDX)
+	b.MovIR(false, sysOpen, RAX)
+	b.Syscall()
+	b.Jcc(CondB, "stdlib.fwriteb.fail")
+	b.MovRM(true, RAX, -8) // fd
+	b.MovMR(true, -8, RDI)
+	b.MovMR(true, -16, RSI)
+	b.MovMR(true, -24, RDX)
+	b.MovIR(false, sysWrite, RAX)
+	b.Syscall()
+	b.MovMR(true, -8, RDI)
+	b.MovIR(false, sysClose, RAX)
+	b.Syscall()
+	b.XorRR(true, RAX, RAX)
+	b.Epilogue()
+	b.Label("stdlib.fwriteb.fail")
+	b.MovIR(false, 1, RAX)
+	b.Epilogue()
+
 	/* butarkhay_khevlekh(d in xmm0): fixed decimal, 6 truncated fractional
 	   digits, byte-identical to the C shim. Uses khevle for the integer
 	   part and temdegt_khevlekh for '.' and each digit; d and the loop
@@ -606,6 +632,6 @@ func StdlibFns() []string {
 	return []string{"khevle", "ekhevle", "temdegt_khevlekh", "mqr_khevlekh", "unsh", "unsh32",
 		"sanamsargwy_too", "odoo", "monAlloc", "chqlqqlqkh", "khwleekh",
 		"delgets_tseverlekh", "mqr_urt", "bayt", "bayt_tavikh",
-		"fayl_unshikh_bwten", "fayl_bichikh", "argumyent_too", "argumyent",
+		"fayl_unshikh_bwten", "fayl_bichikh", "fayl_bichikh_bayt", "argumyent_too", "argumyent",
 		"mqr_shine", "butarkhay_khevlekh"}
 }

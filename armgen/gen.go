@@ -20,16 +20,38 @@ func fnLabel(s string) string  { return "f." + s }
 func jmpLabel(s string) string { return "l." + s }
 
 type gen struct {
-	b       *Buf
-	slots   map[string]int // Var name -> frame offset (from sp)
-	frame   int
-	strPool map[string]string // string value -> ro label
-	strOrd  []string
+	b        *Buf
+	slots    map[string]int  // Var name -> frame offset (from sp)
+	frame    int
+	strPool  map[string]string // string value -> ro label
+	strOrd   []string
+	globals  map[string]string // global var name -> data label
 }
+
+func dataLabel(s string) string { return "g." + s }
 
 // Compile lowers a whole Tacky program to a native, signed arm64 executable.
 func Compile(prog tackygen.TackyProgram, outPath string) error {
-	g := &gen{b: NewBuf(), strPool: map[string]string{}}
+	g := &gen{b: NewBuf(), strPool: map[string]string{}, globals: map[string]string{}}
+
+	// __DATA blob: every global gets an 8-byte little-endian slot seeded with
+	// its initial value (all scalars/pointers are 64-bit in this backend).
+	data := []byte{}
+	dataOff := map[string]int{}
+	for _, gv := range prog.GlobalVars {
+		lbl := dataLabel(gv.Name)
+		g.globals[gv.Name] = lbl
+		dataOff[lbl] = len(data)
+		v := uint64(gv.InitValue)
+		for i := 0; i < 8; i++ {
+			data = append(data, byte(v>>(8*i)))
+		}
+	}
+	// reserved heap state for the bump allocator (both start at 0).
+	for _, lbl := range []string{heapPtrLabel, heapEndLabel} {
+		dataOff[lbl] = len(data)
+		data = append(data, make([]byte, 8)...)
+	}
 
 	// entry stub at offset 0: call the user entry (үндсэн), exit(its result).
 	// Labels are internal map keys in this byte encoder, so the Cyrillic
@@ -59,15 +81,18 @@ func Compile(prog tackygen.TackyProgram, outPath string) error {
 		ro = append(ro, 0)
 	}
 
-	lay := macho.PlanARM64(g.b.Len(), len(ro), 0)
+	lay := macho.PlanARM64(g.b.Len(), len(ro), len(data))
 	dataAddr := map[string]int{}
 	for l, off := range roAddr {
 		dataAddr[l] = lay.ROAddr + off
 	}
+	for l, off := range dataOff {
+		dataAddr[l] = lay.DataAddr + off
+	}
 	if err := g.b.Resolve(lay.CodeAddr, dataAddr); err != nil {
 		return err
 	}
-	return macho.WriteExecutableARM64(outPath, g.b.Code(), ro, nil, 0)
+	return macho.WriteExecutableARM64(outPath, g.b.Code(), ro, data, 0)
 }
 
 func (g *gen) internString(v string) string {
@@ -84,6 +109,9 @@ func (g *gen) internString(v string) string {
 func (g *gen) assignSlots(fn tackygen.TackyFn) {
 	g.slots = map[string]int{}
 	add := func(name string) {
+		if _, isGlobal := g.globals[name]; isGlobal {
+			return // globals live in __DATA, not the frame
+		}
 		if _, ok := g.slots[name]; !ok {
 			g.slots[name] = len(g.slots) * 8
 		}
@@ -175,6 +203,11 @@ func (g *gen) loadVal(reg int, v tackygen.TackyVal) error {
 	case tackygen.Constant:
 		g.b.MovImm(reg, a.Value.GetValue())
 	case tackygen.Var:
+		if lbl, isGlobal := g.globals[a.Name]; isGlobal {
+			g.b.AdrpAdd(reg, lbl) // reg = &global
+			g.b.LdrReg(reg, reg)  // reg = *reg
+			return nil
+		}
 		off, ok := g.slots[a.Name]
 		if !ok {
 			return fmt.Errorf("unknown var %s", a.Name)
@@ -193,6 +226,16 @@ func (g *gen) storeVar(reg int, v tackygen.TackyVal) error {
 	if !ok {
 		return fmt.Errorf("store to non-var %T", v)
 	}
+	if lbl, isGlobal := g.globals[vv.Name]; isGlobal {
+		// address scratch must differ from the value reg; x8 values use x9.
+		addr := x9
+		if reg == x9 {
+			addr = x8
+		}
+		g.b.AdrpAdd(addr, lbl)
+		g.b.StrReg(reg, addr)
+		return nil
+	}
 	off, ok := g.slots[vv.Name]
 	if !ok {
 		return fmt.Errorf("unknown dst var %s", vv.Name)
@@ -209,21 +252,24 @@ func (g *gen) instr(fn tackygen.TackyFn, ins tackygen.Instruction) error {
 		}
 		return g.storeVar(x8, a.Dst)
 
-	case tackygen.SignExtend, tackygen.ZeroExtend, tackygen.Truncate:
-		// all values are 64-bit in this backend; treat as a copy.
-		var src, dst tackygen.TackyVal
-		switch t := a.(type) {
-		case tackygen.SignExtend:
-			src, dst = t.Src, t.Dst
-		case tackygen.ZeroExtend:
-			src, dst = t.Src, t.Dst
-		case tackygen.Truncate:
-			src, dst = t.Src, t.Dst
-		}
-		if err := g.loadVal(x8, src); err != nil {
+	case tackygen.SignExtend:
+		if err := g.loadVal(x8, a.Src); err != nil {
 			return err
 		}
-		return g.storeVar(x8, dst)
+		g.b.Sxtw(x8, x8) // sign-extend low 32 bits (fixes wide reads of Int32)
+		return g.storeVar(x8, a.Dst)
+	case tackygen.ZeroExtend:
+		if err := g.loadVal(x8, a.Src); err != nil {
+			return err
+		}
+		g.b.Uxtw(x8, x8)
+		return g.storeVar(x8, a.Dst)
+	case tackygen.Truncate:
+		if err := g.loadVal(x8, a.Src); err != nil {
+			return err
+		}
+		g.b.Uxtw(x8, x8) // keep the low 32 bits
+		return g.storeVar(x8, a.Dst)
 
 	case tackygen.Unary:
 		if err := g.loadVal(x8, a.Src); err != nil {
@@ -312,7 +358,11 @@ func (g *gen) instr(fn tackygen.TackyFn, ins tackygen.Instruction) error {
 		if !ok {
 			return fmt.Errorf("getaddress of non-var")
 		}
-		g.b.AddImm(x8, sp, g.slots[vv.Name])
+		if lbl, isGlobal := g.globals[vv.Name]; isGlobal {
+			g.b.AdrpAdd(x8, lbl)
+		} else {
+			g.b.AddImm(x8, sp, g.slots[vv.Name])
+		}
 		return g.storeVar(x8, a.Dst)
 
 	default:

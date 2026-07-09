@@ -143,6 +143,19 @@ func (b *Buf) MSub(rd, rn, rm, ra int) {
 
 func (b *Buf) Neg(rd, rm int) { b.w(0xCB0003E0 | (uint32(rm) << 16) | uint32(rd)) }  // sub rd,xzr,rm
 func (b *Buf) Mvn(rd, rm int) { b.w(0xAA2003E0 | (uint32(rm) << 16) | uint32(rd)) }  // orn rd,xzr,rm
+func (b *Buf) And(rd, rn, rm int) { b.w(0x8A000000 | (uint32(rm) << 16) | (uint32(rn) << 5) | uint32(rd)) }
+func (b *Buf) Orr(rd, rn, rm int) { b.w(0xAA000000 | (uint32(rm) << 16) | (uint32(rn) << 5) | uint32(rd)) }
+
+// LsrImm: rd = rn >> shift (unsigned) via UBFM rd,rn,#shift,#63.
+func (b *Buf) LsrImm(rd, rn, shift int) {
+	b.w(0xD3400000 | (uint32(shift) << 16) | (63 << 10) | (uint32(rn) << 5) | uint32(rd))
+}
+
+// Sxtw: rd(64) = sign-extend rn(32) — SBFM rd,rn,#0,#31.
+func (b *Buf) Sxtw(rd, rn int) { b.w(0x93407C00 | (uint32(rn) << 5) | uint32(rd)) }
+
+// Uxtw: rd(64) = zero-extend rn(32) — mov Wd,Wn (32-bit ops clear the top half).
+func (b *Buf) Uxtw(rd, rn int) { b.w(0x2A0003E0 | (uint32(rn) << 16) | uint32(rd)) }
 
 // AddImm / SubImm: rd = rn +/- imm12 (imm 0..4095).
 func (b *Buf) AddImm(rd, rn, imm int) {

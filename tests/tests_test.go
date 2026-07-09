@@ -257,13 +257,22 @@ func compileARM64(srcPath, outPath string) (err error) {
 	uniqueGen := unique.NewUniqueGen()
 	table := symbols.NewSymbolTable()
 	resolver := semanticanalysis.NewSemanticAnalyzer(runes, uniqueGen, table, filepath.Dir(srcPath), "")
-	resolvedAst, _, err := resolver.Analyze(node)
+	resolvedAst, symbolTable, err := resolver.Analyze(node)
 	if err != nil {
 		return err
 	}
 	tackyGen := tackygenNew(uniqueGen, table)
 	prog := tackygenOptimize(tackyGen.EmitTacky(resolvedAst))
-	return armgen.Compile(prog, outPath)
+	sizes := asmsymbol.NewAsmSymbolTable()
+	asmGen := codegen.NewAsmGen(table)
+	asmGen.GenASTAsm(prog, symbolTable, sizes)
+	sizeOf := func(name string) int {
+		if sz, err := sizes.GetSize(name); err == nil {
+			return sz
+		}
+		return 8
+	}
+	return armgen.Compile(prog, sizeOf, outPath)
 }
 
 // TestRunARM64 exercises the native arm64 back end against the same run/ suite

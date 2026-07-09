@@ -450,7 +450,12 @@ func (c *CLI) runGen(args []string) error {
 		if outputFile == "" {
 			outputFile = filepath.Base(strings.TrimSuffix(args[0], ".mn"))
 		}
-		if err := armgen.Compile(tackyProgram, outputFile); err != nil {
+		// Reuse the x86 asm-symbol pass purely to recover per-temp widths, so
+		// the arm64 back end sizes sub-word (Int32) field loads/stores right.
+		armSizes := asmsymbol.NewAsmSymbolTable()
+		armAsmGen := codegen.NewAsmGen(table)
+		armAsmGen.GenASTAsm(tackyProgram, symbolTable, armSizes)
+		if err := armgen.Compile(tackyProgram, armSizeFn(armSizes), outputFile); err != nil {
 			return fmt.Errorf("arm64 үүсгэлтийн алдаа: %v", err)
 		}
 		if c.run {
@@ -509,6 +514,17 @@ func (c *CLI) runGen(args []string) error {
 	}
 
 	return nil
+}
+
+// armSizeFn adapts an asm-symbol table to armgen's size callback (bytes per
+// temp; defaults to 8 for anything the table doesn't know).
+func armSizeFn(t *asmsymbol.SymbolTable) func(string) int {
+	return func(name string) int {
+		if sz, err := t.GetSize(name); err == nil {
+			return sz
+		}
+		return 8
+	}
 }
 
 func readFile(filePath string) []int32 {

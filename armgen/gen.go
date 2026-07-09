@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/your-moon/mon_lang/macho"
+	"github.com/your-moon/mon_lang/mconstant"
 	"github.com/your-moon/mon_lang/tackygen"
 )
 
@@ -20,19 +21,27 @@ func fnLabel(s string) string  { return "f." + s }
 func jmpLabel(s string) string { return "l." + s }
 
 type gen struct {
-	b        *Buf
-	slots    map[string]int  // Var name -> frame offset (from sp)
-	frame    int
-	strPool  map[string]string // string value -> ro label
-	strOrd   []string
-	globals  map[string]string // global var name -> data label
+	b       *Buf
+	slots   map[string]int    // Var name -> frame offset (from sp)
+	frame   int
+	strPool map[string]string // string value -> ro label
+	strOrd  []string
+	globals map[string]string // global var name -> data label
+	sizeOf  func(string) int  // temp/var name -> byte width (4 or 8)
 }
 
 func dataLabel(s string) string { return "g." + s }
 
 // Compile lowers a whole Tacky program to a native, signed arm64 executable.
-func Compile(prog tackygen.TackyProgram, outPath string) error {
-	g := &gen{b: NewBuf(), strPool: map[string]string{}, globals: map[string]string{}}
+// sizeOf reports the byte width (4 or 8) of a Tacky temp/var; it drives the
+// width of pointer loads/stores so sub-word (Int32) struct fields aren't read
+// or written 8 bytes wide (which would corrupt neighbours). Pass nil to treat
+// everything as 64-bit.
+func Compile(prog tackygen.TackyProgram, sizeOf func(string) int, outPath string) error {
+	if sizeOf == nil {
+		sizeOf = func(string) int { return 8 }
+	}
+	g := &gen{b: NewBuf(), strPool: map[string]string{}, globals: map[string]string{}, sizeOf: sizeOf}
 
 	// __DATA blob: every global gets an 8-byte little-endian slot seeded with
 	// its initial value (all scalars/pointers are 64-bit in this backend).
@@ -342,7 +351,7 @@ func (g *gen) instr(fn tackygen.TackyFn, ins tackygen.Instruction) error {
 		if err := g.loadVal(x8, a.Src); err != nil {
 			return err
 		}
-		g.b.LdrReg(x8, x8)
+		g.b.LdrW(x8, x8, g.valWidth(a.Dst)) // width = loaded value's type
 		return g.storeVar(x8, a.Dst)
 	case tackygen.Store:
 		if err := g.loadVal(x9, a.Dst); err != nil {
@@ -351,7 +360,7 @@ func (g *gen) instr(fn tackygen.TackyFn, ins tackygen.Instruction) error {
 		if err := g.loadVal(x8, a.Src); err != nil {
 			return err
 		}
-		g.b.StrReg(x8, x9)
+		g.b.StrW(x8, x9, g.valWidth(a.Src)) // width = stored value's type
 		return nil
 	case tackygen.GetAddress:
 		vv, ok := a.Src.(tackygen.Var)
@@ -417,4 +426,25 @@ func (g *gen) binary(op tackygen.TackyBinaryOp) error {
 func (g *gen) cmpSet(cond int) {
 	g.b.Cmp(x8, x9)
 	g.b.Cset(x8, cond)
+}
+
+// valWidth reports the byte width (4 or 8) of a Tacky value, used to size
+// pointer loads/stores. Vars/temps consult the symbol sizes; a constant's
+// width comes from its mconstant type (Int32 vs Int64); strings are pointers.
+func (g *gen) valWidth(v tackygen.TackyVal) int {
+	switch a := v.(type) {
+	case tackygen.Var:
+		w := g.sizeOf(a.Name)
+		if w == 4 {
+			return 4
+		}
+		return 8
+	case tackygen.Constant:
+		if _, is32 := a.Value.(mconstant.Int32); is32 {
+			return 4
+		}
+		return 8
+	default:
+		return 8
+	}
 }

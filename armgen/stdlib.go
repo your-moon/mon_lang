@@ -13,6 +13,8 @@ const (
 	sysExit  = 1
 	sysRead  = 3
 	sysWrite = 4
+	sysOpen  = 5
+	sysClose = 6
 	sysMmap  = 197
 )
 
@@ -22,6 +24,12 @@ const heapChunk = 1 << 20 // mmap granularity for the bump allocator
 const (
 	heapPtrLabel = "std.heap_ptr"
 	heapEndLabel = "std.heap_end"
+	argcLabel    = "std.argc"
+	argvLabel    = "std.argv"
+)
+
+const (
+	sysLseek = 199
 )
 
 // emitStdlib appends the arm64 built-in functions used by mon programs. All I/O
@@ -36,7 +44,163 @@ func (g *gen) emitStdlib() {
 	g.stdTemdegt()  // тэмдэгт_хэвлэх — UTF-8 encode one codepoint
 	g.stdClear()    // дэлгэцЦэвэрлэх — ANSI home+clear
 	g.stdMonAlloc() // monAlloc — bump allocator over mmap'd chunks
-	g.stdNoops()    // чөлөөлөх (free), хүлээх (sleep) — no-ops
+	g.stdMqrShine() // мөр_шинэ — allocate a zeroed (NUL-terminated) buffer
+	g.stdFaylBichikh() // файл_бичих — write a string to a file
+	g.stdFaylUnshikh() // файл_унших_бүтэн — read a whole file into a string
+	g.stdUnsh()        // унш — parse a signed decimal from stdin
+	g.stdArgs()        // аргумент_тоо / аргумент — argc / argv[i]
+	g.stdNoops()       // чөлөөлөх (free), хүлээх (sleep) — no-ops
+}
+
+// stdFaylUnshikh: файл_унших_бүтэн(зам) returns the whole file as a
+// NUL-terminated string (open / lseek-end / lseek-0 / monAlloc / read / close).
+func (g *gen) stdFaylUnshikh() {
+	b := g.b
+	b.Label(fnLabel("файл_унших_бүтэн"))
+	b.Prologue(32)
+	b.MovImm(1, 0) // O_RDONLY
+	b.MovImm(2, 0)
+	b.MovImm(x16, sysOpen)
+	b.Svc() // x0 = fd
+	b.StrFrame(x0, sp, 0)
+	b.MovImm(1, 0)
+	b.MovImm(2, 2) // SEEK_END
+	b.MovImm(x16, sysLseek)
+	b.Svc() // x0 = size
+	b.StrFrame(x0, sp, 8)
+	b.LdrFrame(x0, sp, 0) // fd
+	b.MovImm(1, 0)
+	b.MovImm(2, 0) // SEEK_SET
+	b.MovImm(x16, sysLseek)
+	b.Svc()
+	b.LdrFrame(x0, sp, 8) // size
+	b.AddImm(x0, x0, 1)
+	b.BL(fnLabel("monAlloc"))
+	b.StrFrame(x0, sp, 16) // buf
+	b.LdrFrame(x0, sp, 0)  // fd
+	b.LdrFrame(1, sp, 16)  // buf
+	b.LdrFrame(2, sp, 8)   // size
+	b.MovImm(x16, sysRead)
+	b.Svc() // x0 = bytes read
+	b.LdrFrame(9, sp, 16)
+	b.Add(9, 9, x0) // buf + read
+	b.MovImm(10, 0)
+	b.StrbReg(10, 9) // NUL-terminate
+	b.LdrFrame(x0, sp, 0)
+	b.MovImm(x16, sysClose)
+	b.Svc()
+	b.LdrFrame(x0, sp, 16) // return buf
+	b.Epilogue(32)
+}
+
+// stdArgs: аргумент_тоо() returns argc; аргумент(и) returns argv[и] (a C
+// string pointer). Both read the slots captured by the entry stub.
+func (g *gen) stdArgs() {
+	b := g.b
+	b.Label(fnLabel("аргумент_тоо"))
+	b.Prologue(0)
+	b.AdrpAdd(9, argcLabel)
+	b.LdrReg(x0, 9)
+	b.Epilogue(0)
+
+	b.Label(fnLabel("аргумент"))
+	b.Prologue(0)
+	b.AdrpAdd(9, argvLabel)
+	b.LdrReg(9, 9)  // argv base
+	b.MovImm(10, 8) // 8-byte pointers
+	b.Mul(0, x0, 10)
+	b.Add(9, 9, x0) // &argv[и]
+	b.LdrReg(x0, 9) // argv[и]
+	b.Epilogue(0)
+}
+
+// stdFaylBichikh: файл_бичих(зам, агуулга) writes агуулга to file зам
+// (O_WRONLY|O_CREAT|O_TRUNC, 0644), returning 0.
+func (g *gen) stdFaylBichikh() {
+	b := g.b
+	b.Label(fnLabel("файл_бичих"))
+	b.Prologue(16)
+	b.StrFrame(1, sp, 0) // save агуулга (content)
+	b.MovImm(1, 0x601)   // O_WRONLY|O_CREAT|O_TRUNC
+	b.MovImm(2, 0o644)
+	b.MovImm(x16, sysOpen)
+	b.Svc() // x0 = fd
+	b.StrFrame(x0, sp, 8)
+	b.LdrFrame(x0, sp, 0) // content
+	b.BL(fnLabel("мөр_урт"))
+	b.MovReg(2, x0)       // len
+	b.LdrFrame(x0, sp, 8) // fd
+	b.LdrFrame(1, sp, 0)  // content
+	b.MovImm(x16, sysWrite)
+	b.Svc()
+	b.LdrFrame(x0, sp, 8) // fd
+	b.MovImm(x16, sysClose)
+	b.Svc()
+	b.MovImm(x0, 0)
+	b.Epilogue(16)
+}
+
+// stdUnsh: унш() reads bytes from stdin, skips leading junk, then parses an
+// optional '-' and decimal digits until a non-digit — scanf-style.
+func (g *gen) stdUnsh() {
+	b := g.b
+	b.Label(fnLabel("унш"))
+	b.Prologue(16)
+	b.MovImm(8, 0)  // accumulator
+	b.MovImm(9, 0)  // sign
+	b.MovImm(10, 0) // started
+	b.Label("std.unsh.read")
+	b.MovImm(x0, 0) // fd = stdin
+	b.AddImm(1, sp, 0)
+	b.MovImm(2, 1)
+	b.MovImm(x16, sysRead)
+	b.Svc()
+	b.CmpImm(x0, 0)
+	b.BCond(condLE, "std.unsh.done") // EOF/error
+	b.LdrbReg(11, sp)
+	b.CmpImm(10, 0)
+	b.BCond(condNE, "std.unsh.digit")
+	b.CmpImm(11, '-')
+	b.BCond(condNE, "std.unsh.digit0")
+	b.MovImm(9, 1)
+	b.MovImm(10, 1)
+	b.B("std.unsh.read")
+	b.Label("std.unsh.digit0")
+	b.CmpImm(11, '0')
+	b.BCond(condLT, "std.unsh.read") // skip junk
+	b.CmpImm(11, '9')
+	b.BCond(condGT, "std.unsh.read")
+	b.MovImm(10, 1)
+	b.B("std.unsh.acc")
+	b.Label("std.unsh.digit")
+	b.CmpImm(11, '0')
+	b.BCond(condLT, "std.unsh.done")
+	b.CmpImm(11, '9')
+	b.BCond(condGT, "std.unsh.done")
+	b.Label("std.unsh.acc")
+	b.MovImm(12, 10)
+	b.Mul(8, 8, 12)
+	b.SubImm(11, 11, '0')
+	b.Add(8, 8, 11)
+	b.B("std.unsh.read")
+	b.Label("std.unsh.done")
+	b.MovReg(x0, 8)
+	b.CmpImm(9, 0)
+	b.BCond(condEQ, "std.unsh.ret")
+	b.Neg(x0, x0)
+	b.Label("std.unsh.ret")
+	b.Epilogue(16)
+}
+
+// stdMqrShine: мөр_шинэ(урт) allocates a mutable string buffer of урт+1 bytes.
+// mmap pages arrive zeroed, so the buffer is born NUL-terminated everywhere.
+func (g *gen) stdMqrShine() {
+	b := g.b
+	b.Label(fnLabel("мөр_шинэ"))
+	b.Prologue(0)
+	b.AddImm(x0, x0, 1) // room for the trailing NUL
+	b.BL(fnLabel("monAlloc"))
+	b.Epilogue(0)
 }
 
 // stdMonAlloc: bump allocator. Rounds the request to 16 bytes, serves it from

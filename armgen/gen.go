@@ -56,8 +56,9 @@ func Compile(prog tackygen.TackyProgram, sizeOf func(string) int, outPath string
 			data = append(data, byte(v>>(8*i)))
 		}
 	}
-	// reserved heap state for the bump allocator (both start at 0).
-	for _, lbl := range []string{heapPtrLabel, heapEndLabel} {
+	// reserved heap + argv state (all start at 0). argc/argv are captured by
+	// the entry stub, which dyld calls as main(argc, argv, ...).
+	for _, lbl := range []string{heapPtrLabel, heapEndLabel, argcLabel, argvLabel} {
 		dataOff[lbl] = len(data)
 		data = append(data, make([]byte, 8)...)
 	}
@@ -66,6 +67,10 @@ func Compile(prog tackygen.TackyProgram, sizeOf func(string) int, outPath string
 	// Labels are internal map keys in this byte encoder, so the Cyrillic
 	// identifiers from Tacky are used verbatim — no transliteration needed
 	// (unlike the AT&T text path, which mangles to Latin: wndsen/khevle).
+	g.b.AdrpAdd(9, argcLabel) // dyld calls entry as main(argc,argv,...)
+	g.b.StrReg(x0, 9)
+	g.b.AdrpAdd(9, argvLabel)
+	g.b.StrReg(x1, 9)
 	g.b.BL(fnLabel("үндсэн"))
 	g.b.MovImm(x16, 1) // SYS_exit
 	g.b.Svc()

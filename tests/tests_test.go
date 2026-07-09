@@ -29,12 +29,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 	"unicode/utf8"
 
+	"github.com/your-moon/mon_lang/armgen"
 	codegen "github.com/your-moon/mon_lang/code_gen"
 	"github.com/your-moon/mon_lang/code_gen/asmsymbol"
 	"github.com/your-moon/mon_lang/linker"
@@ -226,6 +228,75 @@ func TestRun(t *testing.T) {
 					t.Errorf("native/cc divergence: native (%q, %d) vs cc (%q, %d)",
 						gotOut, gotCode, ccOut, ccCode)
 				}
+			}
+		})
+	}
+}
+
+// compileARM64 lowers a source file to a native signed arm64 executable via
+// the armgen back end — the same path as `gen --arch arm64`.
+func compileARM64(srcPath, outPath string) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("armgen panic: %v", r)
+		}
+	}()
+	data, err := os.ReadFile(srcPath)
+	if err != nil {
+		return err
+	}
+	runes := toRunes(string(data))
+	p := parser.NewParser(runes)
+	node, err := p.ParseProgram()
+	if err != nil {
+		return err
+	}
+	if errs := p.Errors(); len(errs) > 0 {
+		return errs[0]
+	}
+	uniqueGen := unique.NewUniqueGen()
+	table := symbols.NewSymbolTable()
+	resolver := semanticanalysis.NewSemanticAnalyzer(runes, uniqueGen, table, filepath.Dir(srcPath), "")
+	resolvedAst, _, err := resolver.Analyze(node)
+	if err != nil {
+		return err
+	}
+	tackyGen := tackygenNew(uniqueGen, table)
+	prog := tackygenOptimize(tackyGen.EmitTacky(resolvedAst))
+	return armgen.Compile(prog, outPath)
+}
+
+// TestRunARM64 exercises the native arm64 back end against the same run/ suite
+// (opt-in: MON_TEST_ARM64=1, arm64 host only). Tests using features the arm64
+// back end doesn't support yet skip rather than fail, so this stays green while
+// coverage grows.
+func TestRunARM64(t *testing.T) {
+	if os.Getenv("MON_TEST_ARM64") != "1" {
+		t.Skip("set MON_TEST_ARM64=1 to run the native arm64 suite")
+	}
+	if runtime.GOARCH != "arm64" {
+		t.Skip("native arm64 host only")
+	}
+	files, err := filepath.Glob(filepath.Join("run", "*.mn"))
+	if err != nil || len(files) == 0 {
+		t.Fatalf("no test files under tests/run: %v", err)
+	}
+	for _, f := range files {
+		t.Run(filepath.Base(f), func(t *testing.T) {
+			exp := parseDirectives(t, f)
+			if len(exp.errSubs) > 0 {
+				t.Skipf("%s: error directive", f)
+			}
+			bin := filepath.Join(t.TempDir(), "prog")
+			if err := compileARM64(f, bin); err != nil {
+				t.Skipf("arm64 unsupported: %v", err)
+			}
+			gotOut, gotCode := run(t, bin, exp.stdin)
+			if exp.hasStdout && gotOut != exp.stdout {
+				t.Errorf("stdout mismatch\n got: %q\nwant: %q", gotOut, exp.stdout)
+			}
+			if gotCode != exp.exitCode {
+				t.Errorf("exit code: got %d, want %d", gotCode, exp.exitCode)
 			}
 		})
 	}

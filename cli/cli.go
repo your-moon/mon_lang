@@ -16,6 +16,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/your-moon/mon_lang/armgen"
 	"github.com/your-moon/mon_lang/base"
 	codegen "github.com/your-moon/mon_lang/code_gen"
 	"github.com/your-moon/mon_lang/code_gen/asmsymbol"
@@ -43,6 +44,7 @@ type CLI struct {
 	genObj     bool
 	run        bool
 	useCC      bool
+	arch       string
 	outputFile string
 }
 
@@ -112,6 +114,7 @@ func (c *CLI) Run(args []string) error {
 	fs.BoolVar(&c.genObj, "obj", false, "object файл үүсгэх")
 	fs.BoolVar(&c.run, "run", false, "компиляц хийгээд ажиллуулах")
 	fs.BoolVar(&c.useCC, "cc", false, "гадаад as/cc хэрэгслээр линк хийх (хуучин зам)")
+	fs.StringVar(&c.arch, "arch", "", "зорилтот архитектур: x86_64 (default) эсвэл arm64")
 	fs.StringVar(&c.outputFile, "o", "", "гаралтын файлын нэр)")
 
 	// two-pass parse so flags may appear before or after the file:
@@ -438,6 +441,22 @@ func (c *CLI) runGen(args []string) error {
 	if base.Debug {
 		fmt.Println("\n---- TACKY IR ----:")
 		tackyGen.PrettyPrint(tackyProgram)
+	}
+
+	// Native arm64 (Apple Silicon): lower Tacky straight to a signed Mach-O.
+	// The x86 asm AST / linker path is bypassed entirely.
+	if c.arch == "arm64" {
+		outputFile := c.outputFile
+		if outputFile == "" {
+			outputFile = filepath.Base(strings.TrimSuffix(args[0], ".mn"))
+		}
+		if err := armgen.Compile(tackyProgram, outputFile); err != nil {
+			return fmt.Errorf("arm64 үүсгэлтийн алдаа: %v", err)
+		}
+		if c.run {
+			return linker.RunPath(outputFile)
+		}
+		return nil
 	}
 
 	asmTable := asmsymbol.NewAsmSymbolTable()

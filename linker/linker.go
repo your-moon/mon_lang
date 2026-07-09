@@ -160,6 +160,25 @@ func (l *Linker) Run() error {
 	return err
 }
 
+// RunPath executes a built program by path (used by back ends that write the
+// executable themselves, e.g. the native arm64 writer), forwarding stdio and
+// propagating the exit code as *ExitCodeError.
+func RunPath(path string) error {
+	if !strings.ContainsRune(path, '/') {
+		path = "./" + path
+	}
+	cmd := exec.Command(path)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	err := cmd.Run()
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return &ExitCodeError{Code: exitErr.ExitCode()}
+	}
+	return err
+}
+
 // ExitCodeError carries the compiled program's own exit status.
 type ExitCodeError struct{ Code int }
 

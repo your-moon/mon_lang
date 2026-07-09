@@ -42,7 +42,7 @@ func (g *gen) emitStdlib() {
 	g.stdBayt()     // байт / байт_тавих — indexed byte load/store
 	g.stdMqrPrint() // мөр_хэвлэх — write a NUL-terminated string
 	g.stdTemdegt()  // тэмдэгт_хэвлэх — UTF-8 encode one codepoint
-	g.stdClear()    // дэлгэцЦэвэрлэх — ANSI home+clear
+	g.stdClear()    // дэлгэц_цэвэрлэх — ANSI home+clear
 	g.stdMonAlloc() // monAlloc — bump allocator over mmap'd chunks
 	g.stdMqrShine() // мөр_шинэ — allocate a zeroed (NUL-terminated) buffer
 	g.stdFaylBichikh() // файл_бичих — write a string to a file
@@ -528,7 +528,7 @@ func (b *Buf) emitCont(cp, shift int) {
 
 func (g *gen) stdClear() {
 	b := g.b
-	b.Label(fnLabel("дэлгэцЦэвэрлэх"))
+	b.Label(fnLabel("дэлгэц_цэвэрлэх"))
 	b.Prologue(0)
 	b.AdrpAdd(1, g.internString("\x1b[H\x1b[2J"))
 	b.MovImm(2, 7)
@@ -540,9 +540,27 @@ func (g *gen) stdClear() {
 
 func (g *gen) stdNoops() {
 	b := g.b
-	for _, name := range []string{"чөлөөлөх", "хүлээх"} {
-		b.Label(fnLabel(name))
-		b.Prologue(0)
-		b.Epilogue(0)
-	}
+	// чөлөөлөх (free) is a no-op — the bump allocator reclaims at exit.
+	b.Label(fnLabel("чөлөөлөх"))
+	b.Prologue(0)
+	b.Epilogue(0)
+
+	// хүлээх(мс): sleep via select(0,0,0,0,&tv). tv = {sec, usec} at [sp,0..16).
+	b.Label(fnLabel("хүлээх"))
+	b.Prologue(16)
+	b.MovImm(1, 1000)
+	b.UDiv(2, x0, 1)   // sec = мс / 1000
+	b.MSub(3, 2, 1, x0) // rem = мс % 1000
+	b.MovImm(4, 1000)
+	b.Mul(3, 3, 4)     // usec = rem * 1000
+	b.StrFrame(2, sp, 0)
+	b.StrFrame(3, sp, 8)
+	b.MovImm(x0, 0)
+	b.MovImm(1, 0)
+	b.MovImm(2, 0)
+	b.MovImm(3, 0)
+	b.AddImm(4, sp, 0) // &tv
+	b.MovImm(x16, 93)  // SYS_select
+	b.Svc()
+	b.Epilogue(16)
 }

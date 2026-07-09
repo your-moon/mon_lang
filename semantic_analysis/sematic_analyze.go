@@ -228,6 +228,9 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 				case *parser.ASTStructDecl:
 					// struct layouts always travel with the module
 					importedDecls = append(importedDecls, dt)
+				case *parser.ASTEnumDecl:
+					// enums (constant sets) always travel with the module
+					importedDecls = append(importedDecls, dt)
 				case *parser.ASTImport:
 					// transitive import: process it too (a package may import
 					// another package), resolved relative to this file's dir.

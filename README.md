@@ -1,6 +1,10 @@
 # Mon
 
-Mon is a small statically-typed programming language with Mongolian keywords. This repo contains its compiler, written in Go, which lowers Mon source through a Tacky intermediate representation to x86-64 machine code and writes a native executable directly — no external toolchain.
+Mon is a small statically-typed programming language with **Mongolian keywords**.
+It compiles straight to native machine code for **x86-64 and arm64 (Apple
+Silicon)** and writes the executable itself — its own instruction encoder, its
+own Mach-O writer, its own ad-hoc code signing. No `as`, no `cc`, no `ld`, no
+`codesign`, no libc. And it **self-hosts**: Mon is written in Mon.
 
 ```mon
 функц үндсэн() -> тоо {
@@ -9,162 +13,146 @@ Mon is a small statically-typed programming language with Mongolian keywords. Th
 }
 ```
 
+```bash
+go build -o mon .
+./mon gen сайн.mn --arch arm64 -o сайн   # native Apple Silicon binary
+./сайн
+```
+
 ## Language
 
-- Types: тоо/тоо64 (int32/64), этоо/этоо64 (unsigned), тэмдэгт (Unicode codepoint), мөр (string), заагч (`тоо*`), arrays (`тоо[5]`, heap-backed references)
-- Rust-style structs with methods and self:
+- **Types:** `тоо`/`тоо64` (int32/64), `этоо`/`этоо64` (unsigned), `тэмдэгт`
+  (Unicode codepoint), `бутархай` (float64), `мөр` (string), pointers (`тоо*`),
+  arrays (`тоо[5]`, heap-backed references).
+- **Structs + methods** (`бүтэц` / `хэрэгжүүл` / `өөрөө`):
 
-```mon
-бүтэц Цэг { х: тоо, у: тоо64 }
+  ```mon
+  бүтэц Цэг { х: тоо, у: тоо64 }
+  хэрэгжүүл Цэг {
+      функц нийлбэр(өөрөө) -> тоо64 { буц өөрөө.х + өөрөө.у; }
+  }
+  ```
 
-хэрэгжүүл Цэг {
-    функц нийлбэр(өөрөө) -> тоо64 { буц өөрөө.х + өөрөө.у; }
-}
-```
+- **Enums** (`тоочих`) — variants are integer constants, usable as `match` patterns:
 
-- Rust-style match:
+  ```mon
+  тоочих Өнгө { УЛААН, НОГООН, ЦЭНХЭР }
+  тааруул ө {
+      Өнгө.УЛААН => { мөр_хэвлэх("улаан"); }
+      _         => { мөр_хэвлэх("бусад"); }
+  }
+  ```
 
-```mon
-тааруул х {
-    1   => { мөр_хэвлэх("нэг"); }
-    'ө' => { мөр_хэвлэх("үсэг"); }
-    _   => { мөр_хэвлэх("бусад"); }
-}
-```
+- **Rust-style `match`** (`тааруул`) on integers, chars, and enum variants.
+- **Control flow:** `хэрэв`/`эсвэл`, `давтах` (while), `давт..хүртэл` (range
+  for), `зогс`/`үргэлжлүүл` (break/continue).
+- **Modules:** `ашигла "файл.mn"`, folder packages (`ашигла "лексер"`), named
+  imports `ашигла "файл.mn" гэж нэр` → `нэр.функц()`, `тунх` for public exports.
+  Declarations are order-independent (Go-style hoisting).
+- **String escapes:** `\n \t \\ \" \0 \r \e \xNN \uNNNN`.
+- Optimizations on by default (constant folding, copy propagation, DCE).
+- Bump-allocated heap on the native path (conservative mark-sweep GC on the
+  legacy `--cc` runtime).
+- **Builtins:** printing (`хэвлэ`, `эхэвлэ`, `мөр_хэвлэх`, `тэмдэгт_хэвлэх`,
+  `бутархай_хэвлэх`), strings/bytes (`мөр_урт`, `байт`, `байт_тавих`, `мөр_шинэ`),
+  file I/O (`файл_унших_бүтэн`, `файл_бичих`, `файл_бичих_байт`), stdin (`унш`),
+  argv (`аргумент`), and time/random/sleep.
 
-- Control flow: хэрэв/эсвэл, давтах (while), давт..хүртэл (range for), зогс/үргэлжлүүл
-- Modules: `ашигла "файл.mn"` with тунх exports, named imports via `ашигла "файл.mn" гэж нэр` → `нэр.функц()`
-- бутархай (float64) with SSE2 codegen; pointers with scaled arithmetic, character literals
-- Optimizations on by default: constant folding, copy propagation, dead-code elimination, and register allocation
-- Garbage collected (conservative mark-sweep on the C runtime; bump allocator on the self-contained native path)
-- Builtins: printing (хэвлэ, эхэвлэ, мөр_хэвлэх, тэмдэгтХэвлэх), stdin (унш), file I/O (файлУншихБүтэн, файлБичих), bytes (мөрУрт, байт, байтТавих, мөрШинэ), argv (аргумент), time/random/sleep
-- `selfhost/` holds the beginning of the self-hosted compiler: a mon_lang lexer that lexes itself, and a hash map written in mon_lang
+## Targets
 
-## How it works
+| Target | How | Notes |
+|--------|-----|-------|
+| **arm64** | `gen … --arch arm64` | Native on Apple Silicon. dyld-loaded, self ad-hoc-signed (required by modern macOS). |
+| **x86-64** | `gen …` (default) | Static `LC_UNIXTHREAD` binary; runs natively on Intel, under Rosetta 2 on Apple Silicon. |
 
-The compiler runs as a pipeline, and each stage is exposed as its own command:
+Both back ends are fully self-contained: Mon encodes the machine code
+(`encoder/`, `armgen/`), writes the Mach-O container (`macho/`), and links a
+built-in syscall standard library. Nothing external is invoked.
+
+## Pipeline
+
+Each stage is its own command; `gen` runs them all end to end.
 
 | Stage | Command | Package |
 |-------|---------|---------|
-| Tokenize source | `lex` | `lexer/` |
-| Build the AST | `parse` | `parser/` |
+| Tokenize | `lex` | `lexer/` |
+| Parse → AST | `parse` | `parser/` |
 | Type check & resolve | `validate` | `semantic_analysis/`, `symbols/`, `mtypes/` |
 | Lower to Tacky IR | `tacky` | `tackygen/` |
-| Generate x86-64 assembly | `compile` | `code_gen/` |
-| Assemble + link to a binary | `gen` | `linker/` |
+| x86-64 codegen | `compile`/`gen` | `code_gen/` → `encoder/` → `macho/` |
+| arm64 codegen | `gen --arch arm64` | `armgen/` → `macho/` |
 
-`gen` runs the whole pipeline end to end. By default the compiler is fully self-contained (TCC-style): it encodes x86_64 machine code itself (`encoder/`), writes the Mach-O executable directly (`macho/`), and links in a built-in syscall standard library — no `as`, no `cc`, no Xcode, no libc. The produced binaries are static (~8 KB for hello world) with zero dynamic dependencies.
+Pass `--asm` to emit AT&T text, or `--cc` for the legacy `as`+`cc` path.
 
-Pass `--cc` to use the legacy external-toolchain path (`as` + `cc` with `stdlib/cc/lib.c`), or `--asm` to emit AT&T assembly text.
+## Self-hosting
+
+Mon compiles itself. `selfhost/mc.mn` (plus `лексер.mn`, `кодген.mn`) is a Mon
+compiler **written in Mon**; it bootstraps to a byte-identical fixed point:
+
+```bash
+./selfhost/bootstrap.sh
+# SELF-HOSTING OK: stage1 == stage3 (…, byte-identical)
+```
+
+`selfhost/макхо.mn` is a Mach-O writer written in Mon — the language can emit a
+native executable entirely on its own (see `tests` → `TestSelfEmit`). `mc/` is a
+cleaner, modular rewrite (structs/methods/modules/enums) in progress.
 
 ## Requirements
 
-- Go 1.23.4+ (build-time only)
-- macOS. Output is x86_64, so Apple Silicon runs binaries under Rosetta 2. The `--cc` legacy path additionally needs Xcode Command Line Tools.
+- Go 1.23+ (build-time only).
+- macOS (arm64 or x86-64). The `--cc` legacy path additionally needs Xcode
+  Command Line Tools.
 
-## Build
-
-```bash
-git clone https://github.com/your-moon/mon_lang.git
-cd mon_lang
-go build -o mon_lang .
-```
-
-## Usage
+## Build & run
 
 ```bash
-# Compile and run a program
-./mon_lang gen program.mn --run
+git clone git@github.com:your-moon/mon.git
+cd mon
+go build -o mon .
 
-# Compile to an executable named "out"
-./mon_lang gen program.mn -o out
+./mon gen program.mn --arch arm64 -o out && ./out   # native arm64
+./mon gen program.mn -o out && ./out                # x86-64
+./mon gen program.mn --run                           # compile + run
 
-# Inspect an intermediate stage
-./mon_lang lex program.mn --debug
-./mon_lang parse program.mn --debug
-./mon_lang tacky program.mn --debug
+# inspect a stage
+./mon tacky program.mn --debug
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--debug` | Print the output of the stage |
-| `--asm` | Keep the generated `.s` assembly file |
-| `--obj` | Keep the generated object file |
-| `--run` | Run the program after compiling |
-| `-o` | Output file name |
+## Examples
 
-## Language examples
+`examples/` includes **`гл.mn`** — a TinyGL-style software 3D renderer written in
+Mon: RGB framebuffer, z-buffered triangle rasterization, per-face colour +
+shading, 24-bit truecolor terminal output and PPM image save.
 
-### Arithmetic
-
-```mon
-extern функц хэвлэ(н тоо64) -> хоосон {}
-
-функц үндсэн() -> тоо {
-    зарла a: тоо64 = 10;
-    зарла b: тоо64 = 5;
-
-    хэвлэ(a + b);
-    хэвлэ(a - b);
-    хэвлэ(a * b);
-    хэвлэ(a / b);
-
-    буц 0;
-}
-```
-
-### Fibonacci
-
-```mon
-extern функц хэвлэ(н тоо64) -> хоосон {}
-extern функц унш() -> тоо64 {}
-
-функц фибоначчи(н тоо64) -> тоо64 {
-    хэрэв н <= 1 бол {
-        буц н;
-    }
-
-    зарла өмнөх: тоо64 = 0;
-    зарла одоогийн: тоо64 = 1;
-    зарла i: тоо64 = 2;
-
-    давтах i <= н бол {
-        зарла дараах: тоо64 = өмнөх + одоогийн;
-        өмнөх = одоогийн;
-        одоогийн = дараах;
-        i = i + 1;
-    }
-
-    буц одоогийн;
-}
-
-функц үндсэн() -> тоо {
-    хэвлэ(фибоначчи(унш()));
-    буц 0;
-}
+```bash
+./mon gen examples/гл_үзүүлэн.mn --arch arm64 -o үзүүлэн && ./үзүүлэн
+# a colour-shaded spinning cube, in your terminal
 ```
 
 ## Repository layout
 
 ```
-lexer/              Tokenizer
-parser/             Recursive-descent parser → AST
-semantic_analysis/  Type checking and validation
-symbols/  mtypes/   Symbol table and type system
-tackygen/           AST → Tacky IR lowering
-code_gen/           Tacky IR → x86-64 assembly
-linker/             Assemble and link via as/cc
-stdlib/             Runtime / built-in functions
-cli/                Command-line entry point
-playground/         Web playground (Next.js frontend + Go server)
-vscode/             VS Code syntax extension
+lexer/  parser/            Tokenizer, recursive-descent parser → AST
+semantic_analysis/         Resolve, type-check (structs, enums, modules)
+symbols/  mtypes/           Symbol table and type system
+tackygen/                  AST → Tacky IR
+code_gen/ encoder/ macho/  x86-64: asm AST → machine code → Mach-O
+armgen/                    arm64: Tacky IR → machine code (+ signed Mach-O)
+stdlib/                    Built-in functions (native + C shim)
+selfhost/  mc/             Mon compiler written in Mon (self-hosting)
+examples/                  Demos incl. the гл 3D renderer
+cli/                       Command-line entry point
+lsp/  tools/               Language server, tree-sitter grammar, Neovim setup
+playground/  vscode/       Web playground, VS Code extension
 ```
 
 ## Development
 
 ```bash
-go test ./...
-go build ./...
+go test ./...                              # full suite
+MON_TEST_ARM64=1 go test ./tests/ -run ARM64   # native arm64 suite (arm64 host)
+./selfhost/bootstrap.sh                    # self-hosting check
 ```
 
 ## License

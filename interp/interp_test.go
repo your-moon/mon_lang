@@ -59,3 +59,20 @@ func TestRunReturnsExitCode(t *testing.T) {
 		t.Fatalf("exit code = %d, want 42", code)
 	}
 }
+
+func TestArithmeticAndVars(t *testing.T) {
+	src := `функц үндсэн() -> тоо {
+		зарла а: тоо = 3;
+		зарла б: тоо = 4;
+		зарла в: тоо = а * б + 2;
+		хэрэв в > 13 бол { буц в; }
+		буц 0;
+	}`
+	code, err := New(resolve(t, src)).Run("үндсэн", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code != 14 {
+		t.Fatalf("got %d, want 14", code)
+	}
+}

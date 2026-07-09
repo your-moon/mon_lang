@@ -13,6 +13,7 @@ import (
 
 	compilererrors "github.com/your-moon/mon_lang/errors"
 	"github.com/your-moon/mon_lang/lexer"
+	"github.com/your-moon/mon_lang/mtypes"
 	"github.com/your-moon/mon_lang/parser"
 	"github.com/your-moon/mon_lang/util/unique"
 )
@@ -42,6 +43,7 @@ type Resolver struct {
 	uniqueGen     unique.UniqueGen
 	errors        []compilererrors.CompilerError
 	moduleHandles map[string]map[string]bool // handle -> exported value names
+	enums         map[string]map[string]int  // enum name -> variant -> value
 }
 
 func NewResolver(source []int32, uniqueGen unique.UniqueGen) *Resolver {
@@ -49,6 +51,7 @@ func NewResolver(source []int32, uniqueGen unique.UniqueGen) *Resolver {
 		tempCounter: 0,
 		source:      source,
 		uniqueGen:   uniqueGen,
+		enums:       map[string]map[string]int{},
 	}
 }
 
@@ -117,6 +120,13 @@ func (r *Resolver) Resolve(program *parser.ASTProgram) (*parser.ASTProgram, erro
 			if _, exists := emptyMap[d.Ident]; !exists {
 				emptyMap[d.Ident] = VarEntry{UniqueName: r.makeNamedTemporary(d.Ident), fromCurrentScope: true, hasLinkage: true}
 			}
+		case *parser.ASTEnumDecl:
+			// register variant -> index so `Нэр.ВАР` folds to a constant
+			variants := map[string]int{}
+			for i, v := range d.Variants {
+				variants[v] = i
+			}
+			r.enums[d.Name] = variants
 		}
 	}
 	if len(resolveErrors) > 0 {
@@ -148,6 +158,9 @@ func (r *Resolver) ResolveDecl(decl parser.ASTDecl, innerMap IdMap) (IdMap, pars
 		return r.ResolveFileScopeVarDecl(declType, innerMap)
 	case *parser.ASTStructDecl:
 		// struct names live in their own namespace; nothing to rename
+		return innerMap, declType, nil
+	case *parser.ASTEnumDecl:
+		// enums are compile-time constants; nothing to rename or emit
 		return innerMap, declType, nil
 	default:
 		panic("unimplemented decl type on resolve")
@@ -561,6 +574,19 @@ func (r *Resolver) ResolveExpr(program parser.ASTExpression, innerMap IdMap) (pa
 		return nodetype, nil
 
 	case *parser.ASTMember:
+		if v, ok := nodetype.Inner.(*parser.ASTVar); ok {
+			if variants, isEnum := r.enums[v.Ident]; isEnum {
+				// Нэр.ВАР → its integer index (constant-fold)
+				idx, ok := variants[nodetype.Field]
+				if !ok {
+					return nil, r.createSemanticError(
+						fmt.Sprintf("тоочих '%s'-д '%s' гишүүн байхгүй", v.Ident, nodetype.Field),
+						nodetype.Token.Line, nodetype.Token.Span)
+				}
+				return &parser.ASTConstInt{Token: nodetype.Token, Value: int64(idx),
+					Type: &mtypes.Int32Type{}}, nil
+			}
+		}
 		if v, ok := nodetype.Inner.(*parser.ASTVar); ok && r.moduleHandles[v.Ident] != nil {
 			// нэр.глобал - a module-qualified global, not a field access
 			if !r.moduleHandles[v.Ident][nodetype.Field] {

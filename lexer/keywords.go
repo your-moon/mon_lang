@@ -38,6 +38,7 @@ const (
 	KeywordStruct Keyword = "бүтэц"
 	KeywordImpl   Keyword = "хэрэгжүүл"
 	KeywordMatch  Keyword = "тааруул"
+	KeywordEnum   Keyword = "тоочих"
 	KeywordAs     Keyword = "гэж"
 	KeywordSelf   Keyword = "өөрөө"
 	KeywordVoid   Keyword = "хоосон"

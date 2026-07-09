@@ -71,6 +71,11 @@ func (p *Parser) ParseProgram() (*ASTProgram, error) {
 			if decl != nil {
 				program.Decls = append(program.Decls, decl)
 			}
+		case lexer.ENUM:
+			decl := p.parseEnumDecl()
+			if decl != nil {
+				program.Decls = append(program.Decls, decl)
+			}
 		case lexer.IMPL:
 			// impl methods flatten into ordinary top-level functions
 			for _, fn := range p.parseImplBlock() {
@@ -1047,6 +1052,36 @@ func (p *Parser) parseStructDecl() *ASTStructDecl {
 		p.nextToken() // consume ,
 	}
 
+	if !p.expect(lexer.CLOSE_BRACE) {
+		p.appendError(ErrMissingBraceClose)
+		return nil
+	}
+	return ast
+}
+
+// parseEnumDecl parses `тоочих Нэр { ВАР1, ВАР2, ... }`.
+func (p *Parser) parseEnumDecl() *ASTEnumDecl {
+	ast := &ASTEnumDecl{Token: p.current}
+	if !p.expect(lexer.IDENT) || p.current.Value == nil {
+		p.appendError("тоочихын нэр байх ёстой")
+		return nil
+	}
+	ast.Name = *p.current.Value
+	if !p.expect(lexer.OPEN_BRACE) {
+		p.appendError(ErrMissingBraceOpen)
+		return nil
+	}
+	for !p.peekIs(lexer.CLOSE_BRACE) && !p.peekIs(lexer.EOF) {
+		if !p.expect(lexer.IDENT) || p.current.Value == nil {
+			p.appendError("тоочихын гишүүний нэр байх ёстой")
+			return nil
+		}
+		ast.Variants = append(ast.Variants, *p.current.Value)
+		if !p.peekIs(lexer.COMMA) {
+			break
+		}
+		p.nextToken() // consume ,
+	}
 	if !p.expect(lexer.CLOSE_BRACE) {
 		p.appendError(ErrMissingBraceClose)
 		return nil

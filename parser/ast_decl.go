@@ -170,3 +170,21 @@ func (d *ASTStructDecl) PrintAST(depth int) string {
 	}
 	return out + indent(depth) + "}"
 }
+
+// ASTEnumDecl is a top-level `тоочих Нэр { ВАР1, ВАР2, ... }`. Each variant is
+// an integer constant equal to its index; `Нэр.ВАРi` folds to that constant.
+type ASTEnumDecl struct {
+	Token    lexer.Token
+	Name     string
+	Variants []string
+}
+
+func (d *ASTEnumDecl) declNode()            {}
+func (d *ASTEnumDecl) TokenLiteral() string { return "тоочих" }
+func (d *ASTEnumDecl) PrintAST(depth int) string {
+	out := indent(depth) + "тоочих " + d.Name + " {\n"
+	for i, n := range d.Variants {
+		out += indent(depth+1) + fmt.Sprintf("%s = %d\n", n, i)
+	}
+	return out + indent(depth) + "}"
+}

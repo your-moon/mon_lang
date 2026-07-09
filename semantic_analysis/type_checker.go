@@ -23,11 +23,12 @@ type TypeChecker struct {
 	uniqueGen   unique.UniqueGen
 	symbolTable *symbols.SymbolTable
 	structs     map[string]*mtypes.StructType
+	enums       map[string]bool // enum type names (behave as Int32)
 }
 
 func NewTypeChecker(source []int32, uniqueGen unique.UniqueGen, table *symbols.SymbolTable) *TypeChecker {
 	return &TypeChecker{source: source, uniqueGen: uniqueGen, symbolTable: table,
-		structs: map[string]*mtypes.StructType{}}
+		structs: map[string]*mtypes.StructType{}, enums: map[string]bool{}}
 }
 
 // resolveType replaces NamedType references with their registered struct
@@ -35,6 +36,9 @@ func NewTypeChecker(source []int32, uniqueGen unique.UniqueGen, table *symbols.S
 func (c *TypeChecker) resolveType(t mtypes.Type, line int, span lexer.Span) (mtypes.Type, error) {
 	switch tt := t.(type) {
 	case *mtypes.NamedType:
+		if c.enums[tt.Name] {
+			return &mtypes.Int32Type{}, nil // an enum is a named integer
+		}
 		st, ok := c.structs[tt.Name]
 		if !ok {
 			return nil, c.createSemanticError(fmt.Sprintf("'%s' нэртэй бүтэц олдсонгүй", tt.Name), line, span)
@@ -111,6 +115,9 @@ func (c *TypeChecker) CheckTopLevel(program *parser.ASTProgram) (*parser.ASTProg
 				return nil, err
 			}
 		}
+		if e, ok := decl.(*parser.ASTEnumDecl); ok {
+			c.enums[e.Name] = true // enum type name resolves to Int32
+		}
 	}
 	// Pass 1b: resolve struct field types and compute layouts.
 	for _, decl := range program.Decls {
@@ -165,6 +172,8 @@ func (c *TypeChecker) CheckTopLevel(program *parser.ASTProgram) (*parser.ASTProg
 			program.Decls[i] = decl
 		case *parser.ASTStructDecl:
 			// already registered in pass 1
+		case *parser.ASTEnumDecl:
+			// enums fold to integer constants during resolve; no code or types
 		default:
 			panic(fmt.Sprintf("unsupported top-level declaration: %T", decl))
 		}

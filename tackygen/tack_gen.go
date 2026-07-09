@@ -52,6 +52,8 @@ func (c *TackyGen) EmitTacky(node *parser.ASTProgram) TackyProgram {
 			// a bodyless non-extern decl is a forward prototype: no code
 		case *parser.ASTStructDecl:
 			// layout only; nothing to emit
+		case *parser.ASTEnumDecl:
+			// enums folded to constants during resolve; nothing to emit
 		case *parser.VarDecl:
 			// Top-level variable declarations become global variables in .data section
 			var initValue int64

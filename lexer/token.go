@@ -83,6 +83,7 @@ const (
 	STRUCT      TokenType = "STRUCT" // бүтэц
 	IMPL        TokenType = "IMPL"   // хэрэгжүүл
 	MATCH       TokenType = "MATCH"  // тааруул
+	ENUM        TokenType = "ENUM"   // тоочих
 	FATARROW    TokenType = "FATARROW" // =>
 	AS          TokenType = "AS"       // гэж
 	ELSE        TokenType = "ELSE" // эсвэл

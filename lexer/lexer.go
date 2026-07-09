@@ -181,6 +181,9 @@ func (s *Scanner) ToKeyword() (Token, bool) {
 	if str == string(KeywordMatch) {
 		return s.BuildToken(MATCH), true
 	}
+	if str == string(KeywordEnum) {
+		return s.BuildToken(ENUM), true
+	}
 	if str == string(KeywordAs) {
 		return s.BuildToken(AS), true
 	}

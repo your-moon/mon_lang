@@ -54,9 +54,18 @@ cannot recur.
 
 ## Status
 
-- [x] IR types + builder (`mc/ир`) — this commit
-- [ ] AST → IR lowering
-- [ ] liveness
-- [ ] linear-scan allocator
-- [ ] x86_64 emit + Mach-O
+- [x] IR types + builder (`mc/ир/заавар.mn`)
+- [x] AST → IR lowering for expressions (`mc/ир/лоуэр.mn`)
+- [x] liveness (`mc/ир/амьдрал.mn`)
+- [x] linear-scan allocator (`mc/ир/хуваарь.mn`)
+- [ ] lowering: statements + control flow (if / while) + locals (needs a temp
+      symbol table)
+- [ ] lowering: calls
+- [ ] x86_64 emit (register-based, from the allocation) + own Mach-O writer
 - [ ] arm64 emit + Mach-O + ad-hoc code signature
+- [ ] wire mc's driver to the new backend; reach the self-hosting fixed point
+
+The algorithmic core (IR + liveness + linear-scan) is done and tested. The
+remaining work is emission: turning allocated IR into machine bytes for each
+target and writing the Mach-O container — the largest block, reusing the
+techniques already proven in the Go compiler's `encoder/` and `macho/`.

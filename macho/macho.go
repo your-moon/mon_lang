@@ -37,14 +37,25 @@ const (
 	protRW       = 3
 )
 
+// buf is the one little byte-assembler both Mach-O writers share (the x86
+// LC_UNIXTHREAD binary and the signed arm64 one). Big-endian variants exist for
+// the code-signature blobs, which are big-endian by spec.
 type buf struct{ b []byte }
 
 func (w *buf) u32(v uint32)   { w.b = binary.LittleEndian.AppendUint32(w.b, v) }
 func (w *buf) u64(v uint64)   { w.b = binary.LittleEndian.AppendUint64(w.b, v) }
+func (w *buf) u32be(v uint32) { w.b = binary.BigEndian.AppendUint32(w.b, v) }
+func (w *buf) u64be(v uint64) { w.b = binary.BigEndian.AppendUint64(w.b, v) }
+func (w *buf) u8(v byte)      { w.b = append(w.b, v) }
 func (w *buf) name(s string)  { n := make([]byte, 16); copy(n, s); w.b = append(w.b, n...) }
 func (w *buf) bytes(p []byte) { w.b = append(w.b, p...) }
 func (w *buf) pad(align int) {
 	for len(w.b)%align != 0 {
+		w.b = append(w.b, 0)
+	}
+}
+func (w *buf) padTo(n int) {
+	for len(w.b) < n {
 		w.b = append(w.b, 0)
 	}
 }

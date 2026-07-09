@@ -23,24 +23,8 @@ package macho
 
 import (
 	"crypto/sha256"
-	"encoding/binary"
 	"os"
 )
-
-type abuf struct{ b []byte }
-
-func (w *abuf) u32(v uint32)   { w.b = binary.LittleEndian.AppendUint32(w.b, v) }
-func (w *abuf) u32be(v uint32) { w.b = binary.BigEndian.AppendUint32(w.b, v) }
-func (w *abuf) u64(v uint64)   { w.b = binary.LittleEndian.AppendUint64(w.b, v) }
-func (w *abuf) u64be(v uint64) { w.b = binary.BigEndian.AppendUint64(w.b, v) }
-func (w *abuf) nm(s string)    { n := make([]byte, 16); copy(n, s); w.b = append(w.b, n...) }
-func (w *abuf) bytes(p []byte) { w.b = append(w.b, p...) }
-func (w *abuf) u8(v byte)      { w.b = append(w.b, v) }
-func (w *abuf) padTo(n int) {
-	for len(w.b) < n {
-		w.b = append(w.b, 0)
-	}
-}
 
 const (
 	armBase   = 0x100000000
@@ -83,7 +67,7 @@ func buildArmSignature(region []byte, ident string, textVMSize uint64) []byte {
 	codeLimit := len(region)
 	nCode := (codeLimit + csPage - 1) / csPage
 
-	req := &abuf{}
+	req := &buf{}
 	req.u32be(0xfade0c01) // empty internal requirements set
 	req.u32be(12)
 	req.u32be(0)
@@ -96,7 +80,7 @@ func buildArmSignature(region []byte, ident string, textVMSize uint64) []byte {
 	hashesStart := identOff + len(id)
 	hashOff := hashesStart + nSpecial*32
 
-	cd := &abuf{}
+	cd := &buf{}
 	cd.u32be(0xfade0c02) // CodeDirectory
 	cd.u32be(uint32(hashesStart + (nSpecial+nCode)*32))
 	cd.u32be(0x00020400) // version 0x20400
@@ -134,7 +118,7 @@ func buildArmSignature(region []byte, ident string, textVMSize uint64) []byte {
 	cdOff := 12 + nBlobs*8
 	reqOff := cdOff + len(cd.b)
 	wrapOff := reqOff + len(req.b)
-	sb := &abuf{}
+	sb := &buf{}
 	sb.u32be(0xfade0cc0)
 	sb.u32be(uint32(wrapOff + 8))
 	sb.u32be(nBlobs)
@@ -154,13 +138,13 @@ func buildArmSignature(region []byte, ident string, textVMSize uint64) []byte {
 // armChainedFixups builds a minimal (no-op) chained-fixups blob for nsegs
 // segments — we import no symbols, so every segment's start offset is 0.
 func armChainedFixups(nsegs int) []byte {
-	starts := &abuf{}
+	starts := &buf{}
 	starts.u32(uint32(nsegs))
 	for i := 0; i < nsegs; i++ {
 		starts.u32(0)
 	}
 	const startsOff = 0x20
-	h := &abuf{}
+	h := &buf{}
 	h.u32(0)                                     // fixups_version
 	h.u32(startsOff)                             // starts_offset
 	h.u32(uint32(startsOff + len(starts.b)))     // imports_offset
@@ -202,11 +186,11 @@ func WriteExecutableARM64(path string, code, ro, data []byte, entry int) error {
 
 	build := func(sig []byte) []byte {
 		linkSize := (sigOff - linkOff) + len(sig)
-		cmds := &abuf{}
+		cmds := &buf{}
 		seg := func(name string, vmaddr, vmsize, off, fsize uint64, prot uint32) {
 			cmds.u32(lcSegment64)
 			cmds.u32(72)
-			cmds.nm(name)
+			cmds.name(name)
 			cmds.u64(vmaddr)
 			cmds.u64(vmsize)
 			cmds.u64(off)
@@ -279,7 +263,7 @@ func WriteExecutableARM64(path string, code, ro, data []byte, entry int) error {
 			ncmds++
 		}
 
-		out := &abuf{}
+		out := &buf{}
 		out.u32(0xfeedfacf) // magic64
 		out.u32(cpuARM64)
 		out.u32(0)

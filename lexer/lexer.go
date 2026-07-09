@@ -293,6 +293,29 @@ func (s *Scanner) Skip() {
 		break
 	}
 }
+// readHex reads up to `count` hex digits starting at index `start`, returning
+// the value and how many digits were consumed.
+func readHex(runes []int32, start, count int) (int, int) {
+	v, n := 0, 0
+	for n < count && start+n < len(runes) {
+		c := runes[start+n]
+		var d int
+		switch {
+		case c >= '0' && c <= '9':
+			d = int(c - '0')
+		case c >= 'a' && c <= 'f':
+			d = int(c-'a') + 10
+		case c >= 'A' && c <= 'F':
+			d = int(c-'A') + 10
+		default:
+			return v, n
+		}
+		v = v*16 + d
+		n++
+	}
+	return v, n
+}
+
 func processEscapes(runes []int32) string {
 	var result []rune
 	for i := 0; i < len(runes); i++ {
@@ -307,8 +330,28 @@ func processEscapes(runes []int32) string {
 				result = append(result, '\\')
 			case '"':
 				result = append(result, '"')
+			case '\'':
+				result = append(result, '\'')
+			case 'r':
+				result = append(result, '\r')
+			case 'e':
+				result = append(result, 0x1b) // ESC
 			case '0':
 				result = append(result, 0)
+			case 'x': // \xNN — one byte from two hex digits
+				if v, n := readHex(runes, i+1, 2); n == 2 {
+					result = append(result, rune(v))
+					i += 2
+				} else {
+					result = append(result, '\\', 'x')
+				}
+			case 'u': // \uNNNN — a Unicode codepoint (UTF-8 encoded)
+				if v, n := readHex(runes, i+1, 4); n == 4 {
+					result = append(result, rune(v))
+					i += 4
+				} else {
+					result = append(result, '\\', 'u')
+				}
 			default:
 				result = append(result, '\\')
 				result = append(result, rune(runes[i]))

@@ -1,0 +1,3 @@
+[submodule "mon"]
+	path = mon
+	url = git@github.com:your-moon/mon.git

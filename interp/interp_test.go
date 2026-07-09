@@ -60,6 +60,36 @@ func TestRunReturnsExitCode(t *testing.T) {
 	}
 }
 
+func TestShortCircuit(t *testing.T) {
+	// x==0: `x != 0 && 10/x > 1` must be false WITHOUT dividing by zero.
+	src := `функц үндсэн() -> тоо {
+		зарла x: тоо = 0;
+		хэрэв x != 0 && 10 / x > 1 бол { буц 1; }
+		буц 0;
+	}`
+	code, err := New(resolve(t, src)).Run("үндсэн", nil)
+	if err != nil {
+		t.Fatalf("short-circuit should avoid the divide-by-zero: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("got %d, want 0", code)
+	}
+
+	// x==0: `x == 0 || 10/x > 1` must be true WITHOUT dividing by zero.
+	src2 := `функц үндсэн() -> тоо {
+		зарла x: тоо = 0;
+		хэрэв x == 0 || 10 / x > 1 бол { буц 1; }
+		буц 0;
+	}`
+	code2, err := New(resolve(t, src2)).Run("үндсэн", nil)
+	if err != nil {
+		t.Fatalf("short-circuit (||) should avoid the divide-by-zero: %v", err)
+	}
+	if code2 != 1 {
+		t.Fatalf("got %d, want 1", code2)
+	}
+}
+
 func TestArithmeticAndVars(t *testing.T) {
 	src := `функц үндсэн() -> тоо {
 		зарла а: тоо = 3;

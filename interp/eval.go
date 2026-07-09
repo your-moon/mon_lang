@@ -103,6 +103,27 @@ func (ip *Interp) assign(target parser.ASTExpression, v Value, fr *Frame) {
 // operand is a double, else integer arithmetic re-wrapped to the result's
 // static width (тоо -> 32 bits, тоо64 -> 64 bits).
 func (ip *Interp) binary(e *parser.ASTBinary, fr *Frame) Value {
+	// && and || short-circuit: the right operand must not be evaluated when
+	// the left operand already determines the result. This matches the
+	// native codegen backend (tackygen.EmitAndExpr/EmitOrExpr), which emits a
+	// conditional jump over the right-hand evaluation.
+	switch e.Op {
+	case parser.ASTBinOp(parser.A_AND):
+		left := ip.eval(e.Left, fr)
+		if !left.Truthy() {
+			return I32(0)
+		}
+		right := ip.eval(e.Right, fr)
+		return I32(boolToInt(right.Truthy()))
+	case parser.ASTBinOp(parser.A_OR):
+		left := ip.eval(e.Left, fr)
+		if left.Truthy() {
+			return I32(1)
+		}
+		right := ip.eval(e.Right, fr)
+		return I32(boolToInt(right.Truthy()))
+	}
+
 	l := ip.eval(e.Left, fr)
 	r := ip.eval(e.Right, fr)
 	if l.Kind == KindDouble || r.Kind == KindDouble {

@@ -122,14 +122,19 @@ func (b *Buf) StrReg(rt, rn int) { b.w(0xF9000000 | (uint32(rn) << 5) | uint32(r
 func (b *Buf) LdrbReg(rt, rn int) { b.w(0x39400000 | (uint32(rn) << 5) | uint32(rt)) }
 func (b *Buf) StrbReg(rt, rn int) { b.w(0x39000000 | (uint32(rn) << 5) | uint32(rt)) }
 
-// Ldr32Reg / Str32Reg: 32-bit load (zero-extends into Xt) / store, [Xn].
-func (b *Buf) Ldr32Reg(rt, rn int) { b.w(0xB9400000 | (uint32(rn) << 5) | uint32(rt)) }
+// Ldrsw32Reg: 32-bit load that SIGN-extends into Xt, [Xn]. mon_lang's тоо is a
+// signed Int32, so a 4-byte field holding -1 must become 0xffff...ffff, not
+// 0x0000_0000_ffff_ffff — otherwise `x >= 0` guards and signed arithmetic on it
+// go wrong.
+func (b *Buf) Ldrsw32Reg(rt, rn int) { b.w(0xB9800000 | (uint32(rn) << 5) | uint32(rt)) }
+
+// Str32Reg: 32-bit store, [Xn].
 func (b *Buf) Str32Reg(rt, rn int) { b.w(0xB9000000 | (uint32(rn) << 5) | uint32(rt)) }
 
 // LdrW / StrW: width-parameterized pointer load/store (4 or 8 bytes).
 func (b *Buf) LdrW(rt, rn, width int) {
 	if width == 4 {
-		b.Ldr32Reg(rt, rn)
+		b.Ldrsw32Reg(rt, rn)
 	} else {
 		b.LdrReg(rt, rn)
 	}

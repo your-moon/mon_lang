@@ -351,7 +351,9 @@ func (g *gen) instr(fn tackygen.TackyFn, ins tackygen.Instruction) error {
 		if err := g.loadVal(x8, a.Src); err != nil {
 			return err
 		}
-		g.b.LdrW(x8, x8, g.valWidth(a.Dst)) // width = loaded value's type
+		// Width from the loaded value's type: a pointer element stays 8 bytes
+		// (must not be truncated), a signed Int32 field loads sign-extended.
+		g.b.LdrW(x8, x8, g.valWidth(a.Dst))
 		return g.storeVar(x8, a.Dst)
 	case tackygen.Store:
 		if err := g.loadVal(x9, a.Dst); err != nil {

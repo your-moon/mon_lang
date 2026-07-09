@@ -290,19 +290,8 @@ func TestRunARM64(t *testing.T) {
 	if err != nil || len(files) == 0 {
 		t.Fatalf("no test files under tests/run: %v", err)
 	}
-	// Known arm64 gaps: the liveness self-host stress tests (ф.амьдрал) hit an
-	// elusive codegen edge case that every reduced reproducer fails to trigger
-	// (structs, struct arrays, methods, in-place field writes, and array
-	// params all pass individually). Tracked as a known limitation.
-	knownGap := map[string]bool{
-		"амьдрал_туршилт.mn": true,
-		"хуваарь_туршилт.mn": true,
-	}
 	for _, f := range files {
 		t.Run(filepath.Base(f), func(t *testing.T) {
-			if knownGap[filepath.Base(f)] {
-				t.Skip("known arm64 gap: liveness self-host stress test")
-			}
 			exp := parseDirectives(t, f)
 			if len(exp.errSubs) > 0 {
 				t.Skipf("%s: error directive", f)

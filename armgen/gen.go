@@ -28,6 +28,7 @@ type gen struct {
 	strOrd  []string
 	globals map[string]string // global var name -> data label
 	sizeOf  func(string) int  // temp/var name -> byte width (4 or 8)
+	isDbl   func(string) bool // temp/var name -> is a double
 }
 
 func dataLabel(s string) string { return "g." + s }
@@ -37,11 +38,14 @@ func dataLabel(s string) string { return "g." + s }
 // width of pointer loads/stores so sub-word (Int32) struct fields aren't read
 // or written 8 bytes wide (which would corrupt neighbours). Pass nil to treat
 // everything as 64-bit.
-func Compile(prog tackygen.TackyProgram, sizeOf func(string) int, outPath string) error {
+func Compile(prog tackygen.TackyProgram, sizeOf func(string) int, isDbl func(string) bool, outPath string) error {
 	if sizeOf == nil {
 		sizeOf = func(string) int { return 8 }
 	}
-	g := &gen{b: NewBuf(), strPool: map[string]string{}, globals: map[string]string{}, sizeOf: sizeOf}
+	if isDbl == nil {
+		isDbl = func(string) bool { return false }
+	}
+	g := &gen{b: NewBuf(), strPool: map[string]string{}, globals: map[string]string{}, sizeOf: sizeOf, isDbl: isDbl}
 
 	// __DATA blob: every global gets an 8-byte little-endian slot seeded with
 	// its initial value (all scalars/pointers are 64-bit in this backend).
@@ -309,9 +313,32 @@ func (g *gen) instr(fn tackygen.TackyFn, ins tackygen.Instruction) error {
 		if err := g.loadVal(x9, a.Src2); err != nil {
 			return err
 		}
+		// FP when the result is a double (arithmetic) or the operands are
+		// doubles (comparison, whose result is an int).
+		if g.isDblVal(a.Dst) || g.isDblVal(a.Src1) {
+			if err := g.fpBinary(a.Op); err != nil {
+				return err
+			}
+			return g.storeVar(x8, a.Dst)
+		}
 		if err := g.binary(a.Op); err != nil {
 			return err
 		}
+		return g.storeVar(x8, a.Dst)
+
+	case tackygen.IntToDouble:
+		if err := g.loadVal(x8, a.Src); err != nil {
+			return err
+		}
+		g.b.Scvtf(0, x8)     // d0 = (double)x8
+		g.b.FmovDtoX(x8, 0)  // x8 = bits(d0)
+		return g.storeVar(x8, a.Dst)
+	case tackygen.DoubleToInt:
+		if err := g.loadVal(x8, a.Src); err != nil {
+			return err
+		}
+		g.b.FmovXtoD(0, x8)  // d0 = bits
+		g.b.Fcvtzs(x8, 0)    // x8 = (int64)d0
 		return g.storeVar(x8, a.Dst)
 
 	case tackygen.Return:
@@ -435,6 +462,57 @@ func (g *gen) cmpSet(cond int) {
 	g.b.Cset(x8, cond)
 }
 
+// isDblVal reports whether a Tacky value is a double.
+func (g *gen) isDblVal(v tackygen.TackyVal) bool {
+	switch a := v.(type) {
+	case tackygen.Var:
+		return g.isDbl(a.Name)
+	case tackygen.Constant:
+		_, ok := a.Value.(mconstant.Float64)
+		return ok
+	}
+	return false
+}
+
+// fpBinary applies a double op. Operand bit patterns are in x8/x9; the result
+// (or 0/1 for a comparison) lands back in x8.
+func (g *gen) fpBinary(op tackygen.TackyBinaryOp) error {
+	g.b.FmovXtoD(0, x8)
+	g.b.FmovXtoD(1, x9)
+	switch op {
+	case tackygen.Add:
+		g.b.Fadd(0, 0, 1)
+	case tackygen.Sub:
+		g.b.Fsub(0, 0, 1)
+	case tackygen.Mul:
+		g.b.Fmul(0, 0, 1)
+	case tackygen.Div:
+		g.b.Fdiv(0, 0, 1)
+	case tackygen.Equal:
+		return g.fpCmp(condEQ)
+	case tackygen.NotEqual:
+		return g.fpCmp(condNE)
+	case tackygen.GreaterThan:
+		return g.fpCmp(condGT)
+	case tackygen.GreaterThanEqual:
+		return g.fpCmp(condGE)
+	case tackygen.LessThan:
+		return g.fpCmp(condLO) // ordered <: carry clear after fcmp
+	case tackygen.LessThanEqual:
+		return g.fpCmp(condLS) // ordered <=: C clear or Z set
+	default:
+		return fmt.Errorf("fp binary op %s", op)
+	}
+	g.b.FmovDtoX(x8, 0)
+	return nil
+}
+
+func (g *gen) fpCmp(cond int) error {
+	g.b.Fcmp(0, 1)
+	g.b.Cset(x8, cond)
+	return nil
+}
+
 // valWidth reports the byte width (4 or 8) of a Tacky value, used to size
 // pointer loads/stores. Vars/temps consult the symbol sizes; a constant's
 // width comes from its mconstant type (Int32 vs Int64); strings are pointers.
@@ -450,7 +528,7 @@ func (g *gen) valWidth(v tackygen.TackyVal) int {
 		if _, is32 := a.Value.(mconstant.Int32); is32 {
 			return 4
 		}
-		return 8
+		return 8 // Int64 and Float64 (bit pattern) are 8 bytes
 	default:
 		return 8
 	}

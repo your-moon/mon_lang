@@ -38,17 +38,25 @@ Pointer loads/stores are **width-aware**: per-temp byte widths recovered from th
 existing asm-symbol pass drive 4- vs 8-byte `ldr/str`, so sub-word (`тоо`/Int32)
 struct fields aren't read or written 8 bytes wide.
 
+## Numeric widths
+
+mon_lang's `тоо` is a signed Int32. A 4-byte field load therefore uses **LDRSW**
+(sign-extending), not LDR Wt (zero-extending) — otherwise a field holding `-1`
+becomes a positive 64-bit value and `x >= 0` guards / signed arithmetic break.
+Pointer and Int64 loads/stores stay 8 bytes. Doubles live in GP slots as bit
+patterns (materialized directly by MOVZ/MOVK from `Float64.GetValue()`), moved
+into `d0/d1` only for the FP op itself (FADD/FSUB/FMUL/FDIV/FCMP/SCVTF/FCVTZS);
+no literal pool or FP-ABI plumbing is needed.
+
 ## Status
 
-Coverage (`MON_TEST_ARM64=1`, arm64 host): **33 run/ tests pass, 0 failures.**
-Working: integer/pointer arithmetic, comparisons, if/while, locals, recursion +
-calls, globals (`__DATA`), strings, UTF-8 char output, unsigned ops, sized
-arrays, structs + methods, the syscall stdlib, and the bump heap.
+Coverage (`MON_TEST_ARM64=1`, arm64 host): **the entire run/ suite passes —
+41/41, 0 skips, 0 failures — full parity with the x86_64 back end.**
 
-Not yet supported (skip): doubles/floats (`IntToDouble`), `файл_бичих` file
-write, `унш` stdin parse, and two liveness self-host stress tests
-(`амьдрал/хуваарь_туршилт`) that hit an elusive codegen edge case — every
-reduced reproducer (structs, struct arrays, methods, in-place field writes,
-array params) passes individually, so it remains under investigation.
+Working: integer/pointer/double arithmetic, comparisons, if/while, locals,
+recursion + calls, globals (`__DATA`), strings, UTF-8 char output, unsigned ops,
+sized arrays, structs + methods, doubles (incl. `%f` printing and int↔double
+conversion), argv, file I/O, stdin parsing, and the mmap bump heap — including
+the self-hosted-compiler liveness/scheduler stress tests.
 
 The x86_64 path is untouched and fully green.

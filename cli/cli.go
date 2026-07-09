@@ -455,7 +455,7 @@ func (c *CLI) runGen(args []string) error {
 		armSizes := asmsymbol.NewAsmSymbolTable()
 		armAsmGen := codegen.NewAsmGen(table)
 		armAsmGen.GenASTAsm(tackyProgram, symbolTable, armSizes)
-		if err := armgen.Compile(tackyProgram, armSizeFn(armSizes), outputFile); err != nil {
+		if err := armgen.Compile(tackyProgram, armSizeFn(armSizes), armSizes.IsDouble, outputFile); err != nil {
 			return fmt.Errorf("arm64 үүсгэлтийн алдаа: %v", err)
 		}
 		if c.run {

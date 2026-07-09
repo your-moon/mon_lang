@@ -49,7 +49,78 @@ func (g *gen) emitStdlib() {
 	g.stdFaylUnshikh() // файл_унших_бүтэн — read a whole file into a string
 	g.stdUnsh()        // унш — parse a signed decimal from stdin
 	g.stdArgs()        // аргумент_тоо / аргумент — argc / argv[i]
+	g.stdButarkhay()   // бутархай_хэвлэх — print a double, 6 fixed decimals
 	g.stdNoops()       // чөлөөлөх (free), хүлээх (sleep) — no-ops
+}
+
+// stdButarkhay: бутархай_хэвлэх(d) prints a double with 6 truncated fractional
+// digits (printf %f). The bit pattern arrives in x0. The integer part goes
+// through хэвлэ, '.' and each digit through тэмдэгт_хэвлэх; d and the loop state
+// live on the stack across those calls (which clobber the FP scratch).
+func (g *gen) stdButarkhay() {
+	b := g.b
+	b.Label(fnLabel("бутархай_хэвлэх"))
+	b.Prologue(32)
+	b.StrFrame(x0, sp, 0) // save bit pattern
+
+	// sign: if d < 0, print '-' and negate
+	b.FmovXtoD(0, x0)
+	b.MovImm(9, 0)
+	b.FmovXtoD(1, 9) // d1 = 0.0
+	b.Fcmp(0, 1)
+	b.BCond(condGE, "std.dbl.pos")
+	b.MovImm(x0, '-')
+	b.BL(fnLabel("тэмдэгт_хэвлэх"))
+	b.LdrFrame(x0, sp, 0)
+	b.FmovXtoD(0, x0)
+	b.Fneg(0, 0)
+	b.FmovDtoX(x0, 0)
+	b.StrFrame(x0, sp, 0)
+	b.Label("std.dbl.pos")
+
+	// integer part -> хэвлэ
+	b.LdrFrame(x0, sp, 0)
+	b.FmovXtoD(0, x0)
+	b.Fcvtzs(x0, 0)
+	b.StrFrame(x0, sp, 8) // ip
+	b.BL(fnLabel("хэвлэ"))
+
+	// '.'
+	b.MovImm(x0, '.')
+	b.BL(fnLabel("тэмдэгт_хэвлэх"))
+
+	// frac = d - (double)ip
+	b.LdrFrame(x0, sp, 0)
+	b.FmovXtoD(0, x0)
+	b.LdrFrame(x0, sp, 8)
+	b.Scvtf(1, x0)
+	b.Fsub(0, 0, 1)
+	b.FmovDtoX(x0, 0)
+	b.StrFrame(x0, sp, 0) // frac
+	b.MovImm(9, 6)
+	b.StrFrame(9, sp, 16) // counter
+
+	b.Label("std.dbl.loop")
+	b.LdrFrame(x0, sp, 0)
+	b.FmovXtoD(0, x0)
+	b.MovImm(9, 10)
+	b.Scvtf(1, 9)
+	b.Fmul(0, 0, 1) // frac *= 10
+	b.Fcvtzs(9, 0)  // dg = (int)frac
+	b.StrFrame(9, sp, 24)
+	b.Scvtf(1, 9)
+	b.Fsub(0, 0, 1) // frac -= dg
+	b.FmovDtoX(x0, 0)
+	b.StrFrame(x0, sp, 0)
+	b.LdrFrame(x0, sp, 24)
+	b.AddImm(x0, x0, '0')
+	b.BL(fnLabel("тэмдэгт_хэвлэх"))
+	b.LdrFrame(9, sp, 16)
+	b.SubImm(9, 9, 1)
+	b.StrFrame(9, sp, 16)
+	b.Cbnz(9, "std.dbl.loop")
+
+	b.Epilogue(32)
 }
 
 // stdFaylUnshikh: файл_унших_бүтэн(зам) returns the whole file as a

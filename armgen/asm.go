@@ -228,6 +228,21 @@ func (b *Buf) BCond(cond int, label string) {
 func (b *Buf) Ret() { b.w(0xD65F03C0) }
 func (b *Buf) Svc() { b.w(0xD4001001) } // svc #0x80
 
+/* --- scalar double FP (d0/d1 scratch) ---
+   Doubles live in GP slots as bit patterns; these move them to/from the FP
+   registers only for the operation itself. */
+
+func (b *Buf) FmovXtoD(dd, xn int) { b.w(0x9E670000 | (uint32(xn) << 5) | uint32(dd)) } // fmov Dd,Xn
+func (b *Buf) FmovDtoX(xd, dn int) { b.w(0x9E660000 | (uint32(dn) << 5) | uint32(xd)) } // fmov Xd,Dn
+func (b *Buf) Fadd(dd, dn, dm int) { b.w(0x1E602800 | (uint32(dm) << 16) | (uint32(dn) << 5) | uint32(dd)) }
+func (b *Buf) Fsub(dd, dn, dm int) { b.w(0x1E603800 | (uint32(dm) << 16) | (uint32(dn) << 5) | uint32(dd)) }
+func (b *Buf) Fmul(dd, dn, dm int) { b.w(0x1E600800 | (uint32(dm) << 16) | (uint32(dn) << 5) | uint32(dd)) }
+func (b *Buf) Fdiv(dd, dn, dm int) { b.w(0x1E601800 | (uint32(dm) << 16) | (uint32(dn) << 5) | uint32(dd)) }
+func (b *Buf) Fcmp(dn, dm int)     { b.w(0x1E602000 | (uint32(dm) << 16) | (uint32(dn) << 5)) }
+func (b *Buf) Fneg(dd, dn int)     { b.w(0x1E614000 | (uint32(dn) << 5) | uint32(dd)) }
+func (b *Buf) Scvtf(dd, xn int)    { b.w(0x9E620000 | (uint32(xn) << 5) | uint32(dd)) } // int64 -> double
+func (b *Buf) Fcvtzs(xd, dn int)   { b.w(0x9E780000 | (uint32(dn) << 5) | uint32(xd)) } // double -> int64 (trunc)
+
 /* --- prologue / epilogue --- */
 
 // Prologue: stp x29,x30,[sp,#-16]! ; mov x29,sp ; sub sp,sp,#frame.

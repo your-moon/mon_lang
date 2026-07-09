@@ -272,7 +272,7 @@ func compileARM64(srcPath, outPath string) (err error) {
 		}
 		return 8
 	}
-	return armgen.Compile(prog, sizeOf, outPath)
+	return armgen.Compile(prog, sizeOf, sizes.IsDouble, outPath)
 }
 
 // TestRunARM64 exercises the native arm64 back end against the same run/ suite

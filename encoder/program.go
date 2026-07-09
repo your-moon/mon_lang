@@ -390,11 +390,19 @@ func encodeInstr(b *Buf, pool *stringPool, instr codegen.AsmInstruction) error {
 		return nil
 
 	case codegen.AsmLoadFromMem:
-		b.LoadBaseR(isQuad(ast.Type), mustReg(ast.Base), opReg(ast.Dst))
+		if _, isD := ast.Type.(*asmtype.Double); isD {
+			b.MovsdLoadBase(opReg(ast.Dst), mustReg(ast.Base)) // xmm <- (base)
+		} else {
+			b.LoadBaseR(isQuad(ast.Type), mustReg(ast.Base), opReg(ast.Dst))
+		}
 		return nil
 
 	case codegen.AsmStoreToMem:
-		b.StoreRBase(isQuad(ast.Type), opReg(ast.Src), mustReg(ast.Base))
+		if _, isD := ast.Type.(*asmtype.Double); isD {
+			b.MovsdStoreBase(opReg(ast.Src), mustReg(ast.Base)) // xmm -> (base)
+		} else {
+			b.StoreRBase(isQuad(ast.Type), opReg(ast.Src), mustReg(ast.Base))
+		}
 		return nil
 
 	case codegen.Return:

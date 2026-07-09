@@ -486,6 +486,27 @@ func (b *Buf) StoreRBase(w bool, src, base Reg) {
 	b.memBase(src, base)
 }
 
+// movsd through a base register: load (%base) -> xmm / store xmm -> (%base).
+// Doubles must use these (not the integer forms) or the value in the XMM
+// register is never written/read.
+func (b *Buf) MovsdLoadBase(xmm, base Reg) { // movsd (%base), %xmm
+	b.byte(0xF2)
+	if xmm >= R8 || base >= R8 {
+		b.byte(rexByte(false, xmm, base))
+	}
+	b.byte(0x0F, 0x10)
+	b.memBase(xmm, base)
+}
+
+func (b *Buf) MovsdStoreBase(xmm, base Reg) { // movsd %xmm, (%base)
+	b.byte(0xF2)
+	if xmm >= R8 || base >= R8 {
+		b.byte(rexByte(false, xmm, base))
+	}
+	b.byte(0x0F, 0x11)
+	b.memBase(xmm, base)
+}
+
 // Byte-granularity forms used by the syscall stdlib (itoa/parse loops).
 func (b *Buf) LoadByte(base, dst Reg) { // movzbl (%base), dst
 	b.rex(false, dst, base)

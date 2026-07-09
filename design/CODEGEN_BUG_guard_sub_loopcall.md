@@ -80,13 +80,47 @@ Next step: dump `AsmProgram` before/after `ReplacePseudosInProgram`
 the slot allocator (`ReplaceOperand` / `CurrentOffset`) is over-reusing an
 offset that is still live.
 
+## Working around it
+
+`mc/парсер/парсер.mn`'s `кв` avoids the pattern by moving the length check
+**after** the byte-compare loop (nothing with a call follows the comparison):
+
+```mon
+давтах и < у бол {
+    хэрэв э + и >= т бол { буц 0; }
+    хэрэв байт(өөрөө.у.эх, э + и) != байт(к, и) бол { буц 0; }
+    и = и + 1;
+}
+хэрэв (т - э) != у бол { буц 0; }   // length check AFTER the loop
+буц 1;
+```
+
+This compiles and runs correctly on both back ends. The underlying bug remains.
+
 ## What was ruled out
 
 - **Register allocator** (`code_gen/pseudo.go`): setting `calleeSaved = {}`
-  (memory-only) still reproduces.
+  (memory-only) still reproduces (with a *different* symptom — the guard
+  misfires instead of the loop).
 - **Optimizer** (`tackygen/optimize.go`): disabling `Optimize()` still
   reproduces.
 - **Structs**: reproduces with plain scalar params, no structs.
+- **Builtins clobbering callee-saved regs**: `_bayt` / `_mqr_urt` in
+  `encoder/stdlib.go` only touch caller-saved registers (RAX/RCX/RDX/RSI/RDI/
+  R10); base-codegen scratch is R10/R11 (`code_gen/emitter.go`). So the loop's
+  calls do preserve `%rbx`/`%r12`-`%r15`.
+
+## The remaining mystery
+
+Every emitted AT&T variant (`--cc --asm`), with or without regalloc, *reads as
+correct* — the guard computes `10 - 0 == 10` and does not branch, `к`'s slot is
+written once and never overwritten — yet the native binary returns the wrong
+value and the `--cc` binary segfaults. Because **both** back ends misbehave from
+the same `code_gen` AST, either (a) the shared Tacky→ASM lowering emits a
+correct-looking but semantically wrong sequence, or (b) there is a slot/stack
+inconsistency that both final stages inherit. Next: dump the **Tacky IR** for
+`кв` and diff the temp/var slots, and disassemble the native `_kv` bytes to
+compare against the `--asm` text instruction-for-instruction.
 
 ## Observations
 

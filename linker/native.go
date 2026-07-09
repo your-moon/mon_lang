@@ -21,8 +21,7 @@ import (
 // LinkNative assembles the program in-process and writes a runnable
 // executable directly: encoder for machine code, macho for the container.
 // No as, no cc, no libc - the built-in syscall stdlib is appended to every
-// program. This is the default link path; Link() remains as the --cc
-// fallback during the transition.
+// program. This is the only link path.
 func (l *Linker) LinkNative(prog codegen.AsmProgram) error {
 	outputDir := filepath.Dir(l.outputFile)
 	if err := os.MkdirAll(outputDir, 0755); err != nil {

@@ -8,7 +8,6 @@
 package cli
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"os"
@@ -26,7 +25,6 @@ import (
 	semanticanalysis "github.com/your-moon/mon_lang/semantic_analysis"
 	"github.com/your-moon/mon_lang/symbols"
 	"github.com/your-moon/mon_lang/tackygen"
-	"github.com/your-moon/mon_lang/util"
 	"github.com/your-moon/mon_lang/util/unique"
 )
 
@@ -40,10 +38,7 @@ type CLI struct {
 	commands   map[string]Command
 	debug      bool
 	help       bool
-	genAsm     bool
-	genObj     bool
 	run        bool
-	useCC      bool
 	arch       string
 	outputFile string
 }
@@ -110,11 +105,8 @@ func (c *CLI) Run(args []string) error {
 	fs := flag.NewFlagSet(command, flag.ExitOnError)
 	fs.BoolVar(&c.debug, "debug", false, "debug mode асаах")
 	fs.BoolVar(&c.help, "help", false, "команд туслах харуулах")
-	fs.BoolVar(&c.genAsm, "asm", false, "assembly файл үүсгэх")
-	fs.BoolVar(&c.genObj, "obj", false, "object файл үүсгэх")
 	fs.BoolVar(&c.run, "run", false, "компиляц хийгээд ажиллуулах")
-	fs.BoolVar(&c.useCC, "cc", false, "гадаад as/cc хэрэгслээр линк хийх (хуучин зам)")
-	fs.StringVar(&c.arch, "arch", "", "зорилтот архитектур: x86_64 (default) эсвэл arm64")
+	fs.StringVar(&c.arch, "arch", "", "зорилтот архитектур: x86_64 эсвэл arm64 (хоосон бол хост)")
 	fs.StringVar(&c.outputFile, "o", "", "гаралтын файлын нэр)")
 
 	// two-pass parse so flags may appear before or after the file:
@@ -160,8 +152,7 @@ func (c *CLI) printUsage() {
 	fmt.Println("\nСонголтууд:")
 	fmt.Println("  --debug    Debug горим идэвхжүүлэх")
 	fmt.Println("  --help     Дэлгэрэнгүй тусламж харуулах")
-	fmt.Println("  --asm      Assembly файл үүсгэх")
-	fmt.Println("  --obj      Object файл үүсгэх")
+	fmt.Println("  --arch     Зорилтот архитектур: x86_64 эсвэл arm64 (хоосон бол хост)")
 	fmt.Println("  --run      Compile and run the program")
 	fmt.Println("  -o         Гаралтын файлын нэр")
 }
@@ -190,10 +181,8 @@ func (c *CLI) printDetailedHelp() {
 	fmt.Println("            Жишээ: compiler lex input.mn --debug")
 	fmt.Println("\n  --help    Дэлгэрэнгүй тусламж харуулах")
 	fmt.Println("            Жишээ: compiler --help")
-	fmt.Println("\n  --asm     Assembly файл үүсгэх")
-	fmt.Println("            Жишээ: compiler gen input.mn --asm")
-	fmt.Println("\n  --obj     Object файл үүсгэх")
-	fmt.Println("            Жишээ: compiler gen input.mn --obj")
+	fmt.Println("\n  --arch    Зорилтот архитектур: x86_64 эсвэл arm64 (хоосон бол хост)")
+	fmt.Println("            Жишээ: compiler gen input.mn --arch arm64")
 	fmt.Println("\n  --run     Компиляцын ард програм ажиллуулах")
 	fmt.Println("            Жишээ: compiler gen input.mn --run")
 	fmt.Println("\n  -o        Гаралтын файлын нэр")
@@ -370,29 +359,6 @@ func (c *CLI) runCompiler(args []string) error {
 		}
 	}
 
-	asmBuffer := new(bytes.Buffer)
-	asmWriter := codegen.NewGenASM(asmBuffer, util.GetOsType())
-	asmWriter.GenAsm(asmast)
-
-	if base.Debug {
-		if err := os.WriteFile("debug_out.asm", asmBuffer.Bytes(), 0644); err != nil {
-			fmt.Println("Failed to write debug_out.asm:", err)
-		}
-	}
-
-	// linker := linker.NewLinker("out")
-	// linker.SetAssemblyContent(asmBuffer.String())
-	// if err := linker.Link(); err != nil {
-	// 	fmt.Println("Error linking:", err)
-	// 	os.Exit(1)
-	// }
-
-	// if err := linker.MakeExecutable(); err != nil {
-	// 	fmt.Println("Error making executable:", err)
-	// 	os.Exit(1)
-	// }
-
-	// fmt.Println("Created executable: out")
 	return nil
 }
 
@@ -477,40 +443,19 @@ func (c *CLI) runGen(args []string) error {
 	// the linker owns output-directory creation (it may prefix out/)
 	lnk := linker.NewLinker(outputFile)
 
-	// The text emitter only runs for -S output and the legacy --cc path;
-	// the default path encodes machine code directly.
-	if c.genAsm || c.genObj || c.useCC {
-		asmBuffer := new(bytes.Buffer)
-		asmWriter := codegen.NewGenASM(asmBuffer, util.GetOsType())
-		asmWriter.GenAsm(asmProgram)
-
-		if base.Debug {
-			fmt.Println("\n---- ASMAST ----:")
-			fmt.Println(asmBuffer.String())
-		}
-
-		lnk.SetAssemblyContent(asmBuffer.String())
-		lnk.SetGenerateAsm(c.genAsm)
-		lnk.SetGenerateObj(c.genObj)
-
-		if err := lnk.Link(); err != nil {
-			return fmt.Errorf("Error linking: %v", err)
-		}
-	} else {
-		if err := lnk.LinkNative(asmProgram); err != nil {
-			return fmt.Errorf("линк алдаа: %v", err)
-		}
+	// The native back end encodes machine code and writes the Mach-O directly;
+	// there is no external as/cc toolchain.
+	if err := lnk.LinkNative(asmProgram); err != nil {
+		return fmt.Errorf("линк алдаа: %v", err)
 	}
 
-	if !c.genAsm && !c.genObj {
-		if err := lnk.MakeExecutable(); err != nil {
-			return fmt.Errorf("Error making executable: %v", err)
-		}
+	if err := lnk.MakeExecutable(); err != nil {
+		return fmt.Errorf("Error making executable: %v", err)
+	}
 
-		if c.run {
-			// pass ExitCodeError through unwrapped so main can propagate it
-			return lnk.Run()
-		}
+	if c.run {
+		// pass ExitCodeError through unwrapped so main can propagate it
+		return lnk.Run()
 	}
 
 	return nil

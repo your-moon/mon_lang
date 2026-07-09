@@ -1,42 +1,32 @@
-# Self-hosted mon_lang (боотстрап)
+# selfhost — mon_lang emitting native code from mon_lang
 
-`mc` is the mon_lang compiler **written in mon_lang**. It compiles a
-self-hostable subset — functions and prototypes, `тоо64`, locals and globals,
-arrays, arithmetic, comparisons, `хэрэв`/`эсвэл`/`давтах`/`зогс`, calls, string
-and char literals, and the runtime builtins — to x86_64 AT&T assembly.
+This directory shows mon_lang producing a **native executable with zero external
+tooling**, written in mon_lang itself. No `as`, no `cc`, no `ld` — the program
+lays out a Mach-O and writes the machine code byte by byte.
 
-## Modules
+| File           | Role                                                             |
+| -------------- | ---------------------------------------------------------------- |
+| `макхо.mn`     | a static x86_64 Mach-O writer (`макхо_бич`) — header, load        |
+|                | commands, `__TEXT`, entry point                                  |
+| `self_emit.mn` | driver: builds `exit(42)` machine code and emits a runnable file |
 
-The compiler is split with the language's own `ашигла` imports:
+## Run
 
-| File         | Role                                                        |
-| ------------ | ----------------------------------------------------------- |
-| `лексер.mn`  | tokeniser (lexer state + scanning)                          |
-| `кодген.mn`  | symbol tables + x86_64 emitter + expression/statement code  |
-| `mc.mn`      | driver: resolves local module imports, then compiles        |
+Compile and run `self_emit.mn` with the native back end; it writes an
+executable to `/tmp/mon_self_emit_out`, which then runs and exits `42`:
 
-`mc.mn` inlines the source of each local `.mn` import before lexing — the same
-way the Go-hosted front end merges modules — so the split compiler still
-reproduces itself.
-
-## Self-hosting is verified
-
-```
-./bootstrap.sh
+```sh
+mon_lang gen selfhost/self_emit.mn -o /tmp/emitter && /tmp/emitter
+/tmp/mon_self_emit_out; echo $?   # -> 42
 ```
 
-runs the full chain:
+This is exercised end to end by `tests/selfemit_test.go`.
 
-- **stage 1** — `mc` (built by the Go-hosted compiler) compiles `mc.mn`
-- **stage 2** — assemble that into `mc2` (mc compiled by mc)
-- **stage 3** — `mc2` compiles `mc.mn`
+## Notes
 
-Self-hosting holds when **stage 1 == stage 3**, byte-identical — a reproducing
-fixed point (the compiler compiles itself into exactly itself).
-
-## Scripts
-
-- `bootstrap.sh` — build fresh and verify the fixed point.
-- `mc_test.sh` — smoke test: `mc` compiles a program and it runs correctly.
-- `build.sh <program.mn> <output>` — compile any program with `mc`
-  (entry function must be named `үндсэн`).
+- The canonical self-hosted compiler lives in the `mon` submodule
+  (`../mon/компилятор/`).
+- The earlier asm-emitting self-host (which produced AT&T `.s` to assemble with
+  `cc` against a C runtime) was removed along with the legacy `cc`/`as` link
+  path. The compiler now emits native machine code directly on both x86_64 and
+  arm64, so a C toolchain is never involved.

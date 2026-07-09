@@ -26,7 +26,7 @@ func TestSelfEmit(t *testing.T) {
 		t.Skipf("driver missing: %v", err)
 	}
 	out := filepath.Join(t.TempDir(), "emitter")
-	if err := compile(driver, out, false); err != nil {
+	if err := compile(driver, out); err != nil {
 		t.Fatalf("compile emitter: %v", err)
 	}
 	emitted := "/tmp/mon_self_emit_out"

@@ -1,5 +1,4 @@
 docs/
-debug_out.asm
 nora_sandler_compiler.md
 rustv/target
 out/

@@ -8,13 +8,11 @@
 package linker
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -23,121 +21,18 @@ const (
 	STDLIB_DIR = "stdlib"
 )
 
+// Linker writes and runs native executables. The machine code and Mach-O
+// container are produced entirely in-process by LinkNative (see native.go);
+// there is no external as/cc/ld toolchain.
 type Linker struct {
 	outputFile string
-	asmContent string
-	osType     string
-	genAsm     bool
-	genObj     bool
 }
 
 func NewLinker(outputFile string) *Linker {
 	if filepath.IsAbs(outputFile) || strings.HasPrefix(outputFile, ".") || strings.HasPrefix(outputFile, "..") {
-		return &Linker{
-			outputFile: outputFile,
-			osType:     runtime.GOOS,
-		}
+		return &Linker{outputFile: outputFile}
 	}
-
-	return &Linker{
-		outputFile: filepath.Join(OUTPUT_DIR, outputFile),
-		osType:     runtime.GOOS,
-	}
-}
-
-func (l *Linker) SetAssemblyContent(content string) {
-	l.asmContent = content
-}
-
-func (l *Linker) SetGenerateAsm(genAsm bool) {
-	l.genAsm = genAsm
-}
-
-func (l *Linker) SetGenerateObj(genObj bool) {
-	l.genObj = genObj
-}
-
-func (l *Linker) Link() error {
-	outputDir := filepath.Dir(l.outputFile)
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return fmt.Errorf("гаралтын хавтас үүсгэхэд алдаа гарлаа: %v", err)
-	}
-
-	outputName := filepath.Base(l.outputFile)
-
-	if l.genAsm {
-		return os.WriteFile(l.outputFile+".s", []byte(l.asmContent), 0644)
-	}
-
-	tempAsmFile := filepath.Join(outputDir, outputName+".s")
-	if err := os.WriteFile(tempAsmFile, []byte(l.asmContent), 0600); err != nil {
-		return fmt.Errorf("гаралтын түр ассемблер файл үүсгэхэд алдаа гарлаа: %v", err)
-	}
-	defer os.Remove(tempAsmFile)
-
-	objFile := filepath.Join(outputDir, outputName+".o")
-	var asmCmd *exec.Cmd
-	if l.osType == "darwin" && runtime.GOARCH == "arm64" {
-		asmCmd = exec.Command("arch", "-x86_64", "as", "-o", objFile, tempAsmFile)
-	} else {
-		asmCmd = exec.Command("as", "-o", objFile, tempAsmFile)
-	}
-
-	var asmStdout, asmStderr bytes.Buffer
-	asmCmd.Stdout = &asmStdout
-	asmCmd.Stderr = &asmStderr
-	if err := asmCmd.Run(); err != nil {
-		return fmt.Errorf("ассембле хийхэд алдаа гарлаа: %v\nstdout: %s\nstderr: %s", err, asmStdout.String(), asmStderr.String())
-	}
-
-	if l.genObj {
-		return nil
-	}
-
-	defer os.Remove(objFile)
-
-	// legacy path only: cc compiles the C runtime shim on every link
-	stdlibFile := findStdlibCC()
-
-	// Use cc to link with libc (provides malloc, printf, etc.)
-	var linkCmd *exec.Cmd
-	if l.osType == "darwin" && runtime.GOARCH == "arm64" {
-		linkCmd = exec.Command("arch", "-x86_64", "cc", "-arch", "x86_64", "-o", l.outputFile, objFile, stdlibFile)
-	} else if l.osType == "darwin" {
-		linkCmd = exec.Command("cc", "-arch", "x86_64", "-o", l.outputFile, objFile, stdlibFile)
-	} else {
-		linkCmd = exec.Command("cc", "-o", l.outputFile, objFile, stdlibFile)
-	}
-
-	var stdout, stderr bytes.Buffer
-	linkCmd.Stdout = &stdout
-	linkCmd.Stderr = &stderr
-
-	if err := linkCmd.Run(); err != nil {
-		return fmt.Errorf("линк хийхэд алдаа гарлаа: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
-	}
-
-	return nil
-}
-
-// findStdlibCC locates the C runtime shim without depending on the working
-// directory: MON_STDLIB env, then CWD (development layout), then next to
-// the compiler executable (installed layout).
-func findStdlibCC() string {
-	if env := os.Getenv("MON_STDLIB"); env != "" {
-		return filepath.Join(env, "cc", "lib.c")
-	}
-	local := filepath.Join(STDLIB_DIR, "cc", "lib.c")
-	if _, err := os.Stat(local); err == nil {
-		return local
-	}
-	if exe, err := os.Executable(); err == nil {
-		installed := filepath.Join(filepath.Dir(exe), STDLIB_DIR, "cc", "lib.c")
-		if _, err := os.Stat(installed); err == nil {
-			return installed
-		}
-	}
-	return local
+	return &Linker{outputFile: filepath.Join(OUTPUT_DIR, outputFile)}
 }
 
 func (l *Linker) MakeExecutable() error {
@@ -148,21 +43,11 @@ func (l *Linker) MakeExecutable() error {
 // comes back as *ExitCodeError so main can propagate it instead of treating
 // a nonzero exit as a compiler failure.
 func (l *Linker) Run() error {
-	cmd := exec.Command(l.outputFile)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	err := cmd.Run()
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
-		return &ExitCodeError{Code: exitErr.ExitCode()}
-	}
-	return err
+	return RunPath(l.outputFile)
 }
 
-// RunPath executes a built program by path (used by back ends that write the
-// executable themselves, e.g. the native arm64 writer), forwarding stdio and
-// propagating the exit code as *ExitCodeError.
+// RunPath executes a built program by path, forwarding stdio and propagating
+// the exit code as *ExitCodeError.
 func RunPath(path string) error {
 	if !strings.ContainsRune(path, '/') {
 		path = "./" + path

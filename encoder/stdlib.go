@@ -6,10 +6,10 @@
  */
 
 // The stdlib is hand-assembled with the encoder and appended to every
-// program, replacing stdlib/lib.c and its cc/libc dependency. Functions
-// follow the SysV ABI so compiler-generated call sites need no changes.
-// Semantics mirror lib.c exactly (khevle prints without newline, unsh
-// skips leading junk like scanf, sanamsargwy_too returns 1..n).
+// program — no libc, no cc, raw darwin syscalls. Functions follow the SysV
+// ABI so compiler-generated call sites need no changes. Semantics: khevle
+// prints without newline, unsh skips leading junk like scanf,
+// sanamsargwy_too returns 1..n.
 package encoder
 
 // darwin BSD syscall numbers (class 2 << 24).

@@ -51,8 +51,7 @@ go build -o mon .
   Declarations are order-independent (Go-style hoisting).
 - **String escapes:** `\n \t \\ \" \0 \r \e \xNN \uNNNN`.
 - Optimizations on by default (constant folding, copy propagation, DCE).
-- Bump-allocated heap on the native path (conservative mark-sweep GC on the
-  legacy `--cc` runtime).
+- Bump-allocated heap on the native path (a reclaiming allocator is planned).
 - **Builtins:** printing (`хэвлэ`, `эхэвлэ`, `мөр_хэвлэх`, `тэмдэгт_хэвлэх`,
   `бутархай_хэвлэх`), strings/bytes (`мөр_урт`, `байт`, `байт_тавих`, `мөр_шинэ`),
   file I/O (`файл_унших_бүтэн`, `файл_бичих`, `файл_бичих_байт`), stdin (`унш`),
@@ -82,27 +81,24 @@ Each stage is its own command; `gen` runs them all end to end.
 | x86-64 codegen | `compile`/`gen` | `code_gen/` → `encoder/` → `macho/` |
 | arm64 codegen | `gen --arch arm64` | `armgen/` → `macho/` |
 
-Pass `--asm` to emit AT&T text, or `--cc` for the legacy `as`+`cc` path.
+With no `--arch`, the host architecture is selected automatically. The compiler
+emits native machine code directly on both architectures — there is no external
+`as`/`cc`/`ld` toolchain.
 
 ## Self-hosting
 
-Mon compiles itself. `selfhost/mc.mn` (plus `лексер.mn`, `кодген.mn`) is a Mon
-compiler **written in Mon**; it bootstraps to a byte-identical fixed point:
-
-```bash
-./selfhost/bootstrap.sh
-# SELF-HOSTING OK: stage1 == stage3 (…, byte-identical)
-```
-
-`selfhost/макхо.mn` is a Mach-O writer written in Mon — the language can emit a
-native executable entirely on its own (see `tests` → `TestSelfEmit`). `mc/` is a
-cleaner, modular rewrite (structs/methods/modules/enums) in progress.
+The canonical Mon-in-Mon compiler lives in the `mon` submodule
+(`mon/компилятор/`). Within this repo, `selfhost/макхо.mn` is a Mach-O writer
+**written in Mon**, and `selfhost/self_emit.mn` uses it to emit a runnable
+native executable entirely on its own — no C toolchain (see `tests` →
+`TestSelfEmit`). `mc/` is a cleaner, modular rewrite
+(structs/methods/modules/enums) in progress.
 
 ## Requirements
 
 - Go 1.23+ (build-time only).
-- macOS (arm64 or x86-64). The `--cc` legacy path additionally needs Xcode
-  Command Line Tools.
+- macOS (arm64 or x86-64). No Xcode / Command Line Tools required — the compiler
+  emits and signs native executables entirely on its own.
 
 ## Build & run
 

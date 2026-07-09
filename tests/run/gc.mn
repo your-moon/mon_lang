@@ -1,6 +1,6 @@
-// allocation stress: ~51 MB of short-lived arrays trigger many
-// collections; the long-lived array must survive intact (GC on --cc,
-// bump-allocator on native — output is identical either way)
+// allocation stress: ~51 MB of short-lived arrays; the long-lived array must
+// survive intact. On the native bump allocator nothing is reclaimed, so this
+// also documents the current no-free behaviour until a reclaiming allocator lands.
 // шалгах: гаралт "4950\n"
 функц үндсэн() -> тоо {
     зарла хадгалсан: тоо64[100];

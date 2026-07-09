@@ -18,8 +18,8 @@
 // error/ files must fail to compile with every алдаа substring present.
 // Adding a test = adding one .mn file. Every fixed bug gets one.
 //
-// Set MON_TEST_CC=1 to additionally build run/ tests through the legacy
-// as/cc path and require byte-identical stdout (differential mode).
+// The native back end is the only compile path; there is no external
+// as/cc toolchain.
 package tests
 
 import (
@@ -56,14 +56,6 @@ type expectation struct {
 
 var directiveRe = regexp.MustCompile(`^\s*//\s*шалгах:\s*(гаралт|код|оролт|алдаа)\s+(.+?)\s*$`)
 
-func TestMain(m *testing.M) {
-	// the legacy cc path needs the on-disk stdlib; point it at the repo
-	// regardless of the harness working directory
-	if abs, err := filepath.Abs("../stdlib"); err == nil {
-		os.Setenv("MON_STDLIB", abs)
-	}
-	os.Exit(m.Run())
-}
 
 func parseDirectives(t *testing.T, path string) expectation {
 	t.Helper()
@@ -119,10 +111,9 @@ func toRunes(s string) []int32 {
 }
 
 // compile runs the full in-process pipeline (no subprocesses) and links
-// with the native backend, or the legacy cc path when useCC is set.
-// Panics from any pass are converted to errors so error-tests can assert
-// on them and a broken pass can't take the harness down.
-func compile(srcPath, outPath string, useCC bool) (err error) {
+// with the native backend. Panics from any pass are converted to errors so
+// error-tests can assert on them and a broken pass can't take the harness down.
+func compile(srcPath, outPath string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("compiler panic: %v", r)
@@ -153,20 +144,12 @@ func compile(srcPath, outPath string, useCC bool) (err error) {
 	}
 
 	tackyGen := tackygenNew(uniqueGen, table)
-	tackyProgram := tackyGen.EmitTacky(resolvedAst)
-	if !useCC {
-		// optimize only the native path: differential mode then compares
-		// optimized output against the unoptimized legacy toolchain
-		tackyProgram = tackygenOptimize(tackyProgram)
-	}
+	tackyProgram := tackygenOptimize(tackyGen.EmitTacky(resolvedAst))
 
 	asmGen := codegen.NewAsmGen(table)
 	asmProgram := asmGen.GenASTAsm(tackyProgram, symbolTable, asmsymbol.NewAsmSymbolTable())
 
 	lnk := linker.NewLinker(outPath)
-	if useCC {
-		return compileCC(lnk, asmProgram)
-	}
 	return lnk.LinkNative(asmProgram)
 }
 
@@ -206,7 +189,7 @@ func TestRun(t *testing.T) {
 			}
 
 			bin := filepath.Join(t.TempDir(), "prog")
-			if err := compile(f, bin, false); err != nil {
+			if err := compile(f, bin); err != nil {
 				t.Fatalf("compile failed: %v", err)
 			}
 			gotOut, gotCode := run(t, bin, exp.stdin)
@@ -215,19 +198,6 @@ func TestRun(t *testing.T) {
 			}
 			if gotCode != exp.exitCode {
 				t.Errorf("exit code: got %d, want %d", gotCode, exp.exitCode)
-			}
-
-			// differential mode: legacy toolchain must agree byte-for-byte
-			if os.Getenv("MON_TEST_CC") == "1" {
-				binCC := filepath.Join(t.TempDir(), "prog_cc")
-				if err := compile(f, binCC, true); err != nil {
-					t.Fatalf("cc compile failed: %v", err)
-				}
-				ccOut, ccCode := run(t, binCC, exp.stdin)
-				if ccOut != gotOut || ccCode != gotCode {
-					t.Errorf("native/cc divergence: native (%q, %d) vs cc (%q, %d)",
-						gotOut, gotCode, ccOut, ccCode)
-				}
 			}
 		})
 	}
@@ -327,7 +297,7 @@ func TestError(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 			done := make(chan error, 1)
-			go func() { done <- compile(f, filepath.Join(t.TempDir(), "prog"), false) }()
+			go func() { done <- compile(f, filepath.Join(t.TempDir(), "prog")) }()
 			var cerr error
 			select {
 			case cerr = <-done:

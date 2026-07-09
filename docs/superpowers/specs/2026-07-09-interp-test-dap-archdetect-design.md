@@ -29,6 +29,22 @@ of one build.
 - Native (ptrace/Mach-exception) debugging of the compiled Mach-O binary.
 - DWARF emission.
 
+## Motivating defect found during design
+
+The native backend has **no memory reclamation**: `monAlloc` is a bump
+allocator (`armgen/stdlib.go`; equivalent on the x86 native path) and
+`чөлөөлөх` is a no-op. A mark-sweep GC previously existed only on the legacy
+`cc` path, which has since been removed entirely (native code is the only
+target now), so the native runtime has *no* reclamation at all. **Any native
+binary that allocates in a loop leaks.**
+This surfaced as the `гл_үзүүлэн` 3D demo exhausting RAM (~24 MB/s): a per-frame
+display buffer plus a local `тоо64[24]` scratch array — which lowers to
+`monAlloc` (`tackygen/tack_gen.go:268`) — ran ~9000×/frame. The demo is fixed
+(allocation-free), but the underlying gap makes native binaries unusable for
+long-running programs. **Stage 5 (native heap reclamation) closes it.** The
+interpreter (Stage 1) is Go-hosted and inherits Go's GC, so it never leaks —
+programs run/tested through the interpreter are already safe.
+
 ## What is self-hosted vs host-tool
 
 | Piece | Self-hosted (written in mon) | Host tool (Go) |
@@ -73,8 +89,9 @@ value is the process exit code.
 
 ### Builtins bridge
 
-Every `extern` function gets a Go host implementation matching `stdlib/cc/lib.c`
-semantics exactly (so interpreter and native agree byte-for-byte):
+Every `extern` function gets a Go host implementation matching the native
+syscall stdlib (`encoder/stdlib.go`) semantics exactly (so interpreter and
+native agree byte-for-byte):
 
 - print family: `хэвлэ`, `эхэвлэ`, `мөр_хэвлэх`, `тэмдэгт_хэвлэх` (UTF-8),
   `бутархай_хэвлэх`.
@@ -105,11 +122,12 @@ tokens carry `Line` + `Span`; AST nodes carry a `Token`).
 
 ### Validation
 
-The interpreter is wired into the existing Go test harness as a **third mode**
-alongside native and cc: every `tests/run/*.mn` file runs interpreted and its
-`(stdout, exit)` must match the directive expectations — and, when
-`MON_TEST_CC`/native modes run, must match those too. This makes the interpreter
-a reference oracle and proves parity before anything is built on top of it.
+The interpreter is wired into the existing Go test harness as a **second mode**
+alongside the native back end: every `tests/run/*.mn` file runs interpreted and
+its `(stdout, exit)` must match both the directive expectations and the native
+result. Interpreter-vs-native is now the differential oracle (the legacy cc path
+that formerly played that role has been removed). This proves parity before
+anything is built on top of the interpreter.
 
 ---
 

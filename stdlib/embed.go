@@ -7,7 +7,7 @@
 
 // The prelude (builtin function declarations) is compiled into the compiler
 // binary, so mon_lang works from any directory as a single self-contained
-// executable. On-disk stdlib files remain only for the legacy --cc path.
+// executable.
 package stdlib
 
 import (

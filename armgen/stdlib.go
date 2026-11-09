@@ -26,10 +26,12 @@ const (
 	heapEndLabel = "std.heap_end"
 	argcLabel    = "std.argc"
 	argvLabel    = "std.argv"
+	randLabel    = "std.rand_state"
 )
 
 const (
-	sysLseek = 199
+	sysLseek        = 199
+	sysGettimeofday = 116
 )
 
 // emitStdlib appends the arm64 built-in functions used by mon programs. All I/O
@@ -51,6 +53,7 @@ func (g *gen) emitStdlib() {
 	g.stdArgs()        // аргумент_тоо / аргумент — argc / argv[i]
 	g.stdButarkhay()   // бутархай_хэвлэх — print a double, 6 fixed decimals
 	g.stdNoops()       // чөлөөлөх (free), хүлээх (sleep) — no-ops
+	g.stdTime()        // одоо, санамсаргүй_тоо — clock and PRNG
 }
 
 // stdButarkhay: бутархай_хэвлэх(d) prints a double with 6 truncated fractional
@@ -563,4 +566,87 @@ func (g *gen) stdNoops() {
 	b.MovImm(x16, 93)  // SYS_select
 	b.Svc()
 	b.Epilogue(16)
+}
+
+// stdTime emits одоо (seconds since the epoch) and санамсаргүй_тоо(n) (a
+// xorshift64 PRNG returning 1..n, matching the x86-64 back end). Each is
+// skipped when the program defines a function of the same name, so these
+// names stay usable for user code that does not import "систем".
+func (g *gen) stdTime() {
+	b := g.b
+	if !b.HasLabel(fnLabel("одоо")) {
+		g.stdOdoo()
+	}
+	if !b.HasLabel(fnLabel("санамсаргүй_тоо")) {
+		g.stdRand()
+	}
+}
+
+// stdOdoo: одоо() -> тоо64 via gettimeofday(&tv, NULL). xnu either fills tv
+// or returns tv_sec in x0; read the buffer and fall back to x0 when it is 0.
+func (g *gen) stdOdoo() {
+	b := g.b
+	b.Label(fnLabel("одоо"))
+	b.Prologue(16)
+	b.MovImm(9, 0)
+	b.StrFrame(9, sp, 0) // tv.tv_sec = 0
+	b.AddImm(x0, sp, 0)  // &tv
+	b.MovImm(1, 0)       // tz = NULL
+	b.MovImm(x16, sysGettimeofday)
+	b.Svc()
+	b.LdrFrame(9, sp, 0)
+	b.Cbz(9, "std.odoo.ret") // buffer untouched: x0 already holds tv_sec
+	b.MovReg(x0, 9)
+	b.Label("std.odoo.ret")
+	b.Epilogue(16)
+}
+
+// stdRand: санамсаргүй_тоо(n) -> тоо. State is seeded lazily from the clock
+// (sec * 1e6 + usec, forced odd so it is never 0), then advanced by
+// xorshift64 (13, 7, 17). Result = (x >> 1) % n + 1; n == 0 is undefined,
+// as on x86-64.
+func (g *gen) stdRand() {
+	b := g.b
+	b.Label(fnLabel("санамсаргүй_тоо"))
+	b.Prologue(32)
+	b.Sxtw(9, x0)
+	b.StrFrame(9, sp, 16) // n survives the seeding syscall
+	b.AdrpAdd(10, randLabel)
+	b.LdrReg(x0, 10)
+	b.Cbnz(x0, "std.rand.have")
+
+	b.MovImm(9, 0)
+	b.StrFrame(9, sp, 0)
+	b.StrFrame(9, sp, 8)
+	b.AddImm(x0, sp, 0)
+	b.MovImm(1, 0)
+	b.MovImm(x16, sysGettimeofday)
+	b.Svc() // x0 = tv_sec, x1 = tv_usec when xnu returns them in registers
+	b.LdrFrame(9, sp, 0)
+	b.Cbz(9, "std.rand.regs")
+	b.MovReg(x0, 9)
+	b.LdrFrame(1, sp, 8)
+	b.Label("std.rand.regs")
+	b.MovImm(9, 1000000)
+	b.Mul(x0, x0, 9)
+	b.Add(x0, x0, 1)
+	b.MovImm(9, 1)
+	b.Orr(x0, x0, 9)
+
+	b.Label("std.rand.have")
+	b.LslImm(9, x0, 13)
+	b.Eor(x0, x0, 9)
+	b.LsrImm(9, x0, 7)
+	b.Eor(x0, x0, 9)
+	b.LslImm(9, x0, 17)
+	b.Eor(x0, x0, 9)
+	b.AdrpAdd(10, randLabel)
+	b.StrReg(x0, 10)
+
+	b.LsrImm(x0, x0, 1)   // keep the dividend below 2^63, as on x86-64
+	b.LdrFrame(9, sp, 16) // n
+	b.UDiv(11, x0, 9)
+	b.MSub(x0, 11, 9, x0) // x0 = x % n
+	b.AddImm(x0, x0, 1)
+	b.Epilogue(32)
 }

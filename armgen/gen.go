@@ -62,7 +62,7 @@ func Compile(prog tackygen.TackyProgram, sizeOf func(string) int, isDbl func(str
 	}
 	// reserved heap + argv state (all start at 0). argc/argv are captured by
 	// the entry stub, which dyld calls as main(argc, argv, ...).
-	for _, lbl := range []string{heapPtrLabel, heapEndLabel, argcLabel, argvLabel} {
+	for _, lbl := range []string{heapPtrLabel, heapEndLabel, argcLabel, argvLabel, randLabel} {
 		dataOff[lbl] = len(data)
 		data = append(data, make([]byte, 8)...)
 	}

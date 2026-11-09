@@ -176,6 +176,14 @@ func (b *Buf) LsrImm(rd, rn, shift int) {
 	b.w(0xD3400000 | (uint32(shift) << 16) | (63 << 10) | (uint32(rn) << 5) | uint32(rd))
 }
 
+// LslImm: rd = rn << shift via UBFM rd,rn,#(64-shift)%64,#(63-shift).
+func (b *Buf) LslImm(rd, rn, shift int) {
+	b.w(0xD3400000 | (uint32((64-shift)%64) << 16) | (uint32(63-shift) << 10) | (uint32(rn) << 5) | uint32(rd))
+}
+
+// Eor: rd = rn ^ rm.
+func (b *Buf) Eor(rd, rn, rm int) { b.w(0xCA000000 | (uint32(rm) << 16) | (uint32(rn) << 5) | uint32(rd)) }
+
 // Sxtw: rd(64) = sign-extend rn(32) — SBFM rd,rn,#0,#31.
 func (b *Buf) Sxtw(rd, rn int) { b.w(0x93407C00 | (uint32(rn) << 5) | uint32(rd)) }
 

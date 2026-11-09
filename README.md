@@ -170,11 +170,30 @@ it out if you only want the Go compiler.
 - **String escapes:** `\n \t \r \\ \" \' \0 \e \xNN \uNNNN`.
 - **Optimizations** are on by default: constant folding, copy propagation and
   dead-code elimination.
-- **Built-in functions:** printing (`хэвлэ`, `мөр_хэвлэх`, `тэмдэгт_хэвлэх`,
-  `бутархай_хэвлэх`), strings and bytes (`мөр_урт`, `байт`, `мөр_шинэ`), file
-  I/O (`файл_унших_бүтэн`, `файл_бичих`, `файл_бичих_байт`), standard input
-  (`унш`), command-line arguments (`аргумент`), and time, random numbers and
-  sleep.
+### Built-in functions
+
+You never write `extern` declarations. The core built-ins are always
+available, and the rest come from standard packages that are built into the
+compiler, so they work from any directory:
+
+| Available | Functions |
+|-----------|-----------|
+| Always | `хэвлэ`, `эхэвлэ`, `мөр_хэвлэх`, `тэмдэгт_хэвлэх`, `бутархай_хэвлэх`, `унш`, `унш32` |
+| `ашигла "тэмдэгт_мөр";` | `мөр_урт`, `байт`, `байт_тавих`, `мөр_шинэ` |
+| `ашигла "файл";` | `файл_унших_бүтэн`, `файл_бичих`, `файл_бичих_байт` |
+| `ашигла "систем";` | `аргумент_тоо`, `аргумент`, `одоо`, `хүлээх`, `санамсаргүй_тоо` (1..n), `дэлгэц_цэвэрлэх` |
+
+```mon
+ашигла "систем";
+
+функц үндсэн() -> тоо {
+    хэвлэ(санамсаргүй_тоо(6));   // a dice roll, 1..6
+    мөр_хэвлэх("\n");
+    буц 0;
+}
+```
+
+Older programs that still declare built-ins with `extern` keep compiling.
 
 Runnable programs that cover every feature are in [`tests/run/`](tests/run).
 Each one states its expected output in a `// шалгах:` comment.

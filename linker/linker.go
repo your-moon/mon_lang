@@ -23,6 +23,11 @@ type Linker struct {
 	genObj     bool
 }
 
+// EmbeddedLibC is the C runtime linked into every executable when
+// stdlib/lib.c is not in the current directory. The compiler binary sets it
+// at startup.
+var EmbeddedLibC []byte
+
 func NewLinker(outputFile string) *Linker {
 	if filepath.IsAbs(outputFile) || strings.HasPrefix(outputFile, ".") || strings.HasPrefix(outputFile, "..") {
 		return &Linker{
@@ -88,8 +93,22 @@ func (l *Linker) Link() error {
 
 	defer os.Remove(objFile)
 
-	// Find stdlib/lib.c relative to the executable or current directory
+	// Link the C runtime: stdlib/lib.c in the current directory if present,
+	// otherwise the copy embedded in the compiler.
 	stdlibFile := filepath.Join(STDLIB_DIR, "lib.c")
+	if _, err := os.Stat(stdlibFile); err != nil {
+		tmp, err := os.CreateTemp("", "mon_lib_*.c")
+		if err != nil {
+			return fmt.Errorf("runtime файл үүсгэхэд алдаа: %v", err)
+		}
+		defer os.Remove(tmp.Name())
+		if _, err := tmp.Write(EmbeddedLibC); err != nil {
+			tmp.Close()
+			return fmt.Errorf("runtime файл бичихэд алдаа: %v", err)
+		}
+		tmp.Close()
+		stdlibFile = tmp.Name()
+	}
 
 	// Use cc to link with libc (provides malloc, printf, etc.)
 	var linkCmd *exec.Cmd

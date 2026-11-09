@@ -20,6 +20,14 @@ type SemanticAnalyzer struct {
 	stdlibDir     string
 }
 
+// EmbeddedPrelude is the builtin declarations every program imports
+// automatically. The compiler binary sets it at startup.
+var EmbeddedPrelude string
+
+// EmbeddedStdlib maps standard-library file names (e.g. "math.mn") to their
+// source, for imports that are not found next to the program.
+var EmbeddedStdlib = map[string]string{}
+
 func NewSemanticAnalyzer(source []int32, uniqueGen unique.UniqueGen, table *symbols.SymbolTable, baseDir string, stdlibDir string) *SemanticAnalyzer {
 	return &SemanticAnalyzer{
 		resolver:      NewResolver(source, uniqueGen),
@@ -46,23 +54,18 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 	var importedDecls []parser.ASTDecl
 	var ownDecls []parser.ASTDecl
 
-	// Auto-import prelude (stdlib declarations)
-	preludePath := filepath.Join(s.stdlibDir, "prelude.mn")
-	if _, err := os.Stat(preludePath); err == nil {
-		data, err := os.ReadFile(preludePath)
-		if err != nil {
-			return nil, fmt.Errorf("prelude уншихад алдаа: %v", err)
-		}
-		runeStr := convertToRuneArray(string(data))
-		p := parser.NewParser(runeStr)
-		preludeProg, err := p.ParseProgram()
-		if err != nil {
-			return nil, fmt.Errorf("prelude парсингийн алдаа: %v", err)
-		}
-		for _, d := range preludeProg.Decls {
-			importedDecls = append(importedDecls, d)
-		}
+	// Auto-import the prelude (builtin declarations), so programs never need
+	// extern. It is embedded in the compiler; a prelude.mn in stdlibDir wins.
+	preludeSrc := EmbeddedPrelude
+	if data, err := os.ReadFile(filepath.Join(s.stdlibDir, "prelude.mn")); err == nil {
+		preludeSrc = string(data)
 	}
+	p := parser.NewParser(convertToRuneArray(preludeSrc))
+	preludeProg, err := p.ParseProgram()
+	if err != nil {
+		return nil, fmt.Errorf("prelude парсингийн алдаа: %v", err)
+	}
+	importedDecls = append(importedDecls, preludeProg.Decls...)
 
 	for _, decl := range program.Decls {
 		imp, ok := decl.(*parser.ASTImport)
@@ -81,6 +84,15 @@ func (s *SemanticAnalyzer) processImports(program *parser.ASTProgram) (*parser.A
 		s.importedFiles[filePath] = true
 
 		data, err := os.ReadFile(filePath)
+		if err != nil {
+			// Not next to the source: fall back to the standard library
+			// (stdlibDir on disk, then the copy embedded in the compiler).
+			if d, e := os.ReadFile(filepath.Join(s.stdlibDir, imp.FilePath)); e == nil {
+				data, err = d, nil
+			} else if src, ok := EmbeddedStdlib[imp.FilePath]; ok {
+				data, err = []byte(src), nil
+			}
+		}
 		if err != nil {
 			return nil, fmt.Errorf("импорт файл уншихад алдаа: %s: %v", imp.FilePath, err)
 		}
